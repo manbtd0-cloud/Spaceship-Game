@@ -1,0 +1,28 @@
+# Godot
+.godot/
+.export/
+export_presets.cfg
+
+# Blender
+*.blend1
+*.blend2
+*.blend@
+*.blend~
+*.autosave
+*.tmp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+__MACOSX/
+._*
+
+# Editors
+.vscode/
+.idea/
+
+# Local build and test output
+build/
+dist/
+logs/
+*.log
