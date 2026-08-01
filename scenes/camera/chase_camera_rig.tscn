@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/camera/chase_camera_rig.gd" id="1_rig"]
+
+[node name="ChaseCameraRig" type="Node3D"]
+script = ExtResource("1_rig")
+target_path = NodePath("../PlayerInterceptor")
+controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
+camera_path = NodePath("Camera3D")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+fov = 68.0
+near = 0.1
+far = 10000.0
