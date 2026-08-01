@@ -28,7 +28,7 @@ static func compute(
     output.force_local.z *= boost_factor
     output.torque_local = command.rotation * tuning.rotation_torque
 
-    if command.mode == FlightMode.ASSISTED:
+    if command.mode == FlightMode.Value.ASSISTED:
         output.force_local -= Vector3(
             local_linear_velocity.x,
             local_linear_velocity.y,
