@@ -7,6 +7,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/integration/test_player_scene.gd",
     "res://tests/unit/test_chase_camera_math.gd",
+    "res://tests/integration/test_flight_room_scene.gd",
 ]
 
 func _initialize() -> void:
