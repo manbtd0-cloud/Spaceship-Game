@@ -24,15 +24,53 @@ textures/default_filters/use_nearest_mipmap_filter=false
 common/physics_ticks_per_second=60
 
 [input]
-thrust_forward={"deadzone": 0.15, "events": []}
-thrust_reverse={"deadzone": 0.15, "events": []}
-strafe_left={"deadzone": 0.15, "events": []}
-strafe_right={"deadzone": 0.15, "events": []}
-strafe_up={"deadzone": 0.15, "events": []}
-strafe_down={"deadzone": 0.15, "events": []}
-roll_left={"deadzone": 0.15, "events": []}
-roll_right={"deadzone": 0.15, "events": []}
-boost={"deadzone": 0.15, "events": []}
+thrust_forward={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":87)]
+}
+thrust_reverse={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":83)]
+}
+strafe_left={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":65)]
+}
+strafe_right={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":68)]
+}
+strafe_up={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":32)]
+}
+strafe_down={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194326)]
+}
+roll_left={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":81)]
+}
+roll_right={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":69)]
+}
+boost={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194325)]
+}
 fire_primary={"deadzone": 0.15, "events": []}
 fire_secondary={"deadzone": 0.15, "events": []}
-toggle_flight_mode={"deadzone": 0.15, "events": []}
+toggle_flight_mode={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":70)]
+}
+toggle_mouse_capture={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194305)]
+}
+reset_flight_room={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":82)]
+}
