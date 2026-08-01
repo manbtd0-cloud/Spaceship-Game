@@ -3,6 +3,7 @@ extends SceneTree
 const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_test_harness.gd",
     "res://tests/unit/test_flight_model.gd",
+    "res://tests/unit/test_player_input_math.gd",
 ]
 
 func _initialize() -> void:
