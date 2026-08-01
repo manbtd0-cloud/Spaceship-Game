@@ -30,4 +30,24 @@ func run() -> void:
     var controller := player.get_node("ShipFlightController") as ShipFlightController
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
     assert_true(is_equal_approx(controller.get_boost_amount(), 0.0), "default boost")
+
+    var hud_packed := load("res://scenes/ui/flight_hud.tscn") as PackedScene
+    assert_true(hud_packed != null, "HUD scene must load")
+    if hud_packed != null:
+        var hud := hud_packed.instantiate() as FlightHud
+        assert_true(hud != null, "HUD root must use FlightHud")
+        if hud != null:
+            for label_path: String in [
+                "SafeArea/Layout/SpeedLabel",
+                "SafeArea/Layout/ModeLabel",
+                "SafeArea/Layout/BoostLabel",
+                "SafeArea/Layout/CaptureLabel",
+                "SafeArea/Layout/ControlsLabel"
+            ]:
+                assert_true(
+                    hud.get_node_or_null(label_path) is Label,
+                    "missing HUD label: %s" % label_path
+                )
+            hud.free()
+
     player.free()
