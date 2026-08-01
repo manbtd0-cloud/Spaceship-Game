@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="FlightTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/flight/flight_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+forward_force = 120000.0
+reverse_force = 50000.0
+strafe_force = 65000.0
+rotation_torque = 45000.0
+boost_multiplier = 1.8
+assist_linear_damping = 2.5
+assist_angular_damping = 3.5
