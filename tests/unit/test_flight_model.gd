@@ -11,7 +11,7 @@ func run() -> void:
     tuning.assist_angular_damping = 3.0
 
     var assisted := FlightCommand.new()
-    assisted.mode = FlightMode.ASSISTED
+    assisted.mode = FlightMode.Value.ASSISTED
     assisted.translation = Vector3(0.0, 0.0, -1.0)
 
     var assisted_output := FlightModel.compute(
@@ -26,7 +26,7 @@ func run() -> void:
     assert_true(assisted_output.torque_local.y < 0.0, "assisted mode must oppose angular drift")
 
     var manual := FlightCommand.new()
-    manual.mode = FlightMode.MANUAL
+    manual.mode = FlightMode.Value.MANUAL
     manual.translation = Vector3.ZERO
 
     var manual_output := FlightModel.compute(
@@ -39,13 +39,13 @@ func run() -> void:
     assert_equal(manual_output.torque_local, Vector3.ZERO, "manual mode must preserve angular momentum")
 
     var reverse := FlightCommand.new()
-    reverse.mode = FlightMode.MANUAL
+    reverse.mode = FlightMode.Value.MANUAL
     reverse.translation = Vector3(0.0, 0.0, 1.0)
     var reverse_output := FlightModel.compute(reverse, tuning, Vector3.ZERO, Vector3.ZERO)
     assert_true(is_equal_approx(reverse_output.force_local.z, 40.0), "reverse input must use reverse thrust")
 
     var boosted := FlightCommand.new()
-    boosted.mode = FlightMode.MANUAL
+    boosted.mode = FlightMode.Value.MANUAL
     boosted.translation = Vector3(0.0, 0.0, -1.0)
     boosted.boost = 1.0
     var boosted_output := FlightModel.compute(boosted, tuning, Vector3.ZERO, Vector3.ZERO)
