@@ -1,0 +1,358 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="2_camera"]
+[ext_resource type="PackedScene" path="res://scenes/ui/flight_hud.tscn" id="3_hud"]
+[ext_resource type="Script" path="res://src/flight_room/flight_room_controller.gd" id="4_controller"]
+
+[sub_resource type="Environment" id="Environment_space"]
+background_mode = 1
+background_color = Color(0.004, 0.008, 0.025, 1)
+background_energy_multiplier = 0.8
+ambient_light_source = 3
+ambient_light_color = Color(0.08, 0.13, 0.24, 1)
+ambient_light_energy = 0.48
+reflected_light_source = 2
+
+[sub_resource type="StandardMaterial3D" id="Mat_course"]
+albedo_color = Color(0.05, 0.48, 0.78, 1)
+emission_enabled = true
+emission = Color(0.02, 0.48, 0.9, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_marker"]
+albedo_color = Color(0.1, 0.8, 1, 1)
+emission_enabled = true
+emission = Color(0.08, 0.7, 1, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
+albedo_color = Color(0.22, 0.12, 0.055, 1)
+metallic = 0.35
+roughness = 0.6
+emission_enabled = true
+emission = Color(0.32, 0.08, 0.015, 1)
+emission_energy_multiplier = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_distant"]
+albedo_color = Color(0.025, 0.055, 0.13, 1)
+emission_enabled = true
+emission = Color(0.015, 0.06, 0.18, 1)
+emission_energy_multiplier = 0.45
+
+[sub_resource type="BoxMesh" id="Mesh_gate_vertical"]
+material = SubResource("Mat_course")
+size = Vector3(1.4, 24, 1.4)
+
+[sub_resource type="BoxMesh" id="Mesh_gate_horizontal"]
+material = SubResource("Mat_course")
+size = Vector3(30, 1.4, 1.4)
+
+[sub_resource type="BoxMesh" id="Mesh_ring_vertical"]
+material = SubResource("Mat_course")
+size = Vector3(0.8, 15, 0.8)
+
+[sub_resource type="BoxMesh" id="Mesh_ring_horizontal"]
+material = SubResource("Mat_course")
+size = Vector3(20, 0.8, 0.8)
+
+[sub_resource type="BoxMesh" id="Mesh_pylon"]
+material = SubResource("Mat_obstacle")
+size = Vector3(7, 45, 7)
+
+[sub_resource type="BoxShape3D" id="Shape_pylon"]
+size = Vector3(7, 45, 7)
+
+[sub_resource type="SphereMesh" id="Mesh_marker"]
+material = SubResource("Mat_marker")
+radius = 1.4
+height = 2.8
+radial_segments = 12
+rings = 6
+
+[sub_resource type="BoxMesh" id="Mesh_distant"]
+material = SubResource("Mat_distant")
+size = Vector3(85, 85, 85)
+
+[sub_resource type="BoxShape3D" id="Shape_reset"]
+size = Vector3(5000, 60, 5000)
+
+[node name="FlightRoom" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_space")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-28, -32, 0)
+light_color = Color(0.55, 0.72, 1, 1)
+light_energy = 1.35
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(38, 148, 0)
+light_color = Color(0.18, 0.32, 0.7, 1)
+light_energy = 0.5
+
+[node name="PlayerInterceptor" parent="." instance=ExtResource("1_player")]
+
+[node name="ChaseCameraRig" parent="." instance=ExtResource("2_camera")]
+
+[node name="FlightHud" parent="." instance=ExtResource("3_hud")]
+
+[node name="Course" type="Node3D" parent="."]
+
+[node name="StartGate" type="Node3D" parent="Course"]
+position = Vector3(0, 0, -80)
+
+[node name="LeftPost" type="MeshInstance3D" parent="Course/StartGate"]
+position = Vector3(-15, 0, 0)
+mesh = SubResource("Mesh_gate_vertical")
+
+[node name="RightPost" type="MeshInstance3D" parent="Course/StartGate"]
+position = Vector3(15, 0, 0)
+mesh = SubResource("Mesh_gate_vertical")
+
+[node name="TopBeam" type="MeshInstance3D" parent="Course/StartGate"]
+position = Vector3(0, 12, 0)
+mesh = SubResource("Mesh_gate_horizontal")
+
+[node name="NavigationRings" type="Node3D" parent="Course"]
+
+[node name="Ring01" type="Node3D" parent="Course/NavigationRings"]
+position = Vector3(0, 0, -180)
+
+[node name="Left" type="MeshInstance3D" parent="Course/NavigationRings/Ring01"]
+position = Vector3(-10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Right" type="MeshInstance3D" parent="Course/NavigationRings/Ring01"]
+position = Vector3(10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Top" type="MeshInstance3D" parent="Course/NavigationRings/Ring01"]
+position = Vector3(0, 7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Bottom" type="MeshInstance3D" parent="Course/NavigationRings/Ring01"]
+position = Vector3(0, -7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Ring02" type="Node3D" parent="Course/NavigationRings"]
+position = Vector3(45, 22, -340)
+rotation_degrees = Vector3(0, -12, 8)
+
+[node name="Left" type="MeshInstance3D" parent="Course/NavigationRings/Ring02"]
+position = Vector3(-10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Right" type="MeshInstance3D" parent="Course/NavigationRings/Ring02"]
+position = Vector3(10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Top" type="MeshInstance3D" parent="Course/NavigationRings/Ring02"]
+position = Vector3(0, 7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Bottom" type="MeshInstance3D" parent="Course/NavigationRings/Ring02"]
+position = Vector3(0, -7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Ring03" type="Node3D" parent="Course/NavigationRings"]
+position = Vector3(-70, -28, -510)
+rotation_degrees = Vector3(6, 18, -12)
+
+[node name="Left" type="MeshInstance3D" parent="Course/NavigationRings/Ring03"]
+position = Vector3(-10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Right" type="MeshInstance3D" parent="Course/NavigationRings/Ring03"]
+position = Vector3(10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Top" type="MeshInstance3D" parent="Course/NavigationRings/Ring03"]
+position = Vector3(0, 7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Bottom" type="MeshInstance3D" parent="Course/NavigationRings/Ring03"]
+position = Vector3(0, -7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Ring04" type="Node3D" parent="Course/NavigationRings"]
+position = Vector3(80, 48, -690)
+rotation_degrees = Vector3(-8, -22, 14)
+
+[node name="Left" type="MeshInstance3D" parent="Course/NavigationRings/Ring04"]
+position = Vector3(-10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Right" type="MeshInstance3D" parent="Course/NavigationRings/Ring04"]
+position = Vector3(10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Top" type="MeshInstance3D" parent="Course/NavigationRings/Ring04"]
+position = Vector3(0, 7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Bottom" type="MeshInstance3D" parent="Course/NavigationRings/Ring04"]
+position = Vector3(0, -7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Ring05" type="Node3D" parent="Course/NavigationRings"]
+position = Vector3(-35, 5, -900)
+rotation_degrees = Vector3(12, 10, -18)
+
+[node name="Left" type="MeshInstance3D" parent="Course/NavigationRings/Ring05"]
+position = Vector3(-10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Right" type="MeshInstance3D" parent="Course/NavigationRings/Ring05"]
+position = Vector3(10, 0, 0)
+mesh = SubResource("Mesh_ring_vertical")
+
+[node name="Top" type="MeshInstance3D" parent="Course/NavigationRings/Ring05"]
+position = Vector3(0, 7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Bottom" type="MeshInstance3D" parent="Course/NavigationRings/Ring05"]
+position = Vector3(0, -7.5, 0)
+mesh = SubResource("Mesh_ring_horizontal")
+
+[node name="Pylons" type="Node3D" parent="Course"]
+
+[node name="Pylon01" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(-32, -5, -250)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon01"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon01"]
+shape = SubResource("Shape_pylon")
+
+[node name="Pylon02" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(32, 8, -275)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon02"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon02"]
+shape = SubResource("Shape_pylon")
+
+[node name="Pylon03" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(-95, 5, -470)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon03"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon03"]
+shape = SubResource("Shape_pylon")
+
+[node name="Pylon04" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(20, -22, -560)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon04"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon04"]
+shape = SubResource("Shape_pylon")
+
+[node name="Pylon05" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(110, 20, -720)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon05"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon05"]
+shape = SubResource("Shape_pylon")
+
+[node name="Pylon06" type="StaticBody3D" parent="Course/Pylons"]
+position = Vector3(-65, 40, -835)
+
+[node name="Mesh" type="MeshInstance3D" parent="Course/Pylons/Pylon06"]
+mesh = SubResource("Mesh_pylon")
+
+[node name="Collision" type="CollisionShape3D" parent="Course/Pylons/Pylon06"]
+shape = SubResource("Shape_pylon")
+
+[node name="DriftMarkers" type="Node3D" parent="Course"]
+
+[node name="Marker01" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(-40, -20, -120)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker02" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(-30, -15, -160)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker03" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(-20, -10, -200)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker04" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(-10, -5, -240)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker05" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(0, 0, -280)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker06" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(10, 5, -320)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker07" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(20, 10, -360)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker08" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(30, 15, -400)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker09" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(40, 20, -440)
+mesh = SubResource("Mesh_marker")
+
+[node name="Marker10" type="MeshInstance3D" parent="Course/DriftMarkers"]
+position = Vector3(50, 25, -480)
+mesh = SubResource("Mesh_marker")
+
+[node name="DistantReferenceShapes" type="Node3D" parent="Course"]
+
+[node name="Reference01" type="MeshInstance3D" parent="Course/DistantReferenceShapes"]
+position = Vector3(-420, 180, -650)
+rotation_degrees = Vector3(18, 35, 12)
+mesh = SubResource("Mesh_distant")
+
+[node name="Reference02" type="MeshInstance3D" parent="Course/DistantReferenceShapes"]
+position = Vector3(520, -130, -980)
+rotation_degrees = Vector3(-15, 62, 21)
+scale = Vector3(1.5, 0.7, 1.1)
+mesh = SubResource("Mesh_distant")
+
+[node name="Reference03" type="MeshInstance3D" parent="Course/DistantReferenceShapes"]
+position = Vector3(-650, -220, -1250)
+rotation_degrees = Vector3(48, -20, 16)
+scale = Vector3(0.8, 1.8, 1.0)
+mesh = SubResource("Mesh_distant")
+
+[node name="Reference04" type="MeshInstance3D" parent="Course/DistantReferenceShapes"]
+position = Vector3(260, 420, -1450)
+rotation_degrees = Vector3(22, 70, -28)
+scale = Vector3(2.0, 0.6, 1.4)
+mesh = SubResource("Mesh_distant")
+
+[node name="ResetVolume" type="Area3D" parent="."]
+position = Vector3(0, -350, -450)
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ResetVolume"]
+shape = SubResource("Shape_reset")
+
+[node name="FlightRoomController" type="Node" parent="."]
+script = ExtResource("4_controller")
+player_body_path = NodePath("../PlayerInterceptor")
+player_controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
+input_source_path = NodePath("../PlayerInterceptor/PlayerInputSource")
+reset_volume_path = NodePath("../ResetVolume")
+boundary_radius = 2500.0
