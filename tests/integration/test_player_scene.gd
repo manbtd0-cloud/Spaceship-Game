@@ -48,6 +48,12 @@ func run() -> void:
     var controller := player.get_node("ShipFlightController") as ShipFlightController
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
     assert_true(is_equal_approx(controller.get_boost_amount(), 0.0), "default boost")
+    assert_true(is_equal_approx(controller.get_boost_heat(), 0.0), "default boost heat")
+    assert_true(not controller.is_boost_locked_out(), "boost starts unlocked")
+    assert_true(
+        is_equal_approx(controller.get_active_speed_limit(), 160.0),
+        "normal envelope is active at spawn"
+    )
 
     var hud_packed := load("res://scenes/ui/flight_hud.tscn") as PackedScene
     assert_true(hud_packed != null, "HUD scene must load")
