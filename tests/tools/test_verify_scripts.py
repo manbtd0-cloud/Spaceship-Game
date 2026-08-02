@@ -7,28 +7,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class VerifyScriptTests(unittest.TestCase):
-    def test_windows_verifier_reads_schema_two_canonical_frame(self) -> None:
+    def test_windows_verifier_reads_schema_three_source_exact_contract(self) -> None:
         source = (REPO_ROOT / "tools" / "verify" / "verify.ps1").read_text(
             encoding="utf-8"
         )
         self.assertIn("$manifest.canonical_frame.godot_forward", source)
         self.assertIn("$manifest.canonical_frame.godot_up", source)
-        self.assertNotIn("$manifest.godot_forward", source)
-        self.assertNotIn("$manifest.godot_up", source)
-        self.assertIn('"Thrusters/Main/MainLeft"', source)
-        self.assertIn('"Thrusters/Retro/RetroRight"', source)
+        self.assertIn("$manifest.schema_version -ne 3", source)
+        self.assertIn("source_exact_enginefire_geometry", source)
+        self.assertIn("$manifest.thruster_effects", source)
+        self.assertIn('"ThrusterEffects/Main/MainLeftEffect"', source)
+        self.assertIn('"ThrusterEffects/Retro/RetroRightEffect"', source)
         self.assertNotIn('"Thrusters/Main/Left"', source)
         self.assertNotIn('"Thrusters/Retro/Left"', source)
 
-    def test_linux_verifier_reads_schema_two_canonical_frame(self) -> None:
+    def test_linux_verifier_reads_schema_three_source_exact_contract(self) -> None:
         source = (REPO_ROOT / "tools" / "verify" / "verify.sh").read_text(
             encoding="utf-8"
         )
         self.assertIn('manifest.get("canonical_frame")', source)
-        self.assertIn('manifest.get("schema_version") != 2', source)
-        self.assertIn('len(manifest.get("sockets", [])) != 12', source)
-        self.assertIn('"Thrusters/Main/MainLeft"', source)
-        self.assertIn('"Thrusters/Retro/RetroRight"', source)
+        self.assertIn('manifest.get("schema_version") != 3', source)
+        self.assertIn('source_exact_enginefire_geometry', source)
+        self.assertIn('manifest.get("thruster_effects", [])', source)
+        self.assertIn('"ThrusterEffects/Main/MainLeftEffect"', source)
+        self.assertIn('"ThrusterEffects/Retro/RetroRightEffect"', source)
         self.assertNotIn('"Thrusters/Main/Left"', source)
         self.assertNotIn('"Thrusters/Retro/Left"', source)
 
@@ -40,6 +42,14 @@ class VerifyScriptTests(unittest.TestCase):
             source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
             self.assertIn('"--python-exit-code"', source)
             self.assertIn('"1"', source)
+
+    def test_fighter_wrapper_uses_schema_three_exporter_and_validator(self) -> None:
+        source = (REPO_ROOT / "tools" / "assets" / "export-small-fighter.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("export_small_sci_fi_fighter_v3.py", source)
+        self.assertIn("canonical_fighter_contract_v3.py", source)
+        self.assertNotIn('export_small_sci_fighter.py"', source)
 
 
 if __name__ == "__main__":
