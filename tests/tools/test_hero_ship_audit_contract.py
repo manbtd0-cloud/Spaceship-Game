@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import sys
 import tempfile
@@ -123,6 +124,11 @@ class AuditContractTests(unittest.TestCase):
         script = script_path.read_text(encoding="utf-8")
         forbidden = ("save_as_mainfile", "save_mainfile", "save_homefile")
         self.assertFalse(any(token in script for token in forbidden))
+
+    def test_blender_audit_script_parses_as_python(self) -> None:
+        script_path = ASSET_TOOLS / "audit_small_sci_fi_fighter.py"
+        script = script_path.read_text(encoding="utf-8")
+        ast.parse(script, filename=str(script_path))
 
 
 if __name__ == "__main__":
