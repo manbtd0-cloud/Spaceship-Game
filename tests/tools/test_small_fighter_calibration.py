@@ -74,6 +74,25 @@ class CalibrationTests(unittest.TestCase):
         self.assertGreater(centroids_x[1], 3.0)
         self.assertEqual(sorted(len(group) for group in grouped), [6, 6])
 
+    def test_measured_main_plume_shells_are_spatially_distinct(self) -> None:
+        left_center = -1.4439371343342315
+        right_center = 1.477728133168176
+        shell_offset = 1.315407 / 2.0
+        components = [
+            [(left_center - shell_offset, -14.5502372, -0.0315027)],
+            [(left_center + shell_offset, -14.5502372, -0.0315027)],
+            [(right_center - shell_offset, -14.5502372, -0.0315027)],
+            [(right_center + shell_offset, -14.5502372, -0.0315027)],
+        ]
+        grouped = group_spatial_components(components, expected_groups=2)
+        self.assertEqual(len(grouped), 2)
+        centroids_x = sorted(
+            sum(point[0] for point in group) / len(group)
+            for group in grouped
+        )
+        self.assertAlmostEqual(centroids_x[0], left_center, places=6)
+        self.assertAlmostEqual(centroids_x[1], right_center, places=6)
+
     def test_ambiguous_component_grouping_is_rejected(self) -> None:
         components = [
             [(0.0, -1.0, 0.0), (0.0, 1.0, 0.0)],
