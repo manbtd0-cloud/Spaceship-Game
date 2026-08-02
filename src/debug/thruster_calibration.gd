@@ -1,7 +1,7 @@
 class_name ThrusterCalibration
 extends Node3D
 
-const CASES := PackedStringArray([
+const CASES = [
     "forward",
     "reverse",
     "strafe_left",
@@ -16,7 +16,7 @@ const CASES := PackedStringArray([
     "roll_right",
     "assist_translation",
     "assist_rotation",
-])
+]
 
 var _case_index := 0
 var _active := true
@@ -83,7 +83,7 @@ func _unhandled_input(event: InputEvent) -> void:
             get_tree().quit()
 
 func get_case_names() -> PackedStringArray:
-    return CASES.duplicate()
+    return PackedStringArray(CASES)
 
 func get_action_matrix_path() -> String:
     return ShipThrusterVisualController.ACTION_MATRIX_PATH
@@ -126,8 +126,6 @@ func _apply_case() -> void:
 func _command_for_action(action_name: StringName) -> FlightCommand:
     var command := FlightCommand.new()
     var action := ThrusterAction.from_name(action_name)
-    if action < 0:
-        return command
     command.translation = ThrusterAction.target_force(action)
     command.rotation = ThrusterAction.target_torque(action)
     return command
