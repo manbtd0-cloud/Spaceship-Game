@@ -18,7 +18,7 @@ The playable flight room provides:
 
 The temporary runtime alignment adapter and rear-only glow anchors have been removed. The canonical fighter dimensions are approximately `13.714 × 3.562 × 12.000 m`, and its gameplay collider is `14.0 × 3.8 × 12.2 m`.
 
-The next generated-asset gate is the four-family asteroid pack. Its Blender/Python pipeline is committed, but the flight room is not allowed to reference those runtime GLBs until all four outputs have been generated and validated locally.
+The next generated-asset gate is the four-family asteroid pack. Its Blender/Python pipeline, reusable collidable asteroid body, deterministic sixteen-asteroid layout, and injectable field builder are committed. The flight room is not allowed to reference those runtime GLBs until all four outputs have been generated and validated locally.
 
 ## Requirements
 
@@ -174,10 +174,10 @@ Or:
 GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verify.sh
 ```
 
-The canonical-fighter runner target is:
+The pre-asteroid-generation runner target is:
 
 ```text
-PASS: 16 suites
+PASS: 19 suites
 ```
 
 Do not claim the milestone verified until the Windows verifier imports the project, runs all suites, and boots the main scene without parser, path, or runtime errors.
