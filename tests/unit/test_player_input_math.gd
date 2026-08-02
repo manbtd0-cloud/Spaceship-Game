@@ -50,8 +50,8 @@ func run() -> void:
     assert_true(_action_has_key(&"strafe_right", KEY_E), "E must strafe right")
     assert_true(_action_has_key(&"yaw_left", KEY_A), "A must yaw left")
     assert_true(_action_has_key(&"yaw_right", KEY_D), "D must yaw right")
-    assert_true(_action_has_key(&"pitch_up", KEY_UP), "Up Arrow must pitch up")
-    assert_true(_action_has_key(&"pitch_down", KEY_DOWN), "Down Arrow must pitch down")
+    assert_true(_action_has_key(&"pitch_up", KEY_DOWN), "Down Arrow must pitch up")
+    assert_true(_action_has_key(&"pitch_down", KEY_UP), "Up Arrow must pitch down")
     assert_true(_action_has_key(&"roll_left", KEY_LEFT), "Left Arrow must roll left")
     assert_true(_action_has_key(&"roll_right", KEY_RIGHT), "Right Arrow must roll right")
 
