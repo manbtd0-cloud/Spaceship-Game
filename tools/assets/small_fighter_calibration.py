@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 SOURCE_SHA256 = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 SOURCE_FRAME_OBJECT = "Cube"
 HULL_CENTER_LOCAL = (0.0, -0.5693, 0.5081)
@@ -14,18 +16,20 @@ SOURCE_CENTER_TOLERANCE = 0.02
 SOCKET_COUNTS = {"main": 2, "retro": 2, "maneuver": 8}
 
 PLUME_GROUPS: dict[str, dict[str, object]] = {
-    "EngineFire": {"components": 2, "class": "main", "group": "Main"},
-    "EngineFire.001": {"components": 1, "class": "retro", "group": "Retro"},
-    "EngineFire.004": {"components": 1, "class": "retro", "group": "Retro"},
-    "EngineFire.002": {"components": 1, "class": "maneuver", "group": "FrontUpper"},
-    "EngineFire.003": {"components": 1, "class": "maneuver", "group": "FrontUpper"},
-    "EngineFire.005": {"components": 1, "class": "maneuver", "group": "RearUpper"},
-    "EngineFire.006": {"components": 1, "class": "maneuver", "group": "RearUpper"},
-    "EngineFire.007": {"components": 1, "class": "maneuver", "group": "RearLower"},
-    "EngineFire.008": {"components": 1, "class": "maneuver", "group": "RearLower"},
-    "EngineFire.009": {"components": 1, "class": "maneuver", "group": "FrontLower"},
-    "EngineFire.010": {"components": 1, "class": "maneuver", "group": "FrontLower"},
+    "EngineFire": {"sockets": 2, "class": "main", "group": "Main"},
+    "EngineFire.001": {"sockets": 1, "class": "retro", "group": "Retro"},
+    "EngineFire.004": {"sockets": 1, "class": "retro", "group": "Retro"},
+    "EngineFire.002": {"sockets": 1, "class": "maneuver", "group": "FrontUpper"},
+    "EngineFire.003": {"sockets": 1, "class": "maneuver", "group": "FrontUpper"},
+    "EngineFire.005": {"sockets": 1, "class": "maneuver", "group": "RearUpper"},
+    "EngineFire.006": {"sockets": 1, "class": "maneuver", "group": "RearUpper"},
+    "EngineFire.007": {"sockets": 1, "class": "maneuver", "group": "RearLower"},
+    "EngineFire.008": {"sockets": 1, "class": "maneuver", "group": "RearLower"},
+    "EngineFire.009": {"sockets": 1, "class": "maneuver", "group": "FrontLower"},
+    "EngineFire.010": {"sockets": 1, "class": "maneuver", "group": "FrontLower"},
 }
+
+Point3 = tuple[float, float, float]
 
 
 def connected_components(vertex_count: int, edges: list[tuple[int, int]]) -> list[list[int]]:
@@ -59,14 +63,125 @@ def connected_components(vertex_count: int, edges: list[tuple[int, int]]) -> lis
     return components
 
 
-def _normalize(vector: tuple[float, float, float]) -> tuple[float, float, float]:
+def _centroid(points: list[Point3]) -> Point3:
+    if not points:
+        raise ValueError("component point cloud must not be empty")
+    return tuple(
+        sum(point[axis] for point in points) / len(points)
+        for axis in range(3)
+    )
+
+
+def _distance(left: Point3, right: Point3) -> float:
+    return math.sqrt(
+        sum((left[axis] - right[axis]) ** 2 for axis in range(3))
+    )
+
+
+def group_spatial_components(
+    components: list[list[Point3]],
+    expected_groups: int,
+) -> list[list[Point3]]:
+    """Merge layered mesh islands into distinct physical plume point clouds."""
+    if expected_groups <= 0:
+        raise ValueError("expected_groups must be positive")
+    if len(components) < expected_groups:
+        raise ValueError(
+            f"cannot form {expected_groups} plume groups from {len(components)} components"
+        )
+    if any(not component for component in components):
+        raise ValueError("component point clouds must not be empty")
+
+    component_centroids = [_centroid(component) for component in components]
+    clusters: list[list[int]] = [[index] for index in range(len(components))]
+
+    def cluster_centroid(cluster: list[int]) -> Point3:
+        points = [
+            point
+            for component_index in cluster
+            for point in components[component_index]
+        ]
+        return _centroid(points)
+
+    while len(clusters) > expected_groups:
+        best: tuple[float, int, int] | None = None
+        for left_index in range(len(clusters)):
+            left_center = cluster_centroid(clusters[left_index])
+            for right_index in range(left_index + 1, len(clusters)):
+                candidate = (
+                    _distance(
+                        left_center,
+                        cluster_centroid(clusters[right_index]),
+                    ),
+                    left_index,
+                    right_index,
+                )
+                if best is None or candidate < best:
+                    best = candidate
+        if best is None:
+            raise ValueError("failed to select plume component clusters")
+        _, left_index, right_index = best
+        merged = sorted(clusters[left_index] + clusters[right_index])
+        clusters = [
+            cluster
+            for index, cluster in enumerate(clusters)
+            if index not in {left_index, right_index}
+        ]
+        clusters.append(merged)
+        clusters.sort(key=lambda cluster: tuple(cluster))
+
+    group_centroids = [cluster_centroid(cluster) for cluster in clusters]
+    maximum_intra_distance = 0.0
+    for cluster in clusters:
+        for left_offset, left_index in enumerate(cluster):
+            for right_index in cluster[left_offset + 1 :]:
+                maximum_intra_distance = max(
+                    maximum_intra_distance,
+                    _distance(
+                        component_centroids[left_index],
+                        component_centroids[right_index],
+                    ),
+                )
+
+    minimum_inter_distance = float("inf")
+    for left_index, left_center in enumerate(group_centroids):
+        for right_center in group_centroids[left_index + 1 :]:
+            minimum_inter_distance = min(
+                minimum_inter_distance,
+                _distance(left_center, right_center),
+            )
+
+    if expected_groups > 1 and minimum_inter_distance <= max(
+        maximum_intra_distance * 3.0,
+        1e-5,
+    ):
+        raise ValueError(
+            "plume component groups are not spatially distinct: "
+            f"minimum_inter={minimum_inter_distance:.6f}, "
+            f"maximum_intra={maximum_intra_distance:.6f}, "
+            f"centroids={group_centroids}"
+        )
+
+    grouped = [
+        [
+            point
+            for component_index in cluster
+            for point in components[component_index]
+        ]
+        for cluster in clusters
+    ]
+    grouped.sort(key=_centroid)
+    return grouped
+
+
+def _normalize(vector: Point3) -> Point3:
     length = sum(component * component for component in vector) ** 0.5
     if length <= 1e-12:
         raise ValueError("cannot normalize zero vector")
     return tuple(component / length for component in vector)
 
 
-def principal_axis(points: list[tuple[float, float, float]]) -> tuple[float, float, float]:
+def principal_axis(points: list[Point3]) -> Point3:
     if len(points) < 2:
         raise ValueError("at least two points are required")
     centroid = tuple(sum(point[index] for point in points) / len(points) for index in range(3))
@@ -91,7 +206,7 @@ def principal_axis(points: list[tuple[float, float, float]]) -> tuple[float, flo
     return vector
 
 
-def classify_socket_name(group: str, position: tuple[float, float, float]) -> str:
+def classify_socket_name(group: str, position: Point3) -> str:
     side = "Left" if position[0] < 0.0 else "Right"
     if group in {"Main", "Retro"}:
         return f"Thrusters/{group}/{side}"
