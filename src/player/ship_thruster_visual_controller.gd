@@ -31,6 +31,7 @@ var _controller: ShipFlightController
 var _model: Node3D
 var _action_matrix: ThrusterActionMatrix
 var _socket_nodes: Array[Node3D] = []
+var _effect_pivots: Array[Node3D] = []
 var _effect_meshes: Array[MeshInstance3D] = []
 var _effect_materials: Array[StandardMaterial3D] = []
 var _socket_paths: Array[StringName] = []
@@ -38,6 +39,7 @@ var _effect_paths: Array[StringName] = []
 var _socket_classes: Array[StringName] = []
 var _socket_data: Array[Dictionary] = []
 var _effect_initial_transforms: Array[Transform3D] = []
+var _effect_pivot_initial_transforms: Array[Transform3D] = []
 var _effect_local_exhaust_axes: Array[Vector3] = []
 var _envelopes := PackedFloat32Array()
 var _envelope_direct_modes: Array[bool] = []
@@ -122,29 +124,51 @@ func initialize() -> void:
         var socket := thruster_root.get_node_or_null(
             relative_socket_path
         ) as Node3D
-        var effect := effect_root.get_node_or_null(
+        var effect_pivot := effect_root.get_node_or_null(
             relative_effect_path
-        ) as MeshInstance3D
+        ) as Node3D
         if socket == null:
             _disable_with_error(
                 "Canonical fighter thruster socket missing: %s"
                 % full_socket_path
             )
             return
+        if effect_pivot == null:
+            _disable_with_error(
+                "Nozzle-local thruster pivot missing: %s"
+                % full_effect_path
+            )
+            return
+
+        var effect_mesh_name := "%sMesh" % effect_pivot.name
+        var effect := effect_pivot.get_node_or_null(
+            effect_mesh_name
+        ) as MeshInstance3D
         if effect == null or effect.mesh == null:
             _disable_with_error(
-                "Source-exact thruster effect missing: %s"
+                "Source-exact thruster mesh child missing: %s/%s"
+                % [full_effect_path, effect_mesh_name]
+            )
+            return
+        if (
+            not effect_pivot.transform.origin.is_finite()
+            or not effect_pivot.transform.basis.is_finite()
+            or absf(effect_pivot.transform.basis.determinant()) <= 0.000001
+        ):
+            _disable_with_error(
+                "Nozzle-local thruster pivot transform is invalid: %s"
                 % full_effect_path
             )
             return
         if (
             not effect.transform.origin.is_finite()
             or not effect.transform.basis.is_finite()
+            or effect.transform.origin.length() > PIVOT_TOLERANCE_METERS
             or absf(effect.transform.basis.determinant()) <= 0.000001
         ):
             _disable_with_error(
-                "Nozzle-local thruster effect transform is invalid: %s"
-                % full_effect_path
+                "Nozzle-local thruster mesh child must begin at pivot identity: %s/%s"
+                % [full_effect_path, effect_mesh_name]
             )
             return
 
@@ -180,9 +204,9 @@ func initialize() -> void:
         local_axis = local_axis.normalized()
 
         var socket_transform := _local_transform_to_ancestor(socket, body)
-        var effect_transform := _local_transform_to_ancestor(effect, body)
+        var pivot_transform := _local_transform_to_ancestor(effect_pivot, body)
         if (
-            socket_transform.origin.distance_to(effect_transform.origin)
+            socket_transform.origin.distance_to(pivot_transform.origin)
             > PIVOT_TOLERANCE_METERS
         ):
             _disable_with_error(
@@ -207,9 +231,11 @@ func initialize() -> void:
         effect.visible = false
 
         _socket_nodes.append(socket)
+        _effect_pivots.append(effect_pivot)
         _effect_meshes.append(effect)
         _effect_materials.append(material)
         _effect_initial_transforms.append(effect.transform)
+        _effect_pivot_initial_transforms.append(effect_pivot.transform)
         _effect_local_exhaust_axes.append(local_axis)
         _socket_paths.append(StringName(relative_socket_path))
         _effect_paths.append(full_effect_path)
@@ -225,6 +251,7 @@ func initialize() -> void:
     _envelopes.fill(0.0)
     _contract_valid = (
         _socket_nodes.size() == SOCKET_SPECS.size()
+        and _effect_pivots.size() == SOCKET_SPECS.size()
         and _effect_meshes.size() == SOCKET_SPECS.size()
         and _effect_materials.size() == SOCKET_SPECS.size()
         and _socket_paths.size() == SOCKET_SPECS.size()
@@ -366,16 +393,20 @@ func get_active_effect_paths() -> PackedStringArray:
     return result
 
 func get_direct_target(path: StringName) -> float:
-    return float(_direct_targets.get(path, 0.0))
+    var socket_path := _socket_path_for_query(path)
+    return float(_direct_targets.get(socket_path, 0.0))
 
 func get_assist_target(path: StringName) -> float:
-    return float(_assist_targets.get(path, 0.0))
+    var socket_path := _socket_path_for_query(path)
+    return float(_assist_targets.get(socket_path, 0.0))
 
 func get_merged_target(path: StringName) -> float:
-    return float(_merged_targets.get(path, 0.0))
+    var socket_path := _socket_path_for_query(path)
+    return float(_merged_targets.get(socket_path, 0.0))
 
 func get_envelope(path: StringName) -> float:
-    var index := _socket_paths.find(path)
+    var socket_path := _socket_path_for_query(path)
+    var index := _socket_paths.find(socket_path)
     return _envelopes[index] if index >= 0 else 0.0
 
 func get_thruster_report() -> Array[Dictionary]:
@@ -419,11 +450,11 @@ func are_all_effects_hidden() -> bool:
     return true
 
 func are_effect_pivots_unchanged() -> bool:
-    if _effect_meshes.size() != _effect_initial_transforms.size():
+    if _effect_pivots.size() != _effect_pivot_initial_transforms.size():
         return false
-    for index: int in range(_effect_meshes.size()):
-        if not _effect_meshes[index].transform.origin.is_equal_approx(
-            _effect_initial_transforms[index].origin
+    for index: int in range(_effect_pivots.size()):
+        if not _effect_pivots[index].transform.is_equal_approx(
+            _effect_pivot_initial_transforms[index]
         ):
             return false
     return true
@@ -462,6 +493,14 @@ static func _collect_named_node3d(
         matches.append(node_3d)
     for child: Node in node.get_children():
         _collect_named_node3d(child, logical_name, matches)
+
+func _socket_path_for_query(path: StringName) -> StringName:
+    if _socket_paths.has(path):
+        return path
+    var effect_index := _effect_paths.find(path)
+    if effect_index >= 0:
+        return _socket_paths[effect_index]
+    return &""
 
 func _assisted_intensities(
     assist_force: Vector3,
