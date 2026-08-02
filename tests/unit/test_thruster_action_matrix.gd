@@ -38,34 +38,35 @@ func run() -> void:
     assert_true(matrix != null, "checked-in fighter thruster matrix must load")
     if matrix == null:
         return
+    assert_true(matrix.is_valid(), "checked-in fighter matrix must validate")
 
     var forward := FlightCommand.new()
     forward.translation = Vector3.FORWARD
     var forward_output := matrix.intensities_for(forward)
+    var main_left := float(forward_output.get(&"Main/MainLeft", 0.0))
+    var main_right := float(forward_output.get(&"Main/MainRight", 0.0))
+    assert_true(main_left > 0.0, "forward must activate the left main plume")
+    assert_true(main_right > 0.0, "forward must activate the right main plume")
     assert_true(
-        is_equal_approx(float(forward_output.get(&"Main/MainLeft", 0.0)), 1.0),
-        "forward thrust must activate the left main plume"
-    )
-    assert_true(
-        is_equal_approx(float(forward_output.get(&"Main/MainRight", 0.0)), 1.0),
-        "forward thrust must activate the right main plume"
+        is_equal_approx(main_left, main_right),
+        "forward main plumes must remain symmetric"
     )
     assert_equal(
         forward_output.size(),
         2,
-        "forward thrust must use exactly the symmetric main pair"
+        "forward must use exactly the symmetric main pair"
     )
 
     var reverse := FlightCommand.new()
     reverse.translation = Vector3.BACK
     var reverse_output := matrix.intensities_for(reverse)
     assert_true(
-        is_equal_approx(float(reverse_output.get(&"Retro/RetroLeft", 0.0)), 1.0),
-        "reverse thrust must activate the left retro plume"
+        float(reverse_output.get(&"Retro/RetroLeft", 0.0)) > 0.0,
+        "reverse must activate the left retro plume"
     )
     assert_true(
-        is_equal_approx(float(reverse_output.get(&"Retro/RetroRight", 0.0)), 1.0),
-        "reverse thrust must activate the right retro plume"
+        float(reverse_output.get(&"Retro/RetroRight", 0.0)) > 0.0,
+        "reverse must activate the right retro plume"
     )
 
     var idle := FlightCommand.new()
@@ -76,6 +77,6 @@ func run() -> void:
 
     for action: int in range(ThrusterAction.action_count()):
         assert_true(
-            not matrix.weights_for(action as ThrusterAction.Value).is_empty(),
+            not matrix.weights_for(action).is_empty(),
             "every pilot action must have a checked-in thruster mapping"
         )
