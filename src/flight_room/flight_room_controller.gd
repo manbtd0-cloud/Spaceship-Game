@@ -53,6 +53,7 @@ func reset_player() -> void:
     _body.global_transform = _spawn_transform
     _body.linear_velocity = Vector3.ZERO
     _body.angular_velocity = Vector3.ZERO
+    _controller.reset_runtime_state()
     _body.freeze = false
     _body.sleeping = false
 
