@@ -1,5 +1,10 @@
 extends "res://tests/support/test_case.gd"
 
+const MAIN_LEFT_SOCKET := &"Main/MainLeft"
+const MAIN_RIGHT_SOCKET := &"Main/MainRight"
+const MAIN_LEFT_EFFECT := "ThrusterEffects/MainEffects/MainLeftEffect"
+const MAIN_RIGHT_EFFECT := "ThrusterEffects/MainEffects/MainRightEffect"
+
 func run() -> void:
     _test_unique_logical_root_lookup()
 
@@ -20,56 +25,126 @@ func run() -> void:
         visual_controller != null,
         "player scene must contain ShipThrusterVisualController"
     )
-    if visual_controller != null:
-        visual_controller.initialize()
-        assert_equal(
-            visual_controller.get_socket_count(),
-            12,
-            "visual controller must resolve twelve canonical sockets"
-        )
-        assert_equal(
-            visual_controller.get_effect_count(),
-            12,
-            "visual controller must resolve twelve imported source-exact effects"
-        )
-        assert_true(
-            visual_controller.are_all_effects_hidden(),
-            "all source-exact effects must be hidden at idle"
-        )
-        assert_true(
-            visual_controller.are_effect_transforms_unchanged(),
-            "runtime must not move, rotate, or scale source-exact effect meshes"
-        )
-        assert_true(
-            visual_controller.is_contract_valid(),
-            "source-exact thruster visual contract must be valid"
-        )
+    if visual_controller == null:
+        player.free()
+        return
 
-        var forward := FlightCommand.new()
-        forward.translation = Vector3.FORWARD
-        var forward_intensities := visual_controller.direct_intensities_for_command(
-            forward
-        )
-        assert_true(
-            is_equal_approx(
-                float(forward_intensities.get(&"Main/MainLeft", 0.0)),
-                1.0
-            ),
-            "forward command must activate the left main plume"
-        )
-        assert_true(
-            is_equal_approx(
-                float(forward_intensities.get(&"Main/MainRight", 0.0)),
-                1.0
-            ),
-            "forward command must activate the right main plume"
-        )
-        assert_equal(
-            forward_intensities.size(),
-            2,
-            "forward command must use only the symmetric main pair"
-        )
+    visual_controller.initialize()
+    assert_equal(
+        visual_controller.get_socket_count(),
+        12,
+        "visual controller must resolve twelve canonical sockets"
+    )
+    assert_equal(
+        visual_controller.get_effect_count(),
+        12,
+        "visual controller must resolve twelve nozzle-local effects"
+    )
+    assert_true(
+        visual_controller.are_all_effects_hidden(),
+        "all source-exact effects must be hidden at idle"
+    )
+    assert_true(
+        visual_controller.are_effect_pivots_unchanged(),
+        "runtime initialization must preserve every nozzle pivot"
+    )
+    assert_true(
+        visual_controller.is_contract_valid(),
+        "schema-four thruster visual contract must be valid"
+    )
 
+    var forward := FlightCommand.new()
+    forward.translation = Vector3.FORWARD
+    var forward_intensities := visual_controller.direct_intensities_for_command(
+        forward
+    )
+    assert_true(
+        is_equal_approx(
+            float(forward_intensities.get(MAIN_LEFT_SOCKET, 0.0)),
+            1.0
+        ),
+        "forward command must activate the left main plume"
+    )
+    assert_true(
+        is_equal_approx(
+            float(forward_intensities.get(MAIN_RIGHT_SOCKET, 0.0)),
+            1.0
+        ),
+        "forward command must activate the right main plume"
+    )
+    assert_equal(
+        forward_intensities.size(),
+        2,
+        "forward command must use only the symmetric main pair"
+    )
+
+    visual_controller.set_test_command(FlightCommand.new())
+    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
+    visual_controller.set_test_boost(1.0)
+    visual_controller.step_visuals(0.30)
+    assert_true(
+        visual_controller.are_all_effects_hidden(),
+        "coasting with no force request must remain dark even during boost state"
+    )
+
+    visual_controller.set_test_command(forward)
+    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
+    visual_controller.set_test_boost(0.0)
+    visual_controller.step_visuals(0.25)
+    assert_equal(
+        visual_controller.get_active_effect_paths(),
+        PackedStringArray([MAIN_LEFT_EFFECT, MAIN_RIGHT_EFFECT]),
+        "forward must activate exactly both main effects"
+    )
+    assert_true(
+        is_equal_approx(visual_controller.get_direct_target(MAIN_LEFT_SOCKET), 1.0),
+        "left main direct target must be full"
+    )
+    assert_true(
+        is_equal_approx(visual_controller.get_direct_target(MAIN_RIGHT_SOCKET), 1.0),
+        "right main direct target must be full"
+    )
+    assert_true(
+        is_equal_approx(visual_controller.get_envelope(MAIN_LEFT_SOCKET), 1.0),
+        "left main envelope must reach full after rise duration"
+    )
+    assert_true(
+        is_equal_approx(visual_controller.get_envelope(MAIN_RIGHT_SOCKET), 1.0),
+        "right main envelope must reach full after rise duration"
+    )
+    assert_true(
+        visual_controller.are_effect_pivots_unchanged(),
+        "growing source-exact effects must not move nozzle pivots"
+    )
+
+    visual_controller.set_test_command(FlightCommand.new())
+    visual_controller.set_test_assist_wrench(Vector3.FORWARD, Vector3.ZERO)
+    visual_controller.step_visuals(0.25)
+    assert_true(
+        visual_controller.get_direct_target(MAIN_LEFT_SOCKET) <= 0.0,
+        "assisted-only output must not create direct thrust"
+    )
+    assert_true(
+        visual_controller.get_assist_target(MAIN_LEFT_SOCKET) > 0.0,
+        "assisted correction must request the approved main pair"
+    )
+    assert_true(
+        visual_controller.get_merged_target(MAIN_LEFT_SOCKET) <= 0.35,
+        "assisted output must be capped at 35 percent exactly once"
+    )
+    assert_true(
+        visual_controller.get_merged_target(MAIN_RIGHT_SOCKET) <= 0.35,
+        "both assisted main outputs must remain dim"
+    )
+
+    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
+    visual_controller.step_visuals(0.30)
+    assert_true(
+        visual_controller.are_all_effects_hidden(),
+        "released direct and assisted requests must decay to hidden"
+    )
+
+    visual_controller.clear_test_overrides()
     player.free()
 
 func _test_unique_logical_root_lookup() -> void:
