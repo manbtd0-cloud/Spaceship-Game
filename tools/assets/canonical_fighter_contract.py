@@ -15,6 +15,21 @@ from small_fighter_calibration import (
     SOCKET_COUNTS,
 )
 
+EXPECTED_SOCKET_PATHS = {
+    "Thrusters/Main/MainLeft",
+    "Thrusters/Main/MainRight",
+    "Thrusters/Retro/RetroLeft",
+    "Thrusters/Retro/RetroRight",
+    "Thrusters/Maneuver/FrontUpperLeft",
+    "Thrusters/Maneuver/FrontUpperRight",
+    "Thrusters/Maneuver/RearUpperLeft",
+    "Thrusters/Maneuver/RearUpperRight",
+    "Thrusters/Maneuver/RearLowerLeft",
+    "Thrusters/Maneuver/RearLowerRight",
+    "Thrusters/Maneuver/FrontLowerLeft",
+    "Thrusters/Maneuver/FrontLowerRight",
+}
+
 
 def _vector3(value: Any, label: str, errors: list[str]) -> tuple[float, float, float] | None:
     if not isinstance(value, list) or len(value) != 3:
@@ -154,6 +169,13 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
 
     if len(set(paths)) != len(paths):
         errors.append("socket paths must be unique")
+    if report.get("asset") == "Small Sci-Fi Fighter" and set(paths) != EXPECTED_SOCKET_PATHS:
+        missing = sorted(EXPECTED_SOCKET_PATHS - set(paths))
+        unexpected = sorted(set(paths) - EXPECTED_SOCKET_PATHS)
+        errors.append(
+            "canonical fighter socket paths mismatch: "
+            f"missing={missing}, unexpected={unexpected}"
+        )
     if dict(classes) != SOCKET_COUNTS:
         errors.append(f"socket class counts must be {SOCKET_COUNTS}, got {dict(classes)}")
     return errors
