@@ -6,6 +6,7 @@ const DIRECT_RISE_SECONDS := 0.22
 const DIRECT_FALL_SECONDS := 0.22
 const ASSIST_RISE_SECONDS := 0.16
 const ASSIST_FALL_SECONDS := 0.16
+const PIVOT_TOLERANCE_METERS := 0.001
 const ACTION_MATRIX_PATH := "res://config/ships/small_sci_fi_fighter_thruster_actions.json"
 const MANIFEST_PATH := "res://assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
 const SOCKET_SPECS := [
@@ -47,6 +48,7 @@ var _test_override_enabled := false
 var _test_command := FlightCommand.new()
 var _test_assist_force := Vector3.ZERO
 var _test_assist_torque := Vector3.ZERO
+var _test_boost := 0.0
 var _initialized := false
 var _contract_valid := false
 
@@ -177,8 +179,19 @@ func initialize() -> void:
             return
         local_axis = local_axis.normalized()
 
-        var local_transform := _local_transform_to_ancestor(socket, body)
-        var reaction_direction := local_transform.basis.z.normalized()
+        var socket_transform := _local_transform_to_ancestor(socket, body)
+        var effect_transform := _local_transform_to_ancestor(effect, body)
+        if (
+            socket_transform.origin.distance_to(effect_transform.origin)
+            > PIVOT_TOLERANCE_METERS
+        ):
+            _disable_with_error(
+                "Nozzle-local effect pivot does not match socket: %s"
+                % full_effect_path
+            )
+            return
+
+        var reaction_direction := socket_transform.basis.z.normalized()
         if (
             not reaction_direction.is_finite()
             or reaction_direction.length_squared() < 0.99
@@ -202,7 +215,7 @@ func initialize() -> void:
         _effect_paths.append(full_effect_path)
         _socket_classes.append(thruster_class)
         _socket_data.append({
-            "position": local_transform.origin,
+            "position": socket_transform.origin,
             "reaction_direction": reaction_direction,
             "capacity": _capacity_for_class(thruster_class),
         })
@@ -218,6 +231,7 @@ func initialize() -> void:
         and _effect_paths.size() == SOCKET_SPECS.size()
         and _effect_local_exhaust_axes.size() == SOCKET_SPECS.size()
         and _socket_data.size() == SOCKET_SPECS.size()
+        and are_effect_pivots_unchanged()
     )
     if not _contract_valid:
         _disable_with_error(
@@ -245,7 +259,11 @@ func step_visuals(delta: float) -> void:
     )
     var direct := _action_matrix.intensities_for(command)
     var assisted := _assisted_intensities(assist_force, assist_torque)
-    var boost := 0.0 if _test_override_enabled else _controller.get_boost_amount()
+    var boost := (
+        _test_boost
+        if _test_override_enabled
+        else _controller.get_boost_amount()
+    )
 
     _direct_targets.clear()
     _assist_targets.clear()
@@ -253,7 +271,6 @@ func step_visuals(delta: float) -> void:
 
     for index: int in range(_effect_meshes.size()):
         var socket_path := _socket_paths[index]
-        var effect_path := _effect_paths[index]
         var direct_amount := clampf(
             float(direct.get(socket_path, 0.0)),
             0.0,
@@ -269,9 +286,9 @@ func step_visuals(delta: float) -> void:
             assist_amount
         )
 
-        _direct_targets[effect_path] = direct_amount
-        _assist_targets[effect_path] = assist_amount
-        _merged_targets[effect_path] = merged
+        _direct_targets[socket_path] = direct_amount
+        _assist_targets[socket_path] = assist_amount
+        _merged_targets[socket_path] = merged
 
         if direct_amount > VISIBILITY_THRESHOLD:
             _envelope_direct_modes[index] = true
@@ -318,11 +335,19 @@ func set_test_assist_wrench(force: Vector3, torque: Vector3) -> void:
     _test_assist_force = force
     _test_assist_torque = torque
 
-func clear_test_inputs() -> void:
+func set_test_boost(value: float) -> void:
+    _test_override_enabled = true
+    _test_boost = clampf(value, 0.0, 1.0)
+
+func clear_test_overrides() -> void:
     _test_override_enabled = false
     _test_command = FlightCommand.new()
     _test_assist_force = Vector3.ZERO
     _test_assist_torque = Vector3.ZERO
+    _test_boost = 0.0
+
+func clear_test_inputs() -> void:
+    clear_test_overrides()
 
 func preview_direct_intensities(command: FlightCommand) -> Dictionary:
     if _action_matrix == null or not _action_matrix.is_valid():
@@ -350,13 +375,14 @@ func get_merged_target(path: StringName) -> float:
     return float(_merged_targets.get(path, 0.0))
 
 func get_envelope(path: StringName) -> float:
-    var index := _effect_paths.find(path)
+    var index := _socket_paths.find(path)
     return _envelopes[index] if index >= 0 else 0.0
 
 func get_thruster_report() -> Array[Dictionary]:
     var report: Array[Dictionary] = []
     for index: int in range(_effect_paths.size()):
-        var merged := get_merged_target(_effect_paths[index])
+        var socket_path := _socket_paths[index]
+        var merged := get_merged_target(socket_path)
         var socket: Dictionary = _socket_data[index]
         var force: Vector3 = (
             socket["reaction_direction"]
@@ -366,10 +392,11 @@ func get_thruster_report() -> Array[Dictionary]:
         var position: Vector3 = socket["position"]
         report.append({
             "path": String(_effect_paths[index]),
+            "socket_path": String(socket_path),
             "force": force,
             "torque": position.cross(force),
-            "direct": get_direct_target(_effect_paths[index]),
-            "assist": get_assist_target(_effect_paths[index]),
+            "direct": get_direct_target(socket_path),
+            "assist": get_assist_target(socket_path),
             "merged": merged,
             "envelope": _envelopes[index],
         })
@@ -391,7 +418,7 @@ func are_all_effects_hidden() -> bool:
             return false
     return true
 
-func are_effect_origins_anchored() -> bool:
+func are_effect_pivots_unchanged() -> bool:
     if _effect_meshes.size() != _effect_initial_transforms.size():
         return false
     for index: int in range(_effect_meshes.size()):
@@ -400,6 +427,9 @@ func are_effect_origins_anchored() -> bool:
         ):
             return false
     return true
+
+func are_effect_origins_anchored() -> bool:
+    return are_effect_pivots_unchanged()
 
 func are_effect_transforms_unchanged() -> bool:
     if _effect_meshes.size() != _effect_initial_transforms.size():
