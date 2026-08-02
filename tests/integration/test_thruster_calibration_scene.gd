@@ -1,6 +1,7 @@
 extends "res://tests/support/test_case.gd"
 
 const SCENE_PATH := "res://scenes/debug/thruster_calibration.tscn"
+const SCRIPT_PATH := "res://src/debug/thruster_calibration.gd"
 const EXPECTED_CASES := PackedStringArray([
     "forward",
     "reverse",
@@ -51,5 +52,24 @@ func run() -> void:
         ShipThrusterVisualController.ACTION_MATRIX_PATH,
         "calibration must use the production checked-in action matrix"
     )
+
+    var script_file := FileAccess.open(SCRIPT_PATH, FileAccess.READ)
+    assert_true(script_file != null, "calibration controller source must be readable")
+    if script_file != null:
+        var source := script_file.get_as_text()
+        assert_true(
+            source.contains("ThrusterAction.target_force"),
+            "calibration translation must use production action semantics"
+        )
+        assert_true(
+            source.contains("ThrusterAction.target_torque"),
+            "calibration rotation must use production action semantics"
+        )
+        assert_true(
+            not source.contains("Main/MainLeft")
+            and not source.contains("Main/MainRight")
+            and not source.contains("Maneuver/"),
+            "calibration must not contain a second thruster mapping"
+        )
 
     calibration.free()
