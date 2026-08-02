@@ -2,13 +2,14 @@ extends "res://tests/support/test_case.gd"
 
 const MAIN_LEFT_EFFECT := &"ThrusterEffects/MainEffects/MainLeftEffect"
 const MAIN_RIGHT_EFFECT := &"ThrusterEffects/MainEffects/MainRightEffect"
-const MAIN_EFFECTS := PackedStringArray([
+const MAIN_EFFECT_PATHS := [
     "ThrusterEffects/MainEffects/MainLeftEffect",
     "ThrusterEffects/MainEffects/MainRightEffect",
-])
+]
 
 func run() -> void:
     _test_unique_logical_root_lookup()
+    var main_effects := PackedStringArray(MAIN_EFFECT_PATHS)
 
     var packed := load("res://scenes/player/player_interceptor.tscn") as PackedScene
     assert_true(packed != null, "player interceptor scene must load")
@@ -95,7 +96,7 @@ func run() -> void:
     visual_controller.step_visuals(0.25)
     assert_equal(
         visual_controller.get_active_effect_paths(),
-        MAIN_EFFECTS,
+        main_effects,
         "forward must activate only the symmetric main pair"
     )
     assert_true(
@@ -137,7 +138,7 @@ func run() -> void:
         Vector3.ZERO
     )
     visual_controller.step_visuals(0.25)
-    for path: String in MAIN_EFFECTS:
+    for path: String in main_effects:
         var effect_path := StringName(path)
         assert_true(
             visual_controller.get_assist_target(effect_path) > 0.99,
