@@ -57,6 +57,14 @@ static func compute(
         output.force_local.y -= (
             local_linear_velocity.y * tuning.assist_vertical_damping
         )
+        output.force_local += FlightSteeringMath.assisted_force(
+            local_linear_velocity,
+            clampf(-command.translation.z, 0.0, 1.0),
+            body_mass,
+            tuning.assist_steering_strength,
+            tuning.assist_min_steering_speed,
+            tuning.assist_max_steering_acceleration
+        )
         output.torque_local -= (
             local_angular_velocity * tuning.assist_angular_damping
         )
