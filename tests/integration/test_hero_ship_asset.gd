@@ -18,18 +18,18 @@ const REQUIRED_SOCKET_PATHS: Array[String] = [
     "Maneuver/FrontLowerRight",
 ]
 const REQUIRED_EFFECT_PATHS: Array[String] = [
-    "Main/MainLeftEffect",
-    "Main/MainRightEffect",
-    "Retro/RetroLeftEffect",
-    "Retro/RetroRightEffect",
-    "Maneuver/FrontUpperLeftEffect",
-    "Maneuver/FrontUpperRightEffect",
-    "Maneuver/RearUpperLeftEffect",
-    "Maneuver/RearUpperRightEffect",
-    "Maneuver/RearLowerLeftEffect",
-    "Maneuver/RearLowerRightEffect",
-    "Maneuver/FrontLowerLeftEffect",
-    "Maneuver/FrontLowerRightEffect",
+    "MainEffects/MainLeftEffect",
+    "MainEffects/MainRightEffect",
+    "RetroEffects/RetroLeftEffect",
+    "RetroEffects/RetroRightEffect",
+    "ManeuverEffects/FrontUpperLeftEffect",
+    "ManeuverEffects/FrontUpperRightEffect",
+    "ManeuverEffects/RearUpperLeftEffect",
+    "ManeuverEffects/RearUpperRightEffect",
+    "ManeuverEffects/RearLowerLeftEffect",
+    "ManeuverEffects/RearLowerRightEffect",
+    "ManeuverEffects/FrontLowerLeftEffect",
+    "ManeuverEffects/FrontLowerRightEffect",
 ]
 
 func run() -> void:
