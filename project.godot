@@ -50,11 +50,11 @@ strafe_down={
 }
 roll_left={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":65)]
+"events": [Object(InputEventKey,"physical_keycode":4194319)]
 }
 roll_right={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":68)]
+"events": [Object(InputEventKey,"physical_keycode":4194321)]
 }
 pitch_up={
 "deadzone": 0.15,
@@ -66,11 +66,11 @@ pitch_down={
 }
 yaw_left={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":4194319)]
+"events": [Object(InputEventKey,"physical_keycode":65)]
 }
 yaw_right={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":4194321)]
+"events": [Object(InputEventKey,"physical_keycode":68)]
 }
 boost={
 "deadzone": 0.15,
