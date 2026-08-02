@@ -87,13 +87,13 @@ func initialize() -> void:
         )
         return
 
-    var thruster_root := _find_single_named_node(_model, "Thrusters")
+    var thruster_root := find_unique_logical_root(_model, &"Thrusters")
     if thruster_root == null:
         _disable_with_error(
             "Canonical fighter must contain exactly one Thrusters hierarchy"
         )
         return
-    var effect_root := _find_single_named_node(_model, "ThrusterEffects")
+    var effect_root := find_unique_logical_root(_model, &"ThrusterEffects")
     if effect_root == null:
         _disable_with_error(
             "Canonical fighter must contain exactly one ThrusterEffects hierarchy"
@@ -187,6 +187,25 @@ func are_effect_transforms_unchanged() -> bool:
 func is_contract_valid() -> bool:
     return _contract_valid
 
+static func find_unique_logical_root(
+    root: Node,
+    logical_name: StringName
+) -> Node3D:
+    var matches: Array[Node3D] = []
+    _collect_named_node3d(root, logical_name, matches)
+    return matches[0] if matches.size() == 1 else null
+
+static func _collect_named_node3d(
+    node: Node,
+    logical_name: StringName,
+    matches: Array[Node3D]
+) -> void:
+    var node_3d := node as Node3D
+    if node_3d != null and node_3d.name == logical_name:
+        matches.append(node_3d)
+    for child: Node in node.get_children():
+        _collect_named_node3d(child, logical_name, matches)
+
 func _apply_effect_output(
     index: int,
     intensity: float,
@@ -228,12 +247,6 @@ func _create_effect_material(thruster_class: StringName) -> StandardMaterial3D:
     material.emission = _class_color(thruster_class)
     material.emission_energy_multiplier = 0.0
     return material
-
-func _find_single_named_node(root: Node, node_name: String) -> Node3D:
-    var candidates := root.find_children(node_name, "Node3D", true, false)
-    if candidates.size() != 1:
-        return null
-    return candidates[0] as Node3D
 
 func _capacity_for_class(thruster_class: StringName) -> float:
     match thruster_class:
