@@ -9,6 +9,7 @@ extends Node3D
 @export var position_sharpness: float = 5.5
 @export var rotation_sharpness: float = 7.0
 @export var velocity_look_ahead: float = 0.08
+@export var max_prediction_distance: float = 8.0
 @export var base_fov: float = 68.0
 
 var _target: Node3D
@@ -44,10 +45,11 @@ func _process(delta: float) -> void:
     var desired_position := ChaseCameraMath.desired_position(
         _target.global_transform,
         world_velocity,
-        base_offset,
-        velocity_look_ahead,
+        14.0,
+        4.0,
         tuning.camera_speed_pullback,
-        tuning.camera_max_pullback
+        5.0,
+        19.0
     )
     var position_weight := ChaseCameraMath.exponential_weight(
         position_sharpness,
@@ -59,7 +61,8 @@ func _process(delta: float) -> void:
         _target.global_transform,
         world_velocity,
         velocity_look_ahead,
-        tuning.camera_forward_look_ahead
+        tuning.camera_forward_look_ahead,
+        max_prediction_distance
     )
     _smooth_rotation_toward(desired_target, delta)
 
@@ -84,16 +87,18 @@ func _snap_to_desired_state() -> void:
     global_position = ChaseCameraMath.desired_position(
         _target.global_transform,
         world_velocity,
-        base_offset,
-        velocity_look_ahead,
+        14.0,
+        4.0,
         tuning.camera_speed_pullback,
-        tuning.camera_max_pullback
+        5.0,
+        19.0
     )
     var desired_target := ChaseCameraMath.desired_look_target(
         _target.global_transform,
         world_velocity,
         velocity_look_ahead,
-        tuning.camera_forward_look_ahead
+        tuning.camera_forward_look_ahead,
+        max_prediction_distance
     )
     _set_rotation_toward(desired_target)
     _camera.fov = ChaseCameraMath.desired_fov(
