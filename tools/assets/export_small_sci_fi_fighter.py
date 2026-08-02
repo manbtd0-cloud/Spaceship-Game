@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -10,8 +11,8 @@ import bpy
 from mathutils import Vector
 
 
-TARGET_BLENDER_DIMENSIONS = Vector((7.6, 11.4, 2.35))
-EXPECTED_GODOT_ENVELOPE = Vector((8.0, 2.5, 12.0))
+TARGET_BLENDER_DIMENSIONS = Vector((7.2, 10.8, 4.2))
+EXPECTED_GODOT_ENVELOPE = Vector((7.2, 4.2, 10.8))
 DIMENSION_TOLERANCE = 0.01
 OUTPUT_PATH: Path | None = None
 
@@ -127,6 +128,12 @@ def join_meshes(objects: list[bpy.types.Object]) -> bpy.types.Object:
     return mesh
 
 
+def normalize_source_axes(mesh: bpy.types.Object) -> None:
+    _select_only([mesh])
+    mesh.rotation_euler.z += math.pi
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+
+
 def fit_and_center(mesh: bpy.types.Object) -> Vector:
     minimum, maximum = world_bounds([mesh])
     dimensions = maximum - minimum
@@ -179,7 +186,7 @@ def create_axis_markers(root: bpy.types.Object) -> None:
     forward = bpy.data.objects.new("ForwardMarker", None)
     forward.empty_display_type = "ARROWS"
     forward.empty_display_size = 0.35
-    forward.location = Vector((0.0, -1.0, 0.0))
+    forward.location = Vector((0.0, 1.0, 0.0))
     forward.parent = root
     bpy.context.collection.objects.link(forward)
 
@@ -237,6 +244,8 @@ def write_manifest(
         "blender_version": bpy.app.version_string,
         "source_forward": "-Y",
         "source_up": "+Z",
+        "normalized_blender_forward": "+Y",
+        "normalized_blender_up": "+Z",
         "godot_forward": "-Z",
         "godot_up": "+Y",
         "mesh_dimensions_blender_xyz": [round(value, 6) for value in dimensions],
@@ -278,6 +287,7 @@ def main() -> None:
 
     remove_non_runtime_objects()
     mesh = join_meshes(visible_meshes())
+    normalize_source_axes(mesh)
     final_dimensions = fit_and_center(mesh)
 
     root = bpy.data.objects.new("SmallSciFiFighter", None)
