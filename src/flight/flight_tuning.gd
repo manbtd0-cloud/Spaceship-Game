@@ -30,7 +30,6 @@ extends Resource
 @export var auto_bank_response: float = 5.0
 
 @export var camera_speed_pullback: float = 0.05
-@export var camera_max_pullback: float = 14.0
 @export var camera_forward_look_ahead: float = 10.0
 @export var camera_normal_max_fov: float = 82.0
 @export var camera_boost_max_fov: float = 85.0
