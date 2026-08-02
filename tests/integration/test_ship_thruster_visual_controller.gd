@@ -47,7 +47,9 @@ func run() -> void:
 
         var forward := FlightCommand.new()
         forward.translation = Vector3.FORWARD
-        var forward_intensities := visual_controller.preview_direct_intensities(forward)
+        var forward_intensities := visual_controller.direct_intensities_for_command(
+            forward
+        )
         assert_true(
             is_equal_approx(
                 float(forward_intensities.get(&"Main/MainLeft", 0.0)),
