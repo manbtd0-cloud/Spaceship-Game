@@ -16,10 +16,13 @@ func run() -> void:
     tuning.assist_lateral_damping = 4.0
     tuning.assist_vertical_damping = 4.0
     tuning.assist_angular_damping = 3.0
+    tuning.assist_steering_strength = 1.25
+    tuning.assist_min_steering_speed = 8.0
+    tuning.assist_max_steering_acceleration = 18.0
 
     var assisted := FlightCommand.new()
     assisted.mode = FlightMode.Value.ASSISTED
-    assisted.translation = Vector3(0.0, 0.0, -1.0)
+    assisted.translation = Vector3.FORWARD
 
     var assisted_output := FlightModel.compute(
         assisted,
@@ -103,3 +106,30 @@ func run() -> void:
         Vector3.ZERO
     )
     assert_true(braking_output.force_local.z > 0.0, "braking remains available above limit")
+
+    tuning.assist_lateral_damping = 0.0
+    tuning.assist_vertical_damping = 0.0
+    var steering_command := FlightCommand.new()
+    steering_command.mode = FlightMode.Value.ASSISTED
+    steering_command.translation = Vector3.FORWARD
+    var steering_output := FlightModel.compute(
+        steering_command,
+        tuning,
+        Vector3(20.0, 0.0, -20.0),
+        Vector3.ZERO,
+        8500.0
+    )
+    assert_true(steering_output.force_local.x < 0.0, "assisted model bends drift toward nose")
+
+    steering_command.mode = FlightMode.Value.MANUAL
+    var inertial_output := FlightModel.compute(
+        steering_command,
+        tuning,
+        Vector3(20.0, 0.0, -20.0),
+        Vector3.ZERO,
+        8500.0
+    )
+    assert_true(
+        inertial_output.force_local.x >= -0.001,
+        "manual model receives no nose-steering force"
+    )
