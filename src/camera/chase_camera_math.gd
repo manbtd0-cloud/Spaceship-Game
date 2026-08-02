@@ -27,22 +27,51 @@ static func desired_position(
 static func desired_look_target(
     target_transform: Transform3D,
     world_velocity: Vector3,
-    look_ahead_distance: float
+    velocity_look_ahead: float,
+    forward_look_ahead: float
 ) -> Vector3:
-    return target_transform.origin + world_velocity * maxf(look_ahead_distance, 0.0)
+    var forward := (
+        target_transform.basis.orthonormalized()
+        * Vector3.FORWARD
+    )
+    return (
+        target_transform.origin
+        + world_velocity * maxf(velocity_look_ahead, 0.0)
+        + forward * maxf(forward_look_ahead, 0.0)
+    )
 
 static func desired_fov(
     speed_mps: float,
     boost_amount: float,
     base_fov: float,
-    speed_fov_gain: float,
-    boost_fov_gain: float,
-    max_fov: float
+    normal_limit: float,
+    boost_limit: float,
+    normal_max_fov: float,
+    boost_max_fov: float,
+    boost_bonus: float
 ) -> float:
+    var speed := maxf(speed_mps, 0.0)
+    var normal_end := maxf(normal_limit, 0.001)
+    var boost_end := maxf(boost_limit, normal_end + 0.001)
+    var value: float
+    if speed <= normal_end:
+        var normal_t := clampf(speed / normal_end, 0.0, 1.0)
+        var normal_smooth := normal_t * normal_t * (3.0 - 2.0 * normal_t)
+        value = lerpf(base_fov, normal_max_fov, normal_smooth)
+    else:
+        var boost_t := clampf(
+            (speed - normal_end) / (boost_end - normal_end),
+            0.0,
+            1.0
+        )
+        var boost_smooth := boost_t * boost_t * (3.0 - 2.0 * boost_t)
+        value = lerpf(normal_max_fov, boost_max_fov, boost_smooth)
+    value += (
+        clampf(boost_amount, 0.0, 1.0)
+        * maxf(boost_bonus, 0.0)
+    )
     return clampf(
-        base_fov
-        + maxf(speed_mps, 0.0) * maxf(speed_fov_gain, 0.0)
-        + clampf(boost_amount, 0.0, 1.0) * maxf(boost_fov_gain, 0.0),
+        value,
         base_fov,
-        maxf(max_fov, base_fov)
+        maxf(boost_max_fov, base_fov)
     )
