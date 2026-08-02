@@ -53,6 +53,19 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertIn("canonical_fighter_contract_v3.py", source)
         self.assertNotIn('export_small_sci_fighter.py"', source)
 
+    def test_fighter_wrapper_replaces_live_assets_only_after_validation(self) -> None:
+        source = (REPO_ROOT / "tools" / "assets" / "export-small-fighter.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("small_sci_fi_fighter.pending.glb", source)
+        self.assertIn("small_sci_fi_fighter.pending.manifest.json", source)
+        validation_index = source.index("& $pythonExecutable $validatorPath")
+        glb_move_index = source.index("Move-Item -LiteralPath $pendingOutputPath")
+        manifest_move_index = source.index("Move-Item -LiteralPath $pendingManifestPath")
+        self.assertLess(validation_index, glb_move_index)
+        self.assertLess(validation_index, manifest_move_index)
+        self.assertNotIn("foreach ($stalePath in @($outputPath, $manifestPath))", source)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
