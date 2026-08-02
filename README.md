@@ -1,19 +1,27 @@
 # Shattered Orbit
 
-A single-player, third-person space-combat vertical slice built with Godot 4.7.1 and typed GDScript.
+A single-player, third-person space-flight vertical slice built with Godot 4.7.1 and typed GDScript.
 
 ## Current milestone
 
-Playable flight room: a procedural interceptor, six-axis physics, assisted/manual flight modes, keyboard and mouse controls, a smooth chase camera, telemetry HUD, spatial navigation course, collision obstacles, and safe reset handling.
+The playable flight room now uses the normalized **Small Sci-Fi Fighter** hero GLB with an agile simcade controller:
 
-The real Blender ship candidates remain quarantined until this controller and camera milestone passes runtime acceptance.
+- six-axis local-space thrust;
+- assisted nose-led maneuvering and coordinated banking;
+- fully inertial manual flight;
+- total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
+- sustained all-axis translational boost with thermal lockout;
+- ship-relative chase camera with no global horizon or preferred world-up direction;
+- high-speed course, collision obstacles, telemetry HUD, and safe reset handling.
+
+The existing `RigidBody3D`, 8500 kg mass, simple `8 x 2.5 x 12 m` gameplay collider, and force/torque architecture remain authoritative. The imported mesh never defines collision.
 
 ## Requirements
 
 - Godot 4.7.1 Standard
 - GL Compatibility renderer
 - PowerShell on Windows, or Bash on Linux
-- Blender only when source assets are prepared for runtime export
+- Blender only when regenerating the runtime fighter from its preserved source
 
 No external Godot add-ons or runtime dependencies are required.
 
@@ -30,37 +38,83 @@ godot --path .
 | Input | Action |
 |---|---|
 | `W` / `S` | Forward / reverse thrust |
-| `A` / `D` | Strafe left / right |
-| `Space` / `Ctrl` | Move up / down |
-| Mouse | Pitch / yaw |
-| `Q` / `E` | Roll left / right |
-| `Shift` | Boost |
+| `Q` / `E` | Strafe left / right |
+| `Space` / `Ctrl` | Vertical strafe up / down |
+| Mouse | Analog pitch / yaw |
+| `A` / `D` | Digital yaw left / right |
+| `Up` / `Down` | Digital pitch up / down |
+| `Left` / `Right` | Roll left / right |
+| `Shift` | Sustained translational boost |
 | `F` | Toggle assisted / manual flight |
 | `Escape` | Release / recapture mouse |
-| `R` | Reset to spawn and clear momentum |
+| `R` | Reset to spawn, clear momentum, and reset boost heat |
 
-Assisted mode gradually opposes lateral, vertical, and angular drift. Manual mode preserves six-axis momentum when no thrust or torque is applied.
+Left Arrow produces left roll and Right Arrow produces right roll.
+
+## Flight behavior
+
+### Assisted mode
+
+Assisted flight keeps momentum readable while making strong maneuvers practical:
+
+- forward thrust curves the velocity vector gradually toward the nose;
+- lateral and vertical drift are damped without braking forward momentum to zero;
+- yaw generates a restrained coordinated bank of up to approximately 22 degrees;
+- direct roll input overrides generated banking;
+- all steering remains force- and torque-based.
+
+### Manual mode
+
+Manual flight removes velocity steering, drift damping, automatic banking, and angular damping. Translation direction and ship orientation remain independent until the pilot applies counter-thrust or counter-rotation.
+
+### Speed and boost
+
+- Normal increasing-speed thrust fades from 120 to 160 m/s.
+- Boosted increasing-speed thrust fades from 180 to 240 m/s.
+- Braking and redirection remain available above either envelope.
+- Ending boost above 160 m/s preserves the excess momentum.
+- Continuous active boost overheats in approximately 12 seconds.
+- Boost recovers after approximately 6 seconds of cooling and fully cools in approximately 15 seconds.
+- Overheat disables boost only; ordinary thrust and rotation remain operational.
+
+## Camera orientation
+
+Space has no preferred upright direction. The chase camera uses the ship's local up axis for its entire perspective, including when the ship is rolled, inverted, or flying vertically. It never blends back toward global `Vector3.UP`.
+
+## Hero ship asset
+
+Gameplay references only:
+
+```text
+assets/runtime/ships/player/small_sci_fi_fighter.glb
+```
+
+Regenerate it from the preserved `.blend` source with:
+
+```powershell
+.\tools\assets\export-small-fighter.ps1
+```
+
+The exporter normalizes the craft to `-Z` forward and `+Y` up, fits it inside the gameplay envelope, and writes an accompanying manifest.
+
+The asset remains **development-only** until its original license evidence is added and reviewed. See:
+
+```text
+assets/licenses/small_sci_fi_fighter/PROVENANCE.md
+```
 
 ## Verify locally
 
 ### Windows PowerShell
 
-When Godot is available on `PATH` or stored in a common location:
-
 ```powershell
 .\tools\verify\verify.ps1
 ```
 
-Otherwise pass the exact executable path:
+Or pass the executable explicitly:
 
 ```powershell
 .\tools\verify\verify.ps1 -GodotBin "C:\path\to\Godot_v4.7.1-stable_win64.exe"
-```
-
-Successful verification must include:
-
-```text
-PASS: 7 suites
 ```
 
 ### Linux Bash
@@ -75,20 +129,28 @@ When `godot` is available on `PATH`:
 ./tools/verify/verify.sh
 ```
 
-The verifier imports the project headlessly, runs all registered suites, and boots the main scene briefly.
+Successful verification must import the project, print:
 
-## Manual acceptance
+```text
+PASS: 12 suites
+```
 
-After automated verification passes, launch the game and confirm:
+and boot the main scene briefly without parser, scene, path-case, or runtime errors.
 
-1. All six movement axes respond in local ship space.
-2. Mouse up pitches the nose upward and horizontal motion yaws predictably.
-3. Boost is obvious and the HUD reaches 100%.
-4. Mode switching preserves transform and velocities.
-5. Assisted mode gradually reduces drift while manual mode preserves it.
-6. Camera follow, pullback, and FOV changes remain smooth.
-7. Escape updates capture state and `R` resets safely.
-8. Gates, pylons, markers, and distant shapes make speed and scale readable.
+## Manual acceptance focus
+
+After automated verification passes, confirm directly in the flight room:
+
+1. Pitching upward and applying thrust creates a curved climb.
+2. A/D yaw predictably; Up/Down pitch; Left/Right roll in the named direction.
+3. Q/E retain independent lateral translation.
+4. Assisted yaw banks smoothly and manual roll overrides it.
+5. Manual mode preserves linear and angular inertia.
+6. Normal and boosted acceleration fade smoothly near 160 and 240 m/s.
+7. Boost overheats, locks out, recovers, and never disables ordinary flight.
+8. Camera orientation remains ship-relative when rolled, inverted, and vertical.
+9. The hero fighter is centered, faces local `-Z`, and has no procedural fallback.
+10. The extended course remains readable at low and maximum boost speed.
 
 ## Asset policy
 
