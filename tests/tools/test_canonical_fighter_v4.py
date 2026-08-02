@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 import sys
 import tempfile
@@ -70,9 +69,9 @@ class CanonicalFighterV4Tests(unittest.TestCase):
                         [0.0, 0.0, 1.0],
                     ],
                     "node_transform_origin": [float(index), 0.0, 0.0],
-                    "local_exhaust_axis": [0.0, 0.0, 1.0],
-                    "local_bounds_min": [-1.0, -1.0, 0.0],
-                    "local_bounds_max": [1.0, 1.0, 4.0],
+                    "local_exhaust_axis": [0.0, 0.0, -1.0],
+                    "local_bounds_min": [-1.0, -1.0, -4.0],
+                    "local_bounds_max": [1.0, 1.0, 0.0],
                     "maximum_reconstruction_error_m": 0.0,
                     "source_exact_geometry": True,
                 }
@@ -152,7 +151,7 @@ class CanonicalFighterV4Tests(unittest.TestCase):
         assert isinstance(effects, list)
         first = effects[0]
         assert isinstance(first, dict)
-        first["local_exhaust_axis"] = [0.0, 0.0, 0.0]
+        first["local_exhaust_axis"] = [0.0, 0.0, 1.0]
         first["maximum_reconstruction_error_m"] = 0.0002
         with tempfile.TemporaryDirectory() as temporary:
             glb, path = self._write_output(Path(temporary), manifest)
