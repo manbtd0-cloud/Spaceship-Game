@@ -82,8 +82,22 @@ foreach ($relativePath in $requiredRuntimeFiles) {
 
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if ($manifest.godot_forward -ne "-Z" -or $manifest.godot_up -ne "+Y") {
-    throw "Hero fighter manifest orientation must be -Z forward and +Y up"
+if ($manifest.schema_version -ne 2) {
+    throw "Hero fighter manifest schema_version must be 2"
+}
+if ($null -eq $manifest.canonical_frame) {
+    throw "Hero fighter manifest canonical_frame is missing"
+}
+if (
+    $manifest.canonical_frame.godot_forward -ne "-Z" -or
+    $manifest.canonical_frame.godot_up -ne "+Y" -or
+    $manifest.canonical_frame.godot_right -ne "+X" -or
+    -not $manifest.canonical_frame.root_identity
+) {
+    throw "Hero fighter canonical frame must be +X right, -Z forward, +Y up, identity root"
+}
+if ($manifest.sockets.Count -ne 12) {
+    throw "Hero fighter manifest must contain exactly twelve thruster sockets"
 }
 
 $godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
