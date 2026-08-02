@@ -17,8 +17,22 @@ func run() -> void:
     assert_true(room.get_node_or_null("ResetVolume") is Area3D, "reset volume required")
     assert_true(room.get_node_or_null("FlightRoomController") is FlightRoomController, "room controller required")
     assert_true(room.get_node_or_null("Course/StartGate") is Node3D, "start gate required")
-    assert_true(room.get_node("Course/NavigationRings").get_child_count() >= 5, "five rings required")
+    assert_true(
+        room.get_node("Course/NavigationRings").get_child_count() >= 9,
+        "nine rings required"
+    )
     assert_true(room.get_node("Course/Pylons").get_child_count() >= 6, "six pylons required")
-    assert_true(room.get_node("Course/DriftMarkers").get_child_count() >= 10, "ten markers required")
-    assert_true(room.get_node("Course/DistantReferenceShapes").get_child_count() >= 4, "four references required")
+    assert_true(room.get_node("Course/DriftMarkers").get_child_count() >= 10, "ten drift markers required")
+    assert_true(
+        room.get_node("Course/SpeedMarkers").get_child_count() >= 12,
+        "twelve speed markers required"
+    )
+    assert_true(
+        room.get_node("Course/DistantReferenceShapes").get_child_count() >= 8,
+        "eight distant references required"
+    )
+    var last_ring := room.get_node("Course/NavigationRings/Ring09") as Node3D
+    assert_true(last_ring.position.z <= -2400.0, "course must support boost-speed testing")
+    var room_controller := room.get_node("FlightRoomController") as FlightRoomController
+    assert_true(room_controller.boundary_radius >= 6000.0, "expanded boundary required")
     room.free()
