@@ -40,7 +40,14 @@ func configure(
         instance.free()
         return false
 
-    _collision.shape = source_collision.shape.duplicate(true)
+    var shape_copy := source_collision.shape.duplicate(true) as Shape3D
+    if shape_copy == null:
+        push_error("AsteroidBody could not duplicate imported collision shape")
+        _model_mount.remove_child(instance)
+        instance.free()
+        return false
+
+    _collision.shape = shape_copy
     _collision.transform = (
         global_transform.affine_inverse()
         * source_collision.global_transform
