@@ -49,6 +49,16 @@ Pass its Windows executable path explicitly:
 "@
 }
 
+function Resolve-PythonExecutable {
+    foreach ($candidate in @("python", "python3")) {
+        $command = Get-Command $candidate -ErrorAction SilentlyContinue
+        if ($command) {
+            return $command.Source
+        }
+    }
+    throw "Python 3 was not found on PATH."
+}
+
 function Invoke-GodotStep {
     param(
         [string]$Executable,
@@ -89,22 +99,26 @@ function Assert-ExactPathSet {
 }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-$requiredRuntimeFiles = @(
+$requiredFiles = @(
     "assets\runtime\ships\player\small_sci_fi_fighter.glb",
-    "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+    "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json",
+    "config\ships\small_sci_fi_fighter_thruster_actions.json",
+    "tools\assets\fighter_thruster_action_contract.py"
 )
 
-foreach ($relativePath in $requiredRuntimeFiles) {
+foreach ($relativePath in $requiredFiles) {
     $absolutePath = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
-        throw "Required runtime asset missing: $relativePath"
+        throw "Required verification file missing: $relativePath"
     }
     if ((Get-Item -LiteralPath $absolutePath).Length -le 0) {
-        throw "Required runtime asset is empty: $relativePath"
+        throw "Required verification file is empty: $relativePath"
     }
 }
 
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+$matrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.json"
+$matrixValidatorPath = Join-Path $repoRoot "tools\assets\fighter_thruster_action_contract.py"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ($manifest.schema_version -ne 3) {
     throw "Hero fighter manifest schema_version must be 3"
@@ -168,6 +182,15 @@ foreach ($effect in $manifest.thruster_effects) {
     if ([string]$effect.geometry_sha256 -notmatch '^[0-9a-f]{64}$') {
         throw "Every fighter effect must include a valid geometry SHA-256"
     }
+}
+
+$pythonExecutable = Resolve-PythonExecutable
+Write-Host "==> Validate deterministic fighter thruster matrix"
+& $pythonExecutable $matrixValidatorPath `
+    --manifest $manifestPath `
+    --matrix $matrixPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Fighter thruster action matrix validation failed with exit code $LASTEXITCODE"
 }
 
 $godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
