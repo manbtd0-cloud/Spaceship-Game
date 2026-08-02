@@ -76,9 +76,6 @@ def _effect_record_to_manifest(
         record.local_bounds_min_blender,
         record.local_bounds_max_blender,
     )
-    local_axis = Vector(
-        base.blender_to_godot_vector(record.local_exhaust_axis_blender)
-    ).normalized()
     return {
         "path": record.path,
         "socket_path": record.socket_path,
@@ -94,9 +91,7 @@ def _effect_record_to_manifest(
         "node_transform_origin": base.blender_to_godot_vector(
             record.node_transform_origin_blender
         ),
-        "local_exhaust_axis": [
-            round(float(value), 8) for value in local_axis
-        ],
+        "local_exhaust_axis": [0.0, 0.0, -1.0],
         "local_bounds_min": bounds_min,
         "local_bounds_max": bounds_max,
         "maximum_reconstruction_error_m": round(
