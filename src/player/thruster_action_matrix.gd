@@ -27,9 +27,10 @@ static func load_checked_in(path: String) -> ThrusterActionMatrix:
     var parsed: Variant = JSON.parse_string(file.get_as_text())
     if not parsed is Dictionary:
         return null
+    var data: Dictionary = parsed
 
     var matrix := ThrusterActionMatrix.new()
-    if not matrix._load_data(parsed as Dictionary):
+    if not matrix._load_data(data):
         return null
     return matrix
 
@@ -114,9 +115,10 @@ func _load_data(data: Dictionary) -> bool:
     if bool(data.get("runtime_generated", true)):
         return false
 
-    var action_records: Variant = data.get("actions", [])
-    if not action_records is Array:
+    var action_records_variant: Variant = data.get("actions", [])
+    if not action_records_variant is Array:
         return false
+    var action_records: Array = action_records_variant
 
     _weights_by_action.resize(ThrusterAction.action_count())
     for action: int in range(_weights_by_action.size()):
@@ -126,14 +128,17 @@ func _load_data(data: Dictionary) -> bool:
     for record_variant: Variant in action_records:
         if not record_variant is Dictionary:
             return false
-        var record := record_variant as Dictionary
+        var record: Dictionary = record_variant
         var action_name := StringName(String(record.get("action", "")))
         var action := ThrusterAction.from_name(action_name)
         if action < 0 or seen.has(action):
             return false
 
-        var raw_weights: Variant = record.get("weights", {})
-        if not raw_weights is Dictionary or raw_weights.is_empty():
+        var raw_weights_variant: Variant = record.get("weights", {})
+        if not raw_weights_variant is Dictionary:
+            return false
+        var raw_weights: Dictionary = raw_weights_variant
+        if raw_weights.is_empty():
             return false
 
         var normalized: Dictionary = {}
