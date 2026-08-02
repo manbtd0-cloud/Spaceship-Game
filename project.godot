@@ -34,11 +34,11 @@ thrust_reverse={
 }
 strafe_left={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":65)]
+"events": [Object(InputEventKey,"physical_keycode":81)]
 }
 strafe_right={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":68)]
+"events": [Object(InputEventKey,"physical_keycode":69)]
 }
 strafe_up={
 "deadzone": 0.15,
@@ -50,11 +50,27 @@ strafe_down={
 }
 roll_left={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":81)]
+"events": [Object(InputEventKey,"physical_keycode":65)]
 }
 roll_right={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":69)]
+"events": [Object(InputEventKey,"physical_keycode":68)]
+}
+pitch_up={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194320)]
+}
+pitch_down={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194322)]
+}
+yaw_left={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194319)]
+}
+yaw_right={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194321)]
 }
 boost={
 "deadzone": 0.15,
