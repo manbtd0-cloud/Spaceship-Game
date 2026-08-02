@@ -10,18 +10,22 @@ The playable flight room provides:
 - assisted nose-led maneuvering and coordinated banking;
 - fully inertial manual flight;
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
-- sustained all-axis translational boost with thermal lockout;
+- sustained translational boost with thermal lockout;
 - a ship-relative chase camera with no global horizon;
+- the audit-backed canonical Small Sci-Fi Fighter at identity transform;
+- twelve imported thruster sockets driven by the final local force and torque;
 - a high-speed navigation course, telemetry HUD, collisions, and safe reset handling.
 
-The currently committed runtime fighter still uses the temporary alignment and rear-glow layer. That scene is not the final visual target. The audit-backed canonical exporter is now authoritative, and runtime integration begins only after its replacement GLB and schema-2 manifest are generated and pushed.
+The temporary runtime alignment adapter and rear-only glow anchors have been removed. The canonical fighter dimensions are approximately `13.714 × 3.562 × 12.000 m`, and its gameplay collider is `14.0 × 3.8 × 12.2 m`.
+
+The next generated-asset gate is the four-family asteroid pack. Its Blender/Python pipeline is committed, but the flight room is not allowed to reference those runtime GLBs until all four outputs have been generated and validated locally.
 
 ## Requirements
 
 - Godot 4.7.1 Standard
 - GL Compatibility renderer
 - PowerShell on Windows, or Bash on Linux
-- Blender 5.2 LTS when auditing or exporting the hero fighter
+- Blender 5.2 LTS for canonical asset generation
 - Python 3 for asset-contract validation
 
 No external Godot add-ons or runtime dependencies are required.
@@ -78,86 +82,79 @@ Manual flight removes velocity steering, drift damping, automatic banking, and a
 
 Space has no preferred upright direction. The chase camera uses the ship's local up axis when rolled, inverted, or vertical and never blends back toward global `Vector3.UP`.
 
-## Audit evidence
+## Canonical fighter
 
-Generate or refresh the non-destructive Blender audit with:
-
-```powershell
-.\tools\assets\audit-small-fighter.ps1
-```
-
-The committed evidence is under:
-
-```text
-artifacts/hero_ship_audit/
-```
-
-The approved calibration record is:
-
-```text
-docs/superpowers/specs/2026-08-02-small-sci-fi-fighter-calibration-record.md
-```
-
-It establishes:
-
-```text
-Source frame: Cube local axes
-Blender forward/up: +Y / +Z
-Godot forward/up: -Z / +Y
-Canonical size: 13.714 × 3.562 × 12.000 m
-Approved collider: 14.0 × 3.8 × 12.2 m
-Sockets: 2 main + 2 retro + 8 maneuver
-Baked EngineFire geometry: removed
-Runtime correction after integration: none
-```
-
-## Generate the canonical fighter
-
-Run the pure contracts first:
-
-```powershell
-python -m unittest tests.tools.test_small_fighter_calibration -v
-```
-
-Generate the canonical GLB and manifest:
-
-```powershell
-.\tools\assets\export-small-fighter.ps1
-```
-
-If Blender is not detected automatically:
-
-```powershell
-.\tools\assets\export-small-fighter.ps1 `
-  -BlenderBin "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
-```
-
-The command:
-
-- verifies the preserved source SHA before and after Blender;
-- converts retained geometry into approved `Cube` local space;
-- removes all eleven `EngineFire*` source objects from the derivative;
-- disables permanent exhaust emission on physical nozzle hardware;
-- centers and uniformly scales the hull;
-- measures twelve socket locations and exhaust directions from the baked plume geometry;
-- exports an identity-root GLB with `Thrusters/Main`, `Thrusters/Retro`, and `Thrusters/Maneuver` hierarchies;
-- writes a schema-version-2 manifest;
-- validates bounds, collider metadata, socket classes, directions, bases, and unique paths.
-
-Generated files:
+The committed runtime files are:
 
 ```text
 assets/runtime/ships/player/small_sci_fi_fighter.glb
 assets/runtime/ships/player/small_sci_fi_fighter.manifest.json
 ```
 
-The source asset remains development-only until its original license evidence is added and reviewed. See:
+The schema-2 manifest establishes:
 
 ```text
-assets/licenses/small_sci_fi_fighter/PROVENANCE.md
+Godot right/forward/up: +X / -Z / +Y
+Root transform: identity
+Canonical size: 13.714 × 3.562 × 12.000 m
+Collider: 14.0 × 3.8 × 12.2 m
+Sockets: 2 main + 2 retro + 8 maneuver
+Baked EngineFire geometry: removed
+Runtime alignment correction: none
 ```
 
-## Verify the current Godot milestone
+Regenerate and validate it with:
+
+```powershell
+python -m unittest tests.tools.test_small_fighter_calibration -v
+.\tools\assets\export-small-fighter.ps1
+```
+
+The runtime visual controller reads the final local force and torque produced by the flight model. This means pilot thrust, assisted steering, angular damping, drift correction, and automatic banking all drive the appropriate socket effects. Idle output is fully hidden.
+
+## Four-source asteroid pack
+
+All four supplied sources are mandatory:
+
+```text
+assets/source/environment/asteroids/bennu/asteroid_bennu_textured.blend
+assets/source/environment/asteroids/eros/asteroid_eros_true_color.glb
+assets/source/environment/asteroids/legacy_a/asteroid_legacy_a.blend
+assets/source/environment/asteroids/legacy_b/asteroid_legacy_b.blend
+```
+
+Extract `asteroid_source_pack.zip` into the repository root, then run:
+
+```powershell
+python -m unittest tests.tools.test_asteroid_pack -v
+.\tools\assets\export-asteroid-pack.ps1
+```
+
+If Blender is not detected automatically:
+
+```powershell
+.\tools\assets\export-asteroid-pack.ps1 `
+  -BlenderBin "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
+```
+
+The pipeline generates:
+
+```text
+assets/runtime/environment/asteroids/bennu.glb
+assets/runtime/environment/asteroids/eros.glb
+assets/runtime/environment/asteroids/legacy_a.glb
+assets/runtime/environment/asteroids/legacy_b.glb
+```
+
+Each GLB has a sibling manifest. Every family is centered, uniformly scaled to a 100 m longest dimension, cleaned of cameras/lights/flat helper geometry, and exported with a reduced `CollisionProxy-convcolonly` mesh. The flight-room asteroid field is integrated only after all four manifests pass `asteroid_pack_contract.py`.
+
+Eros includes embedded CC BY 4.0 attribution. The other three sources remain development-only until their original license evidence is recorded. See:
+
+```text
+assets/licenses/asteroids/PROVENANCE.md
+```
+
+## Verify locally
 
 ### Windows PowerShell
 
@@ -177,13 +174,13 @@ Or:
 GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verify.sh
 ```
 
-The current pre-integration test target remains:
+The canonical-fighter runner target is:
 
 ```text
-PASS: 15 suites
+PASS: 16 suites
 ```
 
-After canonical runtime and dynamic-thruster integration, the target becomes `PASS: 16 suites`.
+Do not claim the milestone verified until the Windows verifier imports the project, runs all suites, and boots the main scene without parser, path, or runtime errors.
 
 ## Asset policy
 
