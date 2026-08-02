@@ -42,8 +42,8 @@ def _write_glb(path: Path, document: dict[str, object]) -> None:
 
 class CanonicalFighterV4Tests(unittest.TestCase):
     def _valid_manifest(self) -> dict[str, object]:
-        sockets = []
         socket_positions: dict[str, list[float]] = {}
+        sockets: list[dict[str, object]] = []
         for index, path in enumerate(sorted(EXPECTED_SOCKET_PATHS)):
             position = [float(index + 1), 0.0, 0.0]
             socket_positions[path] = position
@@ -61,11 +61,15 @@ class CanonicalFighterV4Tests(unittest.TestCase):
                         [0.0, 1.0, 0.0],
                         [0.0, 0.0, 1.0],
                     ],
-                    "capacity": 0.55 if "/Main/" in path else 0.35 if "/Retro/" in path else 0.22,
+                    "capacity": (
+                        0.55
+                        if "/Main/" in path
+                        else 0.35 if "/Retro/" in path else 0.22
+                    ),
                 }
             )
 
-        effects = []
+        effects: list[dict[str, object]] = []
         for index, path in enumerate(sorted(EXPECTED_EFFECT_PATHS)):
             socket_path = EXPECTED_EFFECT_TO_SOCKET[path]
             effects.append(
@@ -111,16 +115,17 @@ class CanonicalFighterV4Tests(unittest.TestCase):
             "thruster_effects": effects,
         }
 
-    def _valid_glb_document(
+    def _glb_document(
         self,
         manifest: dict[str, object],
+        *,
         baked_effect_path: str | None = None,
+        missing_mesh_child_path: str | None = None,
     ) -> dict[str, object]:
         sockets = manifest["sockets"]
         effects = manifest["thruster_effects"]
         assert isinstance(sockets, list)
         assert isinstance(effects, list)
-
         nodes: list[dict[str, object]] = []
 
         def add_node(name: str, parent: int | None = None, **values: object) -> int:
@@ -128,8 +133,7 @@ class CanonicalFighterV4Tests(unittest.TestCase):
             node: dict[str, object] = {"name": name, **values}
             nodes.append(node)
             if parent is not None:
-                parent_node = nodes[parent]
-                children = parent_node.setdefault("children", [])
+                children = nodes[parent].setdefault("children", [])
                 assert isinstance(children, list)
                 children.append(index)
             return index
@@ -162,17 +166,17 @@ class CanonicalFighterV4Tests(unittest.TestCase):
             assert isinstance(effect, dict)
             path = str(effect["path"])
             segments = path.split("/")
-            translation = (
-                [0.0, 0.0, 0.0]
-                if path == baked_effect_path
-                else effect["node_transform_origin"]
-            )
-            add_node(
+            pivot = add_node(
                 segments[-1],
                 effect_groups[segments[-2]],
-                translation=translation,
-                mesh=0,
+                translation=(
+                    [0.0, 0.0, 0.0]
+                    if path == baked_effect_path
+                    else effect["node_transform_origin"]
+                ),
             )
+            if path != missing_mesh_child_path:
+                add_node(f"{segments[-1]}Mesh", pivot, mesh=0)
 
         return {
             "asset": {"version": "2.0"},
@@ -186,11 +190,11 @@ class CanonicalFighterV4Tests(unittest.TestCase):
         self,
         root: Path,
         manifest: dict[str, object] | None = None,
-        baked_effect_path: str | None = None,
+        **glb_options: object,
     ) -> tuple[Path, Path]:
         report = manifest or self._valid_manifest()
         glb = root / "fighter.glb"
-        _write_glb(glb, self._valid_glb_document(report, baked_effect_path))
+        _write_glb(glb, self._glb_document(report, **glb_options))
         manifest_path = root / "fighter.manifest.json"
         manifest_path.write_text(json.dumps(report), encoding="utf-8")
         return glb, manifest_path
@@ -210,6 +214,19 @@ class CanonicalFighterV4Tests(unittest.TestCase):
             errors = validate_output(glb, manifest, SOURCE_SHA256)
         self.assertTrue(
             any("GLB effect pivot does not match socket" in error for error in errors),
+            errors,
+        )
+
+    def test_missing_effect_mesh_child_is_rejected(self) -> None:
+        missing_path = "ThrusterEffects/MainEffects/MainRightEffect"
+        with tempfile.TemporaryDirectory() as temporary:
+            glb, manifest = self._write_output(
+                Path(temporary),
+                missing_mesh_child_path=missing_path,
+            )
+            errors = validate_output(glb, manifest, SOURCE_SHA256)
+        self.assertTrue(
+            any("GLB effect mesh child missing" in error for error in errors),
             errors,
         )
 
