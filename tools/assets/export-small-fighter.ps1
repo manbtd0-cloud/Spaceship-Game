@@ -90,6 +90,12 @@ if ($sourceShaBefore -ne $expectedSourceSha) {
 $outputDirectory = Split-Path -Parent $outputPath
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
+foreach ($stalePath in @($outputPath, $manifestPath)) {
+    if (Test-Path -LiteralPath $stalePath -PathType Leaf) {
+        Remove-Item -LiteralPath $stalePath -Force
+    }
+}
+
 Write-Host "Using Blender: $blenderExecutable"
 Write-Host "Using Python: $pythonExecutable"
 Write-Host "Source: $sourcePath"
@@ -100,6 +106,8 @@ Write-Host "Canonical manifest: $manifestPath"
 $blenderArguments = @(
     "--background",
     $sourcePath,
+    "--python-exit-code",
+    "1",
     "--python",
     $scriptPath,
     "--",
@@ -125,14 +133,6 @@ After:  $sourceShaAfter
 "@
 }
 
-& $pythonExecutable $validatorPath `
-    --glb $outputPath `
-    --manifest $manifestPath `
-    --source-sha $sourceShaBefore
-if ($LASTEXITCODE -ne 0) {
-    throw "Canonical fighter contract validation failed with exit code $LASTEXITCODE"
-}
-
 foreach ($generatedPath in @($outputPath, $manifestPath)) {
     if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
         throw "Expected canonical export output missing: $generatedPath"
@@ -140,6 +140,14 @@ foreach ($generatedPath in @($outputPath, $manifestPath)) {
     if ((Get-Item -LiteralPath $generatedPath).Length -le 0) {
         throw "Expected canonical export output is empty: $generatedPath"
     }
+}
+
+& $pythonExecutable $validatorPath `
+    --glb $outputPath `
+    --manifest $manifestPath `
+    --source-sha $sourceShaBefore
+if ($LASTEXITCODE -ne 0) {
+    throw "Canonical fighter contract validation failed with exit code $LASTEXITCODE"
 }
 
 Write-Host "Canonical fighter export completed without modifying the source."
