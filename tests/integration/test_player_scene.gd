@@ -2,21 +2,32 @@ extends "res://tests/support/test_case.gd"
 
 const PLAYER_SCENE_PATH := "res://scenes/player/player_interceptor.tscn"
 const TUNING_RESOURCE_PATH := "res://config/flight/player_flight_tuning.tres"
+const HERO_GLB_PATH := "res://assets/runtime/ships/player/small_sci_fi_fighter.glb"
 
 func run() -> void:
     assert_true(
         ResourceLoader.exists(TUNING_RESOURCE_PATH),
         "player tuning resource must use a case-safe non-conflicting path"
     )
+    assert_true(
+        ResourceLoader.exists(HERO_GLB_PATH),
+        "mandatory runtime fighter GLB must exist"
+    )
 
     var has_exact_tuning_dependency := false
+    var has_hero_glb_dependency := false
     for dependency: String in ResourceLoader.get_dependencies(PLAYER_SCENE_PATH):
         if dependency.ends_with(TUNING_RESOURCE_PATH):
             has_exact_tuning_dependency = true
-            break
+        if dependency.ends_with(HERO_GLB_PATH):
+            has_hero_glb_dependency = true
     assert_true(
         has_exact_tuning_dependency,
         "player scene must reference the exact case-safe tuning path"
+    )
+    assert_true(
+        has_hero_glb_dependency,
+        "player scene must reference the mandatory runtime fighter GLB"
     )
 
     var packed := load(PLAYER_SCENE_PATH) as PackedScene
@@ -38,12 +49,33 @@ func run() -> void:
     assert_true(player.get_node_or_null("PlayerInputSource") is PlayerInputSource, "input source required")
     assert_true(player.get_node_or_null("ShipFlightController") is ShipFlightController, "controller required")
 
-    var visuals := player.get_node("Visuals")
-    for child_name: String in [
-        "Fuselage", "Nose", "LeftWing", "RightWing",
-        "LeftEngine", "RightEngine", "LeftEngineGlow", "RightEngineGlow"
-    ]:
-        assert_true(visuals.get_node_or_null(child_name) is MeshInstance3D, "missing %s" % child_name)
+    assert_true(player.get_node_or_null("VisualRoot") is Node3D, "VisualRoot required")
+    assert_true(
+        player.get_node_or_null("VisualRoot/SmallSciFiFighter") is Node3D,
+        "runtime fighter required"
+    )
+    assert_true(player.get_node_or_null("CameraTarget") is Node3D, "camera target required")
+    assert_true(
+        player.get_node_or_null("LeftEngineGlowAnchor") is Node3D,
+        "left glow anchor required"
+    )
+    assert_true(
+        player.get_node_or_null("RightEngineGlowAnchor") is Node3D,
+        "right glow anchor required"
+    )
+    assert_true(
+        player.get_node_or_null("LeftEngineGlowAnchor/Glow") is MeshInstance3D,
+        "left glow mesh required"
+    )
+    assert_true(
+        player.get_node_or_null("RightEngineGlowAnchor/Glow") is MeshInstance3D,
+        "right glow mesh required"
+    )
+    assert_true(
+        player.get_node_or_null("ShipVisualController") is ShipVisualController,
+        "visual controller required"
+    )
+    assert_true(player.get_node_or_null("Visuals") == null, "procedural visual root must be removed")
 
     var controller := player.get_node("ShipFlightController") as ShipFlightController
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
