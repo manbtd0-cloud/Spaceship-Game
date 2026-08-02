@@ -46,8 +46,8 @@ static func compose_rotation(
             limit
         ),
         clampf(
-            clampf(roll_right, 0.0, 1.0)
-            - clampf(roll_left, 0.0, 1.0),
+            clampf(roll_left, 0.0, 1.0)
+            - clampf(roll_right, 0.0, 1.0),
             -1.0,
             1.0
         )
