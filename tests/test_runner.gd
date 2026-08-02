@@ -9,13 +9,14 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_coordinated_turn_state.gd",
     "res://tests/unit/test_player_input_math.gd",
     "res://tests/unit/test_ship_flight_state.gd",
-    "res://tests/unit/test_hero_ship_alignment.gd",
-    "res://tests/unit/test_ship_visual_math.gd",
+    "res://tests/unit/test_ship_flight_controller_state.gd",
+    "res://tests/unit/test_ship_thruster_allocator.gd",
+    "res://tests/unit/test_thruster_exhaust_effect.gd",
     "res://tests/integration/test_player_scene.gd",
     "res://tests/unit/test_chase_camera_math.gd",
     "res://tests/integration/test_flight_room_scene.gd",
     "res://tests/integration/test_hero_ship_asset.gd",
-    "res://tests/integration/test_hero_ship_adapter.gd",
+    "res://tests/integration/test_ship_thruster_visual_controller.gd",
 ]
 
 func _initialize() -> void:
