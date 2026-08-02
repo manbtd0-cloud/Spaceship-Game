@@ -6,7 +6,8 @@ static func compute(
     tuning: FlightTuning,
     local_linear_velocity: Vector3,
     local_angular_velocity: Vector3,
-    body_mass: float = 1.0
+    body_mass: float = 1.0,
+    assist_rotation_command: Vector3 = Vector3.ZERO
 ) -> FlightOutput:
     var output := FlightOutput.new()
     var longitudinal_force: float = (
@@ -15,7 +16,7 @@ static func compute(
         else tuning.reverse_force
     )
 
-    var force_local := Vector3(
+    var pilot_force := Vector3(
         command.translation.x * tuning.strafe_force,
         command.translation.y * tuning.strafe_force,
         command.translation.z * longitudinal_force
@@ -25,7 +26,7 @@ static func compute(
         tuning.boost_multiplier,
         clampf(command.boost, 0.0, 1.0)
     )
-    force_local *= boost_factor
+    pilot_force *= boost_factor
 
     var soft_start := (
         tuning.boost_speed_soft_start
@@ -37,27 +38,27 @@ static func compute(
         if command.boost > 0.0
         else tuning.normal_speed_limit
     )
-    output.force_local = FlightSpeedEnvelope.apply_to_force(
-        force_local,
+    output.pilot_force_local = FlightSpeedEnvelope.apply_to_force(
+        pilot_force,
         local_linear_velocity,
         soft_start,
         soft_limit
     )
 
-    output.torque_local = Vector3(
+    output.pilot_torque_local = Vector3(
         command.rotation.x * tuning.pitch_torque,
         command.rotation.y * tuning.yaw_torque,
         command.rotation.z * tuning.roll_torque
     )
 
     if command.mode == FlightMode.Value.ASSISTED:
-        output.force_local.x -= (
+        output.assist_force_local.x -= (
             local_linear_velocity.x * tuning.assist_lateral_damping
         )
-        output.force_local.y -= (
+        output.assist_force_local.y -= (
             local_linear_velocity.y * tuning.assist_vertical_damping
         )
-        output.force_local += FlightSteeringMath.assisted_force(
+        output.assist_force_local += FlightSteeringMath.assisted_force(
             local_linear_velocity,
             clampf(-command.translation.z, 0.0, 1.0),
             body_mass,
@@ -65,8 +66,14 @@ static func compute(
             tuning.assist_min_steering_speed,
             tuning.assist_max_steering_acceleration
         )
-        output.torque_local -= (
+        output.assist_torque_local += Vector3(
+            assist_rotation_command.x * tuning.pitch_torque,
+            assist_rotation_command.y * tuning.yaw_torque,
+            assist_rotation_command.z * tuning.roll_torque
+        )
+        output.assist_torque_local -= (
             local_angular_velocity * tuning.assist_angular_damping
         )
 
+    output.finalize_totals()
     return output
