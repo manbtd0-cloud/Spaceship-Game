@@ -11,7 +11,7 @@ The playable flight room provides:
 - fully inertial manual flight;
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained translational boost with thermal lockout;
-- a ship-relative chase camera with no global horizon;
+- a ship-relative chase camera with bounded Close, Standard, and Far presets;
 - the canonical Small Sci-Fi Fighter at identity transform;
 - twelve source-exact nozzle-local thruster effects;
 - deterministic mappings for twelve pilot actions;
@@ -50,6 +50,7 @@ godot --path .
 | `Left` / `Right` | Roll left / right |
 | `Shift` | Sustained translational boost |
 | `F` | Toggle assisted / manual flight |
+| `C` | Cycle Standard / Far / Close chase-camera presets |
 | `Escape` | Release / recapture mouse |
 | `R` | Reset to spawn, clear momentum, and reset boost heat |
 
@@ -185,7 +186,7 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 21 suites
+PASS: 22 suites
 ```
 
 Do not claim the milestone verified until the verifier validates schema 4 and the deterministic matrix, imports the project, runs every suite, and boots the main scene without parser, path, or runtime errors.
