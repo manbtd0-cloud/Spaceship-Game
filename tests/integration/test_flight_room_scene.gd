@@ -27,12 +27,57 @@ func run() -> void:
         room.get_node("Course/SpeedMarkers").get_child_count() >= 12,
         "twelve speed markers required"
     )
+
+    var fixture_model := _make_test_model()
+    var controller := room.get_node("FlightRoomController") as FlightRoomController
+    var built := controller.setup_asteroid_field({
+        &"bennu": fixture_model,
+        &"eros": fixture_model,
+        &"legacy_a": fixture_model,
+        &"legacy_b": fixture_model,
+    })
+    assert_true(built, "flight room must build the asteroid field")
     assert_true(
-        room.get_node("Course/DistantReferenceShapes").get_child_count() >= 8,
-        "eight distant references required"
+        room.get_node_or_null("Course/DistantReferenceShapes") == null,
+        "blue box reference placeholders must be removed"
     )
+    var field := room.get_node_or_null("Course/AsteroidField") as AsteroidField
+    assert_true(field != null, "flight room must contain AsteroidField")
+    if field != null:
+        assert_equal(field.get_asteroid_count(), 16, "flight room must contain sixteen asteroids")
+        assert_true(
+            field.are_all_asteroids_collidable(),
+            "every flight-room asteroid must be collidable"
+        )
+
     var last_ring := room.get_node("Course/NavigationRings/Ring09") as Node3D
     assert_true(last_ring.position.z <= -2400.0, "course must support boost-speed testing")
-    var room_controller := room.get_node("FlightRoomController") as FlightRoomController
-    assert_true(room_controller.boundary_radius >= 6000.0, "expanded boundary required")
+    assert_true(controller.boundary_radius >= 6000.0, "expanded boundary required")
     room.free()
+
+func _make_test_model() -> PackedScene:
+    var root := Node3D.new()
+    root.name = "FixtureAsteroid"
+
+    var visual := MeshInstance3D.new()
+    visual.name = "VisualModel"
+    visual.mesh = SphereMesh.new()
+    root.add_child(visual)
+    visual.owner = root
+
+    var imported_body := StaticBody3D.new()
+    imported_body.name = "CollisionProxy"
+    root.add_child(imported_body)
+    imported_body.owner = root
+
+    var imported_collision := CollisionShape3D.new()
+    imported_collision.name = "CollisionShape3D"
+    imported_collision.shape = SphereShape3D.new()
+    imported_body.add_child(imported_collision)
+    imported_collision.owner = root
+
+    var fixture := PackedScene.new()
+    var result := fixture.pack(root)
+    assert_true(result == OK, "flight-room asteroid fixture must pack")
+    root.free()
+    return fixture
