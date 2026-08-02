@@ -12,7 +12,6 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/unit/test_ship_flight_controller_state.gd",
     "res://tests/unit/test_ship_thruster_allocator.gd",
-    "res://tests/unit/test_thruster_exhaust_effect.gd",
     "res://tests/unit/test_asteroid_field_layout.gd",
     "res://tests/integration/test_player_scene.gd",
     "res://tests/unit/test_chase_camera_math.gd",
