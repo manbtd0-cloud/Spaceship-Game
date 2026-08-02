@@ -45,14 +45,29 @@ func run() -> void:
     assert_true(is_equal_approx(player.linear_damp, 0.0), "linear damping must be zero")
     assert_true(is_equal_approx(player.angular_damp, 0.0), "angular damping must be zero")
     assert_true(player.continuous_cd, "continuous collision detection must be enabled")
-    assert_true(player.get_node_or_null("CollisionShape3D") is CollisionShape3D, "collision required")
+
+    var collision := player.get_node_or_null("CollisionShape3D") as CollisionShape3D
+    assert_true(collision != null, "collision required")
+    if collision != null:
+        var box := collision.shape as BoxShape3D
+        assert_true(box != null, "player collision must remain a box")
+        if box != null:
+            assert_equal(
+                box.size,
+                Vector3(7.2, 4.2, 10.8),
+                "collider must match enlarged hero visual envelope"
+            )
+
     assert_true(player.get_node_or_null("PlayerInputSource") is PlayerInputSource, "input source required")
     assert_true(player.get_node_or_null("ShipFlightController") is ShipFlightController, "controller required")
-
     assert_true(player.get_node_or_null("VisualRoot") is Node3D, "VisualRoot required")
     assert_true(
         player.get_node_or_null("VisualRoot/SmallSciFiFighter") is Node3D,
         "runtime fighter required"
+    )
+    assert_true(
+        player.get_node_or_null("HeroShipModelAdapter") is HeroShipModelAdapter,
+        "marker-driven model adapter required"
     )
     assert_true(player.get_node_or_null("CameraTarget") is Node3D, "camera target required")
     assert_true(
@@ -63,14 +78,20 @@ func run() -> void:
         player.get_node_or_null("RightEngineGlowAnchor") is Node3D,
         "right glow anchor required"
     )
-    assert_true(
-        player.get_node_or_null("LeftEngineGlowAnchor/Glow") is MeshInstance3D,
-        "left glow mesh required"
-    )
-    assert_true(
-        player.get_node_or_null("RightEngineGlowAnchor/Glow") is MeshInstance3D,
-        "right glow mesh required"
-    )
+
+    var left_glow := player.get_node_or_null(
+        "LeftEngineGlowAnchor/Glow"
+    ) as MeshInstance3D
+    var right_glow := player.get_node_or_null(
+        "RightEngineGlowAnchor/Glow"
+    ) as MeshInstance3D
+    assert_true(left_glow != null, "left glow mesh required")
+    assert_true(right_glow != null, "right glow mesh required")
+    if left_glow != null:
+        assert_true(not left_glow.visible, "left exhaust must start hidden")
+    if right_glow != null:
+        assert_true(not right_glow.visible, "right exhaust must start hidden")
+
     assert_true(
         player.get_node_or_null("ShipVisualController") is ShipVisualController,
         "visual controller required"
@@ -81,6 +102,7 @@ func run() -> void:
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
     assert_true(is_equal_approx(controller.get_boost_amount(), 0.0), "default boost")
     assert_true(is_equal_approx(controller.get_boost_heat(), 0.0), "default boost heat")
+    assert_true(is_equal_approx(controller.get_forward_thrust_amount(), 0.0), "default thrust telemetry")
     assert_true(not controller.is_boost_locked_out(), "boost starts unlocked")
     assert_true(
         is_equal_approx(controller.get_active_speed_limit(), 160.0),
