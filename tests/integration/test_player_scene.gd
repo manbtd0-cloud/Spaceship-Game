@@ -54,6 +54,10 @@ func run() -> void:
         is_equal_approx(controller.get_active_speed_limit(), 160.0),
         "normal envelope is active at spawn"
     )
+    assert_true(
+        is_equal_approx(controller.get_auto_bank_offset_degrees(), 0.0),
+        "generated bank starts neutral"
+    )
 
     var hud_packed := load("res://scenes/ui/flight_hud.tscn") as PackedScene
     assert_true(hud_packed != null, "HUD scene must load")
