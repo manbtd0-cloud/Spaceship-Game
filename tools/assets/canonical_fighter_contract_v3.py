@@ -31,18 +31,18 @@ EXPECTED_SOCKET_PATHS = {
     "Thrusters/Maneuver/FrontLowerRight",
 }
 EXPECTED_EFFECT_PATHS = {
-    "ThrusterEffects/Main/MainLeftEffect",
-    "ThrusterEffects/Main/MainRightEffect",
-    "ThrusterEffects/Retro/RetroLeftEffect",
-    "ThrusterEffects/Retro/RetroRightEffect",
-    "ThrusterEffects/Maneuver/FrontUpperLeftEffect",
-    "ThrusterEffects/Maneuver/FrontUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearUpperLeftEffect",
-    "ThrusterEffects/Maneuver/RearUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearLowerLeftEffect",
-    "ThrusterEffects/Maneuver/RearLowerRightEffect",
-    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
-    "ThrusterEffects/Maneuver/FrontLowerRightEffect",
+    "ThrusterEffects/MainEffects/MainLeftEffect",
+    "ThrusterEffects/MainEffects/MainRightEffect",
+    "ThrusterEffects/RetroEffects/RetroLeftEffect",
+    "ThrusterEffects/RetroEffects/RetroRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect",
 }
 
 
@@ -151,11 +151,9 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
         socket_paths.append(str(socket.get("path", "")))
         socket_class = str(socket.get("class", ""))
         socket_classes[socket_class] += 1
-        position = _vector3(socket.get("position"), f"{label}.position", errors)
+        _vector3(socket.get("position"), f"{label}.position", errors)
         exhaust = _vector3(socket.get("exhaust_direction"), f"{label}.exhaust_direction", errors)
         reaction = _vector3(socket.get("reaction_direction"), f"{label}.reaction_direction", errors)
-        if position is None:
-            pass
         if exhaust is not None and reaction is not None:
             if abs(_length(exhaust) - 1.0) > 1e-4:
                 errors.append(f"{label}.exhaust_direction must be unit length")
