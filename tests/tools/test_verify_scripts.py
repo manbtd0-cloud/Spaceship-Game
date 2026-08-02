@@ -66,6 +66,17 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertLess(validation_index, manifest_move_index)
         self.assertNotIn("foreach ($stalePath in @($outputPath, $manifestPath))", source)
 
+    def test_fighter_wrapper_writes_pending_manifest_without_utf8_bom(self) -> None:
+        source = (REPO_ROOT / "tools" / "assets" / "export-small-fighter.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("[System.Text.UTF8Encoding]::new($false)", source)
+        self.assertIn("[System.IO.File]::WriteAllText", source)
+        self.assertNotIn(
+            "Set-Content -LiteralPath $pendingManifestPath -Encoding utf8",
+            source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
