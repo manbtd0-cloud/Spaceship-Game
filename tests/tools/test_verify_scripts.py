@@ -16,10 +16,11 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertIn("$manifest.schema_version -ne 3", source)
         self.assertIn("source_exact_enginefire_geometry", source)
         self.assertIn("$manifest.thruster_effects", source)
-        self.assertIn('"ThrusterEffects/Main/MainLeftEffect"', source)
-        self.assertIn('"ThrusterEffects/Retro/RetroRightEffect"', source)
-        self.assertNotIn('"Thrusters/Main/Left"', source)
-        self.assertNotIn('"Thrusters/Retro/Left"', source)
+        self.assertIn('"ThrusterEffects/MainEffects/MainLeftEffect"', source)
+        self.assertIn('"ThrusterEffects/RetroEffects/RetroRightEffect"', source)
+        self.assertIn('"ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect"', source)
+        self.assertNotIn('"ThrusterEffects/Main/MainLeftEffect"', source)
+        self.assertNotIn('"ThrusterEffects/Retro/RetroLeftEffect"', source)
 
     def test_linux_verifier_reads_schema_three_source_exact_contract(self) -> None:
         source = (REPO_ROOT / "tools" / "verify" / "verify.sh").read_text(
@@ -29,10 +30,11 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertIn('manifest.get("schema_version") != 3', source)
         self.assertIn('source_exact_enginefire_geometry', source)
         self.assertIn('manifest.get("thruster_effects", [])', source)
-        self.assertIn('"ThrusterEffects/Main/MainLeftEffect"', source)
-        self.assertIn('"ThrusterEffects/Retro/RetroRightEffect"', source)
-        self.assertNotIn('"Thrusters/Main/Left"', source)
-        self.assertNotIn('"Thrusters/Retro/Left"', source)
+        self.assertIn('"ThrusterEffects/MainEffects/MainLeftEffect"', source)
+        self.assertIn('"ThrusterEffects/RetroEffects/RetroRightEffect"', source)
+        self.assertIn('"ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect"', source)
+        self.assertNotIn('"ThrusterEffects/Main/MainLeftEffect"', source)
+        self.assertNotIn('"ThrusterEffects/Retro/RetroLeftEffect"', source)
 
     def test_asset_wrappers_fail_on_blender_python_exceptions(self) -> None:
         for relative_path in (
