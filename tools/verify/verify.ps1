@@ -100,6 +100,42 @@ if ($manifest.sockets.Count -ne 12) {
     throw "Hero fighter manifest must contain exactly twelve thruster sockets"
 }
 
+$expectedSocketPaths = @(
+    "Thrusters/Main/MainLeft",
+    "Thrusters/Main/MainRight",
+    "Thrusters/Retro/RetroLeft",
+    "Thrusters/Retro/RetroRight",
+    "Thrusters/Maneuver/FrontUpperLeft",
+    "Thrusters/Maneuver/FrontUpperRight",
+    "Thrusters/Maneuver/RearUpperLeft",
+    "Thrusters/Maneuver/RearUpperRight",
+    "Thrusters/Maneuver/RearLowerLeft",
+    "Thrusters/Maneuver/RearLowerRight",
+    "Thrusters/Maneuver/FrontLowerLeft",
+    "Thrusters/Maneuver/FrontLowerRight"
+)
+$actualSocketPaths = @(
+    $manifest.sockets | ForEach-Object { [string]$_.path }
+)
+$missingSocketPaths = @(
+    $expectedSocketPaths | Where-Object { $_ -notin $actualSocketPaths }
+)
+$unexpectedSocketPaths = @(
+    $actualSocketPaths | Where-Object { $_ -notin $expectedSocketPaths }
+)
+$uniqueSocketPaths = @($actualSocketPaths | Sort-Object -Unique)
+if (
+    $missingSocketPaths.Count -gt 0 -or
+    $unexpectedSocketPaths.Count -gt 0 -or
+    $uniqueSocketPaths.Count -ne 12
+) {
+    throw (
+        "Hero fighter socket paths mismatch. Missing: [{0}] Unexpected: [{1}]" -f
+        ($missingSocketPaths -join ", "),
+        ($unexpectedSocketPaths -join ", ")
+    )
+}
+
 $godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
 
 Write-Host "Using Godot: $godotExecutable"
