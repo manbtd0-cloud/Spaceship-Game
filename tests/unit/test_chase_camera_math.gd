@@ -32,6 +32,38 @@ func run() -> void:
         "camera must predict velocity and nose direction"
     )
 
+    var rolled_ship := Transform3D(
+        Basis(Vector3.FORWARD, PI * 0.5),
+        Vector3.ZERO
+    )
+    var rolled_camera_basis := ChaseCameraMath.desired_camera_basis(
+        Vector3(0.0, 0.0, 10.0),
+        Vector3.ZERO,
+        rolled_ship
+    )
+    assert_true(
+        rolled_camera_basis.y.normalized().dot(
+            rolled_ship.basis.y.normalized()
+        ) > 0.999,
+        "camera up must follow ship up with no global horizon bias"
+    )
+
+    var inverted_ship := Transform3D(
+        Basis(Vector3.FORWARD, PI),
+        Vector3.ZERO
+    )
+    var inverted_camera_basis := ChaseCameraMath.desired_camera_basis(
+        Vector3(0.0, 0.0, 10.0),
+        Vector3.ZERO,
+        inverted_ship
+    )
+    assert_true(
+        inverted_camera_basis.y.normalized().dot(
+            inverted_ship.basis.y.normalized()
+        ) > 0.999,
+        "an upside-down ship must produce an upside-down camera perspective"
+    )
+
     assert_true(
         is_equal_approx(
             ChaseCameraMath.desired_fov(
