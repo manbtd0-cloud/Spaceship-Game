@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/input/player_input_source.gd" id="1_input"]
 [ext_resource type="Script" path="res://src/player/ship_flight_controller.gd" id="2_controller"]
-[ext_resource type="Resource" path="res://resources/flight/player_flight_tuning.tres" id="3_tuning"]
+[ext_resource type="Resource" path="res://config/flight/player_flight_tuning.tres" id="3_tuning"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_player"]
 size = Vector3(8, 2.5, 12)
