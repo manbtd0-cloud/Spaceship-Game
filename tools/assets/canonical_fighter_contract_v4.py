@@ -56,6 +56,7 @@ Matrix4 = tuple[
     tuple[float, float, float, float],
     tuple[float, float, float, float],
 ]
+NodeEntry = tuple[str, dict[str, Any], Matrix4]
 
 
 def _vector3(
@@ -79,6 +80,13 @@ def _vector3(
 
 def _length(value: tuple[float, float, float]) -> float:
     return math.sqrt(sum(component * component for component in value))
+
+
+def _distance(
+    left: tuple[float, float, float],
+    right: tuple[float, float, float],
+) -> float:
+    return math.sqrt(sum((a - b) ** 2 for a, b in zip(left, right)))
 
 
 def _dot(
@@ -122,14 +130,22 @@ def _class_for_socket_path(path: str) -> str:
     return ""
 
 
-def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
-    errors: list[str] = []
+def _load_manifest(path: Path) -> tuple[dict[str, Any] | None, list[str]]:
     if not path.is_file():
-        return [f"manifest missing: {path}"]
+        return None, [f"manifest missing: {path}"]
     try:
-        report = json.loads(path.read_text(encoding="utf-8-sig"))
+        parsed = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-        return [f"manifest unreadable: {error}"]
+        return None, [f"manifest unreadable: {error}"]
+    if not isinstance(parsed, dict):
+        return None, ["manifest root must be an object"]
+    return parsed, []
+
+
+def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
+    report, errors = _load_manifest(path)
+    if report is None:
+        return errors
 
     if report.get("schema_version") != 4:
         errors.append("manifest schema_version must be 4")
@@ -204,13 +220,13 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
         if not isinstance(socket, dict):
             errors.append(f"{label} must be an object")
             continue
-        path_value = str(socket.get("path", ""))
-        socket_paths.append(path_value)
+        socket_path = str(socket.get("path", ""))
         socket_class = str(socket.get("class", ""))
+        socket_paths.append(socket_path)
         socket_classes[socket_class] += 1
         position = _vector3(socket.get("position"), f"{label}.position", errors)
         if position is not None:
-            socket_positions[path_value] = position
+            socket_positions[socket_path] = position
         exhaust = _vector3(
             socket.get("exhaust_direction"),
             f"{label}.exhaust_direction",
@@ -231,12 +247,11 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
                     f"{label} exhaust and reaction directions must be opposite"
                 )
         _validate_basis(socket.get("basis"), f"{label}.basis", errors)
-        capacity = socket.get("capacity")
         try:
-            parsed_capacity = float(capacity)
+            capacity = float(socket.get("capacity"))
         except (TypeError, ValueError):
-            parsed_capacity = -1.0
-        if not math.isfinite(parsed_capacity) or parsed_capacity <= 0.0:
+            capacity = -1.0
+        if not math.isfinite(capacity) or capacity <= 0.0:
             errors.append(f"{label}.capacity must be positive and finite")
 
     if set(socket_paths) != EXPECTED_SOCKET_PATHS or len(socket_paths) != 12:
@@ -266,8 +281,11 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
 
         effect_path = str(effect.get("path", ""))
         socket_path = str(effect.get("socket_path", ""))
+        effect_class = str(effect.get("class", ""))
         effect_paths.append(effect_path)
         effect_socket_paths.append(socket_path)
+        effect_classes[effect_class] += 1
+
         expected_socket = EXPECTED_EFFECT_TO_SOCKET.get(effect_path)
         if not socket_path:
             errors.append(f"{label}.socket_path is required")
@@ -275,9 +293,6 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
             errors.append(
                 f"{label}.socket_path must be {expected_socket!r}, got {socket_path!r}"
             )
-
-        effect_class = str(effect.get("class", ""))
-        effect_classes[effect_class] += 1
         expected_class = _class_for_socket_path(socket_path)
         if expected_class and effect_class != expected_class:
             errors.append(
@@ -298,12 +313,10 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
                 f"{label}.source_component_indices must be unique "
                 "non-negative integers"
             )
-
         for count_key in ("vertex_count", "face_count"):
             count = effect.get(count_key)
             if not isinstance(count, int) or count <= 0:
                 errors.append(f"{label}.{count_key} must be positive")
-
         digest = str(effect.get("geometry_sha256", ""))
         if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
             errors.append(f"{label}.geometry_sha256 must be lowercase SHA-256")
@@ -321,10 +334,7 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
         if (
             origin is not None
             and socket_path in socket_positions
-            and any(
-                abs(origin[axis] - socket_positions[socket_path][axis]) > 1e-4
-                for axis in range(3)
-            )
+            and _distance(origin, socket_positions[socket_path]) > 1e-4
         ):
             errors.append(f"{label}.node_transform_origin must match socket position")
 
@@ -333,9 +343,9 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
             f"{label}.local_exhaust_axis",
             errors,
         )
-        if local_axis is not None and any(
-            abs(local_axis[axis] - EXPECTED_LOCAL_EXHAUST_AXIS[axis]) > 1e-6
-            for axis in range(3)
+        if (
+            local_axis is not None
+            and _distance(local_axis, EXPECTED_LOCAL_EXHAUST_AXIS) > 1e-6
         ):
             errors.append(
                 f"{label}.local_exhaust_axis must be "
@@ -356,21 +366,21 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
             if not any(maximum[axis] > minimum[axis] for axis in range(3)):
                 errors.append(f"{label} local bounds must have positive extent")
 
-        reconstruction_error = effect.get("maximum_reconstruction_error_m")
         try:
-            parsed_error = float(reconstruction_error)
+            reconstruction_error = float(
+                effect.get("maximum_reconstruction_error_m")
+            )
         except (TypeError, ValueError):
-            parsed_error = math.inf
-        if not math.isfinite(parsed_error) or parsed_error < 0.0:
+            reconstruction_error = math.inf
+        if not math.isfinite(reconstruction_error) or reconstruction_error < 0.0:
             errors.append(
                 f"{label}.maximum_reconstruction_error_m must be finite and non-negative"
             )
-        elif parsed_error > MAXIMUM_RECONSTRUCTION_ERROR_M:
+        elif reconstruction_error > MAXIMUM_RECONSTRUCTION_ERROR_M:
             errors.append(
-                f"{label} reconstruction error {parsed_error:.9f} exceeds "
+                f"{label} reconstruction error {reconstruction_error:.9f} exceeds "
                 f"{MAXIMUM_RECONSTRUCTION_ERROR_M:.9f}"
             )
-
         if effect.get("source_exact_geometry") is not True:
             errors.append(f"{label}.source_exact_geometry must be true")
 
@@ -404,15 +414,13 @@ def _identity_matrix() -> Matrix4:
 
 
 def _multiply(left: Matrix4, right: Matrix4) -> Matrix4:
-    rows = []
-    for row in range(4):
-        rows.append(
-            tuple(
-                sum(left[row][axis] * right[axis][column] for axis in range(4))
-                for column in range(4)
-            )
+    return tuple(
+        tuple(
+            sum(left[row][axis] * right[axis][column] for axis in range(4))
+            for column in range(4)
         )
-    return tuple(rows)  # type: ignore[return-value]
+        for row in range(4)
+    )  # type: ignore[return-value]
 
 
 def _node_matrix(node: dict[str, Any]) -> Matrix4:
@@ -447,7 +455,6 @@ def _node_matrix(node: dict[str, Any]) -> Matrix4:
     y /= quaternion_length
     z /= quaternion_length
     w /= quaternion_length
-
     rotation_rows = (
         (
             1.0 - 2.0 * (y * y + z * z),
@@ -477,6 +484,10 @@ def _node_matrix(node: dict[str, Any]) -> Matrix4:
     )
 
 
+def _origin(matrix: Matrix4) -> tuple[float, float, float]:
+    return tuple(matrix[axis][3] for axis in range(3))  # type: ignore[return-value]
+
+
 def _load_glb_document(path: Path) -> dict[str, Any]:
     data = path.read_bytes()
     if len(data) < 20:
@@ -500,7 +511,11 @@ def _load_glb_document(path: Path) -> dict[str, Any]:
             raise ValueError("GLB chunk exceeds file length")
         if chunk_type == b"JSON":
             try:
-                document = json.loads(data[offset:chunk_end].decode("utf-8").rstrip(" \t\r\n\0"))
+                document = json.loads(
+                    data[offset:chunk_end]
+                    .decode("utf-8")
+                    .rstrip(" \t\r\n\0")
+                )
             except (UnicodeDecodeError, json.JSONDecodeError) as error:
                 raise ValueError(f"GLB JSON is unreadable: {error}") from error
             if not isinstance(document, dict):
@@ -510,9 +525,7 @@ def _load_glb_document(path: Path) -> dict[str, Any]:
     raise ValueError("GLB JSON chunk is missing")
 
 
-def _collect_glb_nodes(
-    document: dict[str, Any],
-) -> list[tuple[str, dict[str, Any], Matrix4]]:
+def _collect_glb_nodes(document: dict[str, Any]) -> list[NodeEntry]:
     nodes = document.get("nodes")
     scenes = document.get("scenes")
     if not isinstance(nodes, list) or not isinstance(scenes, list) or not scenes:
@@ -524,7 +537,7 @@ def _collect_glb_nodes(
     if not isinstance(scene, dict) or not isinstance(scene.get("nodes"), list):
         raise ValueError("GLB default scene has no root nodes")
 
-    entries: list[tuple[str, dict[str, Any], Matrix4]] = []
+    entries: list[NodeEntry] = []
 
     def visit(
         node_index: int,
@@ -556,9 +569,9 @@ def _collect_glb_nodes(
 
 
 def _find_unique_glb_node(
-    entries: list[tuple[str, dict[str, Any], Matrix4]],
+    entries: list[NodeEntry],
     semantic_path: str,
-) -> tuple[str, dict[str, Any], Matrix4] | None:
+) -> NodeEntry | None:
     matches = [
         entry
         for entry in entries
@@ -569,37 +582,43 @@ def _find_unique_glb_node(
 
 def validate_glb_thruster_pivots(path: Path) -> list[str]:
     try:
-        document = _load_glb_document(path)
-        entries = _collect_glb_nodes(document)
+        entries = _collect_glb_nodes(_load_glb_document(path))
     except (OSError, ValueError, TypeError) as error:
         return [f"GLB hierarchy unreadable: {error}"]
 
     errors: list[str] = []
     for effect_path, socket_path in sorted(EXPECTED_EFFECT_TO_SOCKET.items()):
         socket_entry = _find_unique_glb_node(entries, socket_path)
-        effect_entry = _find_unique_glb_node(entries, effect_path)
+        pivot_entry = _find_unique_glb_node(entries, effect_path)
         if socket_entry is None:
             errors.append(f"GLB socket path missing or duplicated: {socket_path}")
             continue
-        if effect_entry is None:
-            errors.append(f"GLB effect path missing or duplicated: {effect_path}")
+        if pivot_entry is None:
+            errors.append(f"GLB effect pivot path missing or duplicated: {effect_path}")
             continue
-        if "mesh" not in effect_entry[1]:
-            errors.append(f"GLB effect node has no mesh: {effect_path}")
-            continue
+        if "mesh" in pivot_entry[1]:
+            errors.append(f"GLB effect pivot must not own mesh geometry: {effect_path}")
 
-        socket_origin = tuple(socket_entry[2][axis][3] for axis in range(3))
-        effect_origin = tuple(effect_entry[2][axis][3] for axis in range(3))
-        distance = math.sqrt(
-            sum(
-                (socket_origin[axis] - effect_origin[axis]) ** 2
-                for axis in range(3)
-            )
-        )
-        if distance > GLB_PIVOT_TOLERANCE_M:
+        socket_origin = _origin(socket_entry[2])
+        pivot_origin = _origin(pivot_entry[2])
+        pivot_distance = _distance(socket_origin, pivot_origin)
+        if pivot_distance > GLB_PIVOT_TOLERANCE_M:
             errors.append(
                 "GLB effect pivot does not match socket: "
-                f"{effect_path} distance={distance:.9f}"
+                f"{effect_path} distance={pivot_distance:.9f}"
+            )
+
+        leaf = effect_path.rsplit("/", 1)[-1]
+        mesh_path = f"{effect_path}/{leaf}Mesh"
+        mesh_entry = _find_unique_glb_node(entries, mesh_path)
+        if mesh_entry is None or "mesh" not in mesh_entry[1]:
+            errors.append(f"GLB effect mesh child missing: {mesh_path}")
+            continue
+        mesh_distance = _distance(pivot_origin, _origin(mesh_entry[2]))
+        if mesh_distance > GLB_PIVOT_TOLERANCE_M:
+            errors.append(
+                "GLB effect mesh child is not at pivot origin: "
+                f"{mesh_path} distance={mesh_distance:.9f}"
             )
     return errors
 
