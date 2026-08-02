@@ -5,7 +5,7 @@
 
 [node name="ChaseCameraRig" type="Node3D"]
 script = ExtResource("1_rig")
-target_path = NodePath("../PlayerInterceptor")
+target_path = NodePath("../PlayerInterceptor/CameraTarget")
 controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
 camera_path = NodePath("Camera3D")
 tuning = ExtResource("2_tuning")
@@ -14,7 +14,6 @@ position_sharpness = 5.5
 rotation_sharpness = 7.0
 velocity_look_ahead = 0.08
 base_fov = 68.0
-roll_influence = 0.35
 
 [node name="Camera3D" type="Camera3D" parent="."]
 current = true
