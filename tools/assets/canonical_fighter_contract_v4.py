@@ -45,6 +45,7 @@ EXPECTED_EFFECT_TO_SOCKET = {
     "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect": "Thrusters/Maneuver/FrontLowerRight",
 }
 EXPECTED_EFFECT_PATHS = set(EXPECTED_EFFECT_TO_SOCKET)
+EXPECTED_LOCAL_EXHAUST_AXIS = (0.0, 0.0, -1.0)
 MAXIMUM_RECONSTRUCTION_ERROR_M = 0.0001
 
 
@@ -323,8 +324,15 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
             f"{label}.local_exhaust_axis",
             errors,
         )
-        if local_axis is not None and abs(_length(local_axis) - 1.0) > 1e-4:
-            errors.append(f"{label}.local_exhaust_axis must be unit length")
+        if local_axis is not None:
+            if any(
+                abs(local_axis[axis] - EXPECTED_LOCAL_EXHAUST_AXIS[axis]) > 1e-6
+                for axis in range(3)
+            ):
+                errors.append(
+                    f"{label}.local_exhaust_axis must be "
+                    f"{list(EXPECTED_LOCAL_EXHAUST_AXIS)}"
+                )
 
         minimum = _vector3(
             effect.get("local_bounds_min"),
