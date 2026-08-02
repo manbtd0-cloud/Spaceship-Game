@@ -103,8 +103,23 @@ func run() -> void:
             )
             if effect != null:
                 assert_true(
-                    _transform_is_identity(effect.transform),
-                    "source-exact effect transform must be identity: ThrusterEffects/%s"
+                    effect.transform.origin.is_finite(),
+                    "nozzle-local effect origin must be finite: ThrusterEffects/%s"
+                    % effect_path
+                )
+                assert_true(
+                    effect.transform.basis.is_finite(),
+                    "nozzle-local effect basis must be finite: ThrusterEffects/%s"
+                    % effect_path
+                )
+                assert_true(
+                    absf(effect.transform.basis.determinant()) > 0.000001,
+                    "nozzle-local effect basis must be non-degenerate: ThrusterEffects/%s"
+                    % effect_path
+                )
+                assert_true(
+                    effect.scale.is_equal_approx(Vector3.ONE),
+                    "authored nozzle-local effect scale must begin at one: ThrusterEffects/%s"
                     % effect_path
                 )
 
