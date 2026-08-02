@@ -53,18 +53,63 @@ func run() -> void:
         "Camera C0 temporary view must begin at NONE"
     )
 
+    var initial := rig.get_current_framing()
+    assert_true(
+        is_equal_approx(float(initial["rear_offset"]), 14.0),
+        "Standard rear offset must initialize exactly"
+    )
+    assert_true(
+        is_equal_approx(float(initial["height"]), 4.0),
+        "Standard height must initialize exactly"
+    )
+
     rig.cycle_preset()
     assert_equal(
         rig.get_selected_preset(),
         ChaseCameraRig.Preset.FAR,
         "Standard must cycle to Far"
     )
+    var far_before := rig.get_current_framing()
+    rig.step_camera_for_test(0.05)
+    var far_after := rig.get_current_framing()
+    assert_true(
+        float(far_after["rear_offset"]) > float(far_before["rear_offset"]),
+        "Far transition must increase rear offset"
+    )
+    assert_true(
+        float(far_after["rear_offset"]) < 20.0,
+        "Far transition must not snap"
+    )
+    assert_true(
+        float(far_after["height"]) > float(far_before["height"]),
+        "Far transition must increase height"
+    )
+    assert_true(
+        float(far_after["hard_rear_limit"]) <= 27.0,
+        "Far transition must remain bounded"
+    )
+
     rig.cycle_preset()
     assert_equal(
         rig.get_selected_preset(),
         ChaseCameraRig.Preset.CLOSE,
         "Far must cycle to Close"
     )
+    var previous_rear := float(rig.get_current_framing()["rear_offset"])
+    for _index: int in range(8):
+        rig.step_camera_for_test(0.05)
+        var close_frame := rig.get_current_framing()
+        var current_rear := float(close_frame["rear_offset"])
+        assert_true(
+            current_rear <= previous_rear + 0.0001,
+            "Close transition must decrease monotonically"
+        )
+        assert_true(
+            current_rear <= float(close_frame["hard_rear_limit"]) + 0.0001,
+            "rear offset must never exceed current hard limit"
+        )
+        previous_rear = current_rear
+
     rig.cycle_preset()
     assert_equal(
         rig.get_selected_preset(),
@@ -78,6 +123,23 @@ func run() -> void:
         ChaseCameraRig.Preset.STANDARD,
         "invalid preset state must recover to Standard"
     )
+
+    rig.select_preset(ChaseCameraRig.Preset.FAR)
+    var selected_before_reset := rig.get_selected_preset()
+    var flight_controller := player.get_node(
+        "ShipFlightController"
+    ) as ShipFlightController
+    assert_true(
+        flight_controller != null,
+        "player must expose ShipFlightController"
+    )
+    if flight_controller != null:
+        flight_controller.reset_runtime_state()
+        assert_equal(
+            rig.get_selected_preset(),
+            selected_before_reset,
+            "flight reset must preserve selected camera preset"
+        )
 
     fixture.get_parent().remove_child(fixture)
     fixture.free()
