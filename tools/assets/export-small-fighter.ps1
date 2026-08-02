@@ -64,6 +64,33 @@ function Resolve-PythonExecutable {
     throw "Python 3 was not found on PATH."
 }
 
+function Remove-PublicationArtifacts {
+    param([string[]]$Paths)
+
+    foreach ($path in $Paths) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            Remove-Item -LiteralPath $path -Force
+        }
+    }
+}
+
+function Restore-PublicationBackups {
+    param(
+        [hashtable]$BackupToLive,
+        [string[]]$LivePaths
+    )
+
+    Remove-PublicationArtifacts -Paths $LivePaths
+    foreach ($backupPath in $BackupToLive.Keys) {
+        if (Test-Path -LiteralPath $backupPath -PathType Leaf) {
+            Move-Item `
+                -LiteralPath $backupPath `
+                -Destination $BackupToLive[$backupPath] `
+                -Force
+        }
+    }
+}
+
 $expectedSourceSha = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 $sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fighter\Small Sci-Fi Fighter.blend"
@@ -80,6 +107,12 @@ $matrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_ac
 $pendingOutputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.glb"
 $pendingManifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.manifest.json"
 $pendingMatrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.pending.json"
+$outputBackupPath = "$outputPath.publish-backup"
+$manifestBackupPath = "$manifestPath.publish-backup"
+$matrixBackupPath = "$matrixPath.publish-backup"
+$pendingPaths = @($pendingOutputPath, $pendingManifestPath, $pendingMatrixPath)
+$backupPaths = @($outputBackupPath, $manifestBackupPath, $matrixBackupPath)
+$livePaths = @($outputPath, $manifestPath, $matrixPath)
 
 foreach ($requiredPath in @(
     $sourcePath,
@@ -104,15 +137,7 @@ if ($sourceShaBefore -ne $expectedSourceSha) {
 
 New-Item -ItemType Directory -Path (Split-Path -Parent $outputPath) -Force | Out-Null
 New-Item -ItemType Directory -Path (Split-Path -Parent $matrixPath) -Force | Out-Null
-foreach ($pendingPath in @(
-    $pendingOutputPath,
-    $pendingManifestPath,
-    $pendingMatrixPath
-)) {
-    if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
-        Remove-Item -LiteralPath $pendingPath -Force
-    }
-}
+Remove-PublicationArtifacts -Paths @($pendingPaths + $backupPaths)
 
 Write-Host "Using Blender: $blenderExecutable"
 Write-Host "Using Python: $pythonExecutable"
@@ -196,35 +221,62 @@ After:  $sourceShaAfter
         throw "Fighter thruster action matrix validation failed with exit code $LASTEXITCODE"
     }
 
-    foreach ($generatedPath in @($pendingMatrixPath)) {
-        if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
-            throw "Expected pending matrix output missing: $generatedPath"
+    if (
+        -not (Test-Path -LiteralPath $pendingMatrixPath -PathType Leaf) -or
+        (Get-Item -LiteralPath $pendingMatrixPath).Length -le 0
+    ) {
+        throw "Expected pending matrix output is missing or empty: $pendingMatrixPath"
+    }
+
+    function Publish-ValidatedFiles {
+        $backupToLive = @{
+            $outputBackupPath = $outputPath
+            $manifestBackupPath = $manifestPath
+            $matrixBackupPath = $matrixPath
         }
-        if ((Get-Item -LiteralPath $generatedPath).Length -le 0) {
-            throw "Expected pending matrix output is empty: $generatedPath"
+        $published = $false
+        try {
+            foreach ($pair in @(
+                @($outputPath, $outputBackupPath),
+                @($manifestPath, $manifestBackupPath),
+                @($matrixPath, $matrixBackupPath)
+            )) {
+                if (Test-Path -LiteralPath $pair[0] -PathType Leaf) {
+                    Copy-Item `
+                        -LiteralPath $pair[0] `
+                        -Destination $pair[1] `
+                        -Force
+                }
+            }
+
+            Move-Item -LiteralPath $pendingOutputPath -Destination $outputPath -Force
+            Move-Item -LiteralPath $pendingManifestPath -Destination $manifestPath -Force
+            Move-Item -LiteralPath $pendingMatrixPath -Destination $matrixPath -Force
+            $published = $true
+        }
+        catch {
+            Restore-PublicationBackups `
+                -BackupToLive $backupToLive `
+                -LivePaths $livePaths
+            throw
+        }
+        finally {
+            if ($published) {
+                Remove-PublicationArtifacts -Paths $backupPaths
+            }
         }
     }
 
-    Move-Item -LiteralPath $pendingOutputPath -Destination $outputPath -Force
-    Move-Item -LiteralPath $pendingManifestPath -Destination $manifestPath -Force
-    Move-Item -LiteralPath $pendingMatrixPath -Destination $matrixPath -Force
+    Publish-ValidatedFiles
 }
 finally {
-    foreach ($pendingPath in @(
-        $pendingOutputPath,
-        $pendingManifestPath,
-        $pendingMatrixPath
-    )) {
-        if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
-            Remove-Item -LiteralPath $pendingPath -Force
-        }
-    }
+    Remove-PublicationArtifacts -Paths @($pendingPaths + $backupPaths)
 }
 
 Write-Host "Schema-4 fighter export completed without modifying the source."
 Write-Host "Source SHA-256: $sourceShaBefore"
 Write-Host "Generated nozzle-local source exhaust geometry for twelve runtime effects."
-Write-Host "Published validated outputs:"
+Write-Host "Published validated assets:"
 Write-Host "  $outputPath"
 Write-Host "  $manifestPath"
 Write-Host "  $matrixPath"
