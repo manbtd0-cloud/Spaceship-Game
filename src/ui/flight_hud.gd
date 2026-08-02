@@ -87,7 +87,8 @@ func _refresh_labels() -> void:
     )
     _controls_label.text = (
         "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   "
-        + "MOUSE/ARROWS PITCH-YAW   A/D ROLL   SHIFT BOOST   F MODE   R RESET"
+        + "MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   "
+        + "LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   R RESET"
     )
 
 func _disable_with_error(message: String) -> void:
