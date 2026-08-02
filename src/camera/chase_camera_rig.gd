@@ -10,7 +10,6 @@ extends Node3D
 @export var rotation_sharpness: float = 7.0
 @export var velocity_look_ahead: float = 0.08
 @export var base_fov: float = 68.0
-@export_range(0.0, 1.0) var roll_influence: float = 0.35
 
 var _target: Node3D
 var _controller: ShipFlightController
@@ -135,14 +134,8 @@ func _set_rotation_toward(look_target: Vector3) -> void:
     global_transform = Transform3D(_desired_basis(look_target), global_position)
 
 func _desired_basis(look_target: Vector3) -> Basis:
-    var ship_up := _target.global_transform.basis.y.normalized()
-    var blended_up := Vector3.UP.lerp(
-        ship_up,
-        clampf(roll_influence, 0.0, 1.0)
-    )
-    if blended_up.length_squared() < 0.0001:
-        blended_up = Vector3.UP
-    return Transform3D(Basis.IDENTITY, global_position).looking_at(
+    return ChaseCameraMath.desired_camera_basis(
+        global_position,
         look_target,
-        blended_up.normalized()
-    ).basis.orthonormalized()
+        _target.global_transform
+    )
