@@ -13,11 +13,14 @@ The playable flight room provides:
 - sustained translational boost with thermal lockout;
 - a ship-relative chase camera with no global horizon;
 - the canonical Small Sci-Fi Fighter at identity transform;
-- twelve semantic thruster channels driven by final local force and torque;
+- twelve source-exact nozzle-local thruster effects;
+- deterministic mappings for twelve pilot actions;
+- separate direct-pilot and dim assisted-correction visuals;
+- nozzle-anchored rise and fall envelopes;
 - four imported asteroid families and a deterministic collidable field;
 - a high-speed navigation course, telemetry HUD, collisions, and safe reset handling.
 
-The temporary model adapter, rear-only glow anchors, and procedural exhaust cones have been removed.
+The temporary model adapter, rear-only glow anchors, procedural exhaust cones, and free-form runtime thruster allocator have been removed.
 
 ## Requirements
 
@@ -50,16 +53,17 @@ godot --path .
 | `Escape` | Release / recapture mouse |
 | `R` | Reset to spawn, clear momentum, and reset boost heat |
 
-## Canonical fighter
+## Canonical fighter and thrusters
 
-The generated runtime files are:
+The generated and checked-in files are:
 
 ```text
 assets/runtime/ships/player/small_sci_fi_fighter.glb
 assets/runtime/ships/player/small_sci_fi_fighter.manifest.json
+config/ships/small_sci_fi_fighter_thruster_actions.json
 ```
 
-The schema-3 contract establishes:
+The schema-4 contract establishes:
 
 ```text
 Godot right/forward/up: +X / -Z / +Y
@@ -68,32 +72,49 @@ Canonical hull size: 13.714 × 3.562 × 12.000 m
 Collider: 14.0 × 3.8 × 12.2 m
 Sockets: 2 main + 2 retro + 8 maneuver
 Effect meshes: 2 main + 2 retro + 8 maneuver
-Visual strategy: exact evaluated EngineFire vertices and faces
+Visual strategy: exact evaluated EngineFire geometry in nozzle-local coordinates
+Maximum reconstruction error: 0.0001 m
 Procedural exhaust geometry: forbidden
-Runtime effect transform correction: forbidden
+Runtime matrix generation: forbidden
 ```
 
-### Why the effect geometry is exact
+### Why plume growth stays attached
 
-The preserved Blender source already contains the exhaust meshes authored against the real vents. The schema-3 exporter:
+The preserved Blender source contains exhaust meshes authored against the real vents. The schema-4 exporter:
 
-1. identifies the twelve physical plume groups from the eleven `EngineFire*` objects;
-2. preserves the exact raw mesh-component indices;
-3. copies their evaluated vertices and faces;
-4. transforms them through the same approved `Cube`-local centering and scale used by the hull;
-5. exports them as identity-transform meshes under `ThrusterEffects`;
-6. records counts, bounds, source components, and a SHA-256 geometry digest for every effect.
+1. identifies twelve physical plume groups from the eleven `EngineFire*` objects;
+2. preserves the exact evaluated source vertices, faces, and component indices;
+3. extracts a verified socket position and basis for every physical nozzle;
+4. converts each plume from canonical ship space into its nozzle-local coordinate frame;
+5. reconstructs every canonical vertex and rejects error above `0.0001 m`;
+6. exports the effect node at the verified nozzle transform;
+7. records its socket pair, local axis, transform, bounds, geometry digest, and reconstruction error.
 
-Godot does not create replacement cones and does not move, rotate, or scale these effect meshes. Runtime code changes only visibility, alpha, and emission energy.
+At full output, the authored source geometry is reconstructed exactly. Runtime scaling changes only the local plume length and radius while its node origin remains fixed at the nozzle.
 
-Generate and validate:
+### Activation behavior
+
+Direct exhaust comes from the current pilot command, never retained velocity:
+
+```text
+input held → approved direct thrusters rise toward full output
+input released → direct thrusters decay to invisible
+ship still coasting → no direct exhaust
+```
+
+Assisted damping, stabilization, and automatic banking use the same checked-in action matrix, but their visual target is capped exactly once at 35 percent. Direct output always dominates when both channels request the same thruster.
+
+The action matrix explicitly requires both main thrusters for forward acceleration and both retro thrusters for reverse acceleration. It is generated and validated offline, then checked into the repository; gameplay never solves or reshuffles mappings dynamically.
+
+Generate and validate all three publication outputs transactionally:
 
 ```powershell
 python -m unittest `
   tests.tools.test_small_fighter_calibration `
   tests.tools.test_fighter_socket_names `
   tests.tools.test_source_exact_thruster_geometry `
-  tests.tools.test_canonical_fighter_v3 `
+  tests.tools.test_canonical_fighter_v4 `
+  tests.tools.test_fighter_thruster_action_contract `
   tests.tools.test_verify_scripts `
   -v
 
@@ -101,7 +122,25 @@ python -m unittest `
 .\tools\verify\verify.ps1
 ```
 
-Do not accept an older schema-2 manifest. Both local verifiers require schema 3, twelve exact effect paths, identity effect transforms, and valid geometry digests.
+The exporter writes pending GLB, manifest, and matrix files. It validates all three before replacing live files and restores backups if publication itself fails.
+
+## Thruster calibration scene
+
+Launch the development-only calibration scene with:
+
+```powershell
+godot --path . res://scenes/debug/thruster_calibration.tscn
+```
+
+Controls:
+
+```text
+Left / Right  previous / next calibration case
+Space         pause / resume output
+Escape        exit
+```
+
+The scene cycles all twelve direct actions plus assisted translation and assisted rotation. It uses the production player scene, production visual controller, and production checked-in action matrix. The report displays each active effect path, force, torque, direct target, raw assist target, merged target, and current envelope.
 
 ## Four-source asteroid pack
 
@@ -146,10 +185,10 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 19 suites
+PASS: 21 suites
 ```
 
-Do not claim the milestone verified until the verifier imports the project, runs every suite, and boots the main scene without parser, path, or runtime errors.
+Do not claim the milestone verified until the verifier validates schema 4 and the deterministic matrix, imports the project, runs every suite, and boots the main scene without parser, path, or runtime errors.
 
 ## Asset policy
 
