@@ -14,6 +14,7 @@ var _flight_mode: FlightMode.Value = FlightMode.Value.ASSISTED
 var _boost_amount := 0.0
 var _boost_heat := 0.0
 var _boost_locked_out := false
+var _forward_thrust_amount := 0.0
 var _local_velocity := Vector3.ZERO
 var _auto_bank_offset := 0.0
 var _auto_bank_rate := 0.0
@@ -46,6 +47,7 @@ func _physics_process(delta: float) -> void:
         reset_requested.emit()
 
     var command := _input_source.sample_command(_flight_mode)
+    _forward_thrust_amount = clampf(-command.translation.z, 0.0, 1.0)
     var thermal_state := BoostThermalState.advance(
         _boost_heat,
         _boost_locked_out,
@@ -128,6 +130,9 @@ func get_active_speed_limit() -> float:
         else tuning.normal_speed_limit
     )
 
+func get_forward_thrust_amount() -> float:
+    return _forward_thrust_amount
+
 func get_auto_bank_offset_degrees() -> float:
     return rad_to_deg(_auto_bank_offset)
 
@@ -144,5 +149,6 @@ func reset_runtime_state() -> void:
     _boost_heat = 0.0
     _boost_locked_out = false
     _boost_amount = 0.0
+    _forward_thrust_amount = 0.0
     _auto_bank_offset = 0.0
     _auto_bank_rate = 0.0
