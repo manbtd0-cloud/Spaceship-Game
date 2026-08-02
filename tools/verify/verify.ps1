@@ -14,11 +14,9 @@ function Resolve-GodotExecutable {
         if ($requestedCommand) {
             return $requestedCommand.Source
         }
-
         if (Test-Path -LiteralPath $RequestedExecutable -PathType Leaf) {
             return (Resolve-Path -LiteralPath $RequestedExecutable).Path
         }
-
         throw "Godot executable not found: $RequestedExecutable"
     }
 
@@ -35,7 +33,6 @@ function Resolve-GodotExecutable {
         (Join-Path $HOME "Packages\Godot_v4.7.1-stable_win64.exe"),
         "C:\Godot\Godot_v4.7.1-stable_win64.exe"
     )
-
     foreach ($candidatePath in $commonPaths) {
         if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
             return (Resolve-Path -LiteralPath $candidatePath).Path
@@ -68,7 +65,6 @@ function Invoke-GodotStep {
 
     Write-Host "==> $Description"
     & $Executable @GodotArguments
-
     if ($LASTEXITCODE -ne 0) {
         throw "Godot exited with code $LASTEXITCODE during: $Description"
     }
@@ -98,33 +94,38 @@ function Assert-ExactPathSet {
     }
 }
 
+$expectedSourceSha = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-$requiredFiles = @(
-    "assets\runtime\ships\player\small_sci_fi_fighter.glb",
-    "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json",
-    "config\ships\small_sci_fi_fighter_thruster_actions.json",
-    "tools\assets\fighter_thruster_action_contract.py"
-)
-
-foreach ($relativePath in $requiredFiles) {
-    $absolutePath = Join-Path $repoRoot $relativePath
-    if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
-        throw "Required verification file missing: $relativePath"
-    }
-    if ((Get-Item -LiteralPath $absolutePath).Length -le 0) {
-        throw "Required verification file is empty: $relativePath"
-    }
-}
-
+$glbPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
 $matrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.json"
+$fighterValidatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v4.py"
 $matrixValidatorPath = Join-Path $repoRoot "tools\assets\fighter_thruster_action_contract.py"
-$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if ($manifest.schema_version -ne 3) {
-    throw "Hero fighter manifest schema_version must be 3"
+
+foreach ($requiredPath in @(
+    $glbPath,
+    $manifestPath,
+    $matrixPath,
+    $fighterValidatorPath,
+    $matrixValidatorPath
+)) {
+    if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        throw "Required verification file missing: $requiredPath"
+    }
+    if ((Get-Item -LiteralPath $requiredPath).Length -le 0) {
+        throw "Required verification file is empty: $requiredPath"
+    }
 }
-if ($manifest.thruster_visual_strategy -ne "source_exact_enginefire_geometry") {
-    throw "Hero fighter must use source_exact_enginefire_geometry"
+
+$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+if ($manifest.schema_version -ne 4) {
+    throw "Hero fighter manifest schema_version must be 4"
+}
+if (
+    $manifest.thruster_visual_strategy -ne
+    "source_exact_nozzle_local_enginefire_geometry"
+) {
+    throw "Hero fighter must use source_exact_nozzle_local_enginefire_geometry"
 }
 if ($manifest.procedural_exhaust_geometry -ne $false) {
     throw "Hero fighter procedural_exhaust_geometry must be false"
@@ -175,16 +176,48 @@ $expectedEffectPaths = @(
 $actualEffectPaths = @($manifest.thruster_effects | ForEach-Object { [string]$_.path })
 Assert-ExactPathSet -Expected $expectedEffectPaths -Actual $actualEffectPaths -Label "Hero fighter effect"
 
+$actualEffectSocketPaths = @(
+    $manifest.thruster_effects | ForEach-Object { [string]$_.socket_path }
+)
+Assert-ExactPathSet `
+    -Expected $expectedSocketPaths `
+    -Actual $actualEffectSocketPaths `
+    -Label "Hero fighter effect socket"
+
 foreach ($effect in $manifest.thruster_effects) {
-    if (-not $effect.identity_transform -or -not $effect.source_exact_geometry) {
-        throw "Every fighter effect must be identity-transform source-exact geometry"
+    if (-not $effect.source_exact_geometry) {
+        throw "Every fighter effect must use source-exact geometry"
     }
     if ([string]$effect.geometry_sha256 -notmatch '^[0-9a-f]{64}$') {
         throw "Every fighter effect must include a valid geometry SHA-256"
     }
+    if ($null -eq $effect.node_transform_basis) {
+        throw "Every fighter effect must include node_transform_basis"
+    }
+    if ($null -eq $effect.node_transform_origin) {
+        throw "Every fighter effect must include node_transform_origin"
+    }
+    if ($null -eq $effect.local_exhaust_axis) {
+        throw "Every fighter effect must include local_exhaust_axis"
+    }
+    if (
+        [double]$effect.maximum_reconstruction_error_m -gt 0.0001 -or
+        [double]$effect.maximum_reconstruction_error_m -lt 0.0
+    ) {
+        throw "Every fighter effect maximum_reconstruction_error_m must be within [0, 0.0001]"
+    }
 }
 
 $pythonExecutable = Resolve-PythonExecutable
+Write-Host "==> Validate schema-four fighter asset contract"
+& $pythonExecutable $fighterValidatorPath `
+    --glb $glbPath `
+    --manifest $manifestPath `
+    --source-sha $expectedSourceSha
+if ($LASTEXITCODE -ne 0) {
+    throw "Schema-four fighter validation failed with exit code $LASTEXITCODE"
+}
+
 Write-Host "==> Validate deterministic fighter thruster matrix"
 & $pythonExecutable $matrixValidatorPath `
     --manifest $manifestPath `
@@ -194,7 +227,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
-
 Write-Host "Using Godot: $godotExecutable"
 Write-Host "Project root: $repoRoot"
 
@@ -203,11 +235,9 @@ try {
     Invoke-GodotStep -Executable $godotExecutable -Description "Import project" -GodotArguments @(
         "--headless", "--path", ".", "--editor", "--quit"
     )
-
     Invoke-GodotStep -Executable $godotExecutable -Description "Run test suites" -GodotArguments @(
         "--headless", "--path", ".", "--script", "res://tests/test_runner.gd"
     )
-
     Invoke-GodotStep -Executable $godotExecutable -Description "Boot main scene briefly" -GodotArguments @(
         "--headless", "--path", ".", "--quit-after", "2"
     )
