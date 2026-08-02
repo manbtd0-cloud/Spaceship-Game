@@ -74,18 +74,18 @@ if actual_socket_paths != expected_socket_paths:
         f"Unexpected: {sorted(actual_socket_paths - expected_socket_paths)}"
     )
 expected_effect_paths = {
-    "ThrusterEffects/Main/MainLeftEffect",
-    "ThrusterEffects/Main/MainRightEffect",
-    "ThrusterEffects/Retro/RetroLeftEffect",
-    "ThrusterEffects/Retro/RetroRightEffect",
-    "ThrusterEffects/Maneuver/FrontUpperLeftEffect",
-    "ThrusterEffects/Maneuver/FrontUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearUpperLeftEffect",
-    "ThrusterEffects/Maneuver/RearUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearLowerLeftEffect",
-    "ThrusterEffects/Maneuver/RearLowerRightEffect",
-    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
-    "ThrusterEffects/Maneuver/FrontLowerRightEffect",
+    "ThrusterEffects/MainEffects/MainLeftEffect",
+    "ThrusterEffects/MainEffects/MainRightEffect",
+    "ThrusterEffects/RetroEffects/RetroLeftEffect",
+    "ThrusterEffects/RetroEffects/RetroRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect",
 }
 effects = manifest.get("thruster_effects", [])
 actual_effect_paths = {str(effect.get("path", "")) for effect in effects}
