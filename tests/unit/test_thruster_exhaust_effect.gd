@@ -39,3 +39,21 @@ func run() -> void:
         ),
         "negative output must clamp to zero"
     )
+
+    var effect := ThrusterExhaustEffect.new()
+    effect._ready()
+    var core := effect.get_node_or_null("Core") as MeshInstance3D
+    var halo := effect.get_node_or_null("Halo") as MeshInstance3D
+    assert_true(core != null, "thruster effect core mesh required")
+    assert_true(halo != null, "thruster effect halo mesh required")
+    if core != null:
+        assert_true(
+            is_equal_approx(core.rotation.x, -PI * 0.5),
+            "plume wide base must face the nozzle and taper along local -Z"
+        )
+    if halo != null:
+        assert_true(
+            is_equal_approx(halo.rotation.x, -PI * 0.5),
+            "halo wide base must face the nozzle and taper along local -Z"
+        )
+    effect.free()
