@@ -39,11 +39,30 @@ func _process(_delta: float) -> void:
     _refresh_glows()
 
 func _refresh_glows() -> void:
-    var amount := clampf(_controller.get_boost_amount(), 0.0, 1.0)
-    var length_scale := lerpf(1.0, 2.2, amount)
-    _left_glow.scale = Vector3(1.0, length_scale, 1.0)
-    _right_glow.scale = Vector3(1.0, length_scale, 1.0)
+    var strength := ShipVisualMath.exhaust_strength(
+        _controller.get_forward_thrust_amount(),
+        _controller.get_boost_amount()
+    )
+    var exhaust_visible := strength > 0.001
+    _left_glow.visible = exhaust_visible
+    _right_glow.visible = exhaust_visible
+    if not exhaust_visible:
+        return
+
+    var radius_scale := ShipVisualMath.exhaust_radius_scale(strength)
+    var length_scale := ShipVisualMath.exhaust_length_scale(strength)
+    var exhaust_scale := Vector3(
+        radius_scale,
+        length_scale,
+        radius_scale
+    )
+    _left_glow.scale = exhaust_scale
+    _right_glow.scale = exhaust_scale
 
 func _disable_with_error(message: String) -> void:
     push_error(message)
+    if _left_glow != null:
+        _left_glow.visible = false
+    if _right_glow != null:
+        _right_glow.visible = false
     set_process(false)
