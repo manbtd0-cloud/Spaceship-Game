@@ -4,40 +4,75 @@ extends RefCounted
 static func exponential_weight(sharpness: float, delta: float) -> float:
     return 1.0 - exp(-maxf(sharpness, 0.0) * maxf(delta, 0.0))
 
+static func local_forward_speed(
+    target_transform: Transform3D,
+    world_velocity: Vector3
+) -> float:
+    if not world_velocity.is_finite():
+        return 0.0
+    var local_velocity := (
+        target_transform.basis.orthonormalized().inverse()
+        * world_velocity
+    )
+    return maxf(-local_velocity.z, 0.0)
+
 static func desired_position(
     target_transform: Transform3D,
     world_velocity: Vector3,
-    base_offset: Vector3,
-    velocity_look_ahead: float,
-    speed_pullback: float,
-    max_pullback: float
+    rear_offset: float,
+    height: float,
+    speed_pullback_rate: float,
+    max_speed_pullback: float,
+    hard_rear_limit: float
 ) -> Vector3:
+    var safe_rear := maxf(rear_offset, 0.0)
+    var safe_height := maxf(height, 0.0)
+    var safe_limit := maxf(hard_rear_limit, safe_rear)
     var pullback := minf(
-        world_velocity.length() * maxf(speed_pullback, 0.0),
-        maxf(max_pullback, 0.0)
+        local_forward_speed(target_transform, world_velocity)
+        * maxf(speed_pullback_rate, 0.0),
+        maxf(max_speed_pullback, 0.0)
     )
+    var final_rear := minf(safe_rear + pullback, safe_limit)
     return (
         target_transform.origin
-        + target_transform.basis.orthonormalized() * (
-            base_offset + Vector3(0.0, 0.0, pullback)
-        )
-        - world_velocity * maxf(velocity_look_ahead, 0.0)
+        + target_transform.basis.orthonormalized()
+        * Vector3(0.0, safe_height, final_rear)
     )
 
 static func desired_look_target(
     target_transform: Transform3D,
     world_velocity: Vector3,
     velocity_look_ahead: float,
-    forward_look_ahead: float
+    forward_look_ahead: float,
+    max_prediction_distance: float
 ) -> Vector3:
+    var safe_velocity := (
+        world_velocity if world_velocity.is_finite() else Vector3.ZERO
+    )
+    var prediction := (
+        safe_velocity * maxf(velocity_look_ahead, 0.0)
+    ).limit_length(maxf(max_prediction_distance, 0.0))
     var forward := (
         target_transform.basis.orthonormalized()
         * Vector3.FORWARD
     )
     return (
         target_transform.origin
-        + world_velocity * maxf(velocity_look_ahead, 0.0)
+        + prediction
         + forward * maxf(forward_look_ahead, 0.0)
+    )
+
+static func interpolate_scalar(
+    current: float,
+    target: float,
+    sharpness: float,
+    delta: float
+) -> float:
+    return lerpf(
+        current,
+        target,
+        exponential_weight(sharpness, delta)
     )
 
 static func desired_camera_basis(
