@@ -11,7 +11,7 @@ func run() -> void:
     )
     assert_true(
         ResourceLoader.exists(HERO_GLB_PATH),
-        "mandatory runtime fighter GLB must exist"
+        "mandatory canonical fighter GLB must exist"
     )
 
     var has_exact_tuning_dependency := false
@@ -27,7 +27,7 @@ func run() -> void:
     )
     assert_true(
         has_hero_glb_dependency,
-        "player scene must reference the mandatory runtime fighter GLB"
+        "player scene must reference the canonical fighter GLB"
     )
 
     var packed := load(PLAYER_SCENE_PATH) as PackedScene
@@ -54,55 +54,73 @@ func run() -> void:
         if box != null:
             assert_equal(
                 box.size,
-                Vector3(7.2, 4.2, 10.8),
-                "collider must match enlarged hero visual envelope"
+                Vector3(14.0, 3.8, 12.2),
+                "collider must match canonical fighter envelope"
             )
 
-    assert_true(player.get_node_or_null("PlayerInputSource") is PlayerInputSource, "input source required")
-    assert_true(player.get_node_or_null("ShipFlightController") is ShipFlightController, "controller required")
-    assert_true(player.get_node_or_null("VisualRoot") is Node3D, "VisualRoot required")
     assert_true(
-        player.get_node_or_null("VisualRoot/SmallSciFiFighter") is Node3D,
-        "runtime fighter required"
+        player.get_node_or_null("PlayerInputSource") is PlayerInputSource,
+        "input source required"
     )
     assert_true(
-        player.get_node_or_null("HeroShipModelAdapter") is HeroShipModelAdapter,
-        "marker-driven model adapter required"
+        player.get_node_or_null("ShipFlightController") is ShipFlightController,
+        "flight controller required"
+    )
+    assert_true(player.get_node_or_null("VisualRoot") is Node3D, "VisualRoot required")
+
+    var fighter := player.get_node_or_null(
+        "VisualRoot/SmallSciFiFighter"
+    ) as Node3D
+    assert_true(fighter != null, "canonical runtime fighter required")
+    if fighter != null:
+        assert_true(
+            fighter.transform.origin.is_equal_approx(Vector3.ZERO),
+            "canonical fighter position must remain identity"
+        )
+        assert_true(
+            fighter.transform.basis.x.is_equal_approx(Vector3.RIGHT)
+            and fighter.transform.basis.y.is_equal_approx(Vector3.UP)
+            and fighter.transform.basis.z.is_equal_approx(Vector3.BACK),
+            "canonical fighter rotation and scale must remain identity"
+        )
+
+    assert_true(
+        player.get_node_or_null("HeroShipModelAdapter") == null,
+        "runtime model adapter must be removed"
+    )
+    assert_true(
+        player.get_node_or_null("LeftEngineGlowAnchor") == null,
+        "temporary left glow anchor must be removed"
+    )
+    assert_true(
+        player.get_node_or_null("RightEngineGlowAnchor") == null,
+        "temporary right glow anchor must be removed"
+    )
+    assert_true(
+        player.get_node_or_null("ShipVisualController") == null,
+        "rear-only visual controller must be removed"
+    )
+    assert_true(
+        player.get_node_or_null("ShipThrusterVisualController")
+        is ShipThrusterVisualController,
+        "twelve-socket visual controller required"
     )
     assert_true(player.get_node_or_null("CameraTarget") is Node3D, "camera target required")
-    assert_true(
-        player.get_node_or_null("LeftEngineGlowAnchor") is Node3D,
-        "left glow anchor required"
-    )
-    assert_true(
-        player.get_node_or_null("RightEngineGlowAnchor") is Node3D,
-        "right glow anchor required"
-    )
-
-    var left_glow := player.get_node_or_null(
-        "LeftEngineGlowAnchor/Glow"
-    ) as MeshInstance3D
-    var right_glow := player.get_node_or_null(
-        "RightEngineGlowAnchor/Glow"
-    ) as MeshInstance3D
-    assert_true(left_glow != null, "left glow mesh required")
-    assert_true(right_glow != null, "right glow mesh required")
-    if left_glow != null:
-        assert_true(not left_glow.visible, "left exhaust must start hidden")
-    if right_glow != null:
-        assert_true(not right_glow.visible, "right exhaust must start hidden")
-
-    assert_true(
-        player.get_node_or_null("ShipVisualController") is ShipVisualController,
-        "visual controller required"
-    )
-    assert_true(player.get_node_or_null("Visuals") == null, "procedural visual root must be removed")
+    assert_true(player.get_node_or_null("Visuals") == null, "procedural visual root must stay removed")
 
     var controller := player.get_node("ShipFlightController") as ShipFlightController
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
     assert_true(is_equal_approx(controller.get_boost_amount(), 0.0), "default boost")
     assert_true(is_equal_approx(controller.get_boost_heat(), 0.0), "default boost heat")
     assert_true(is_equal_approx(controller.get_forward_thrust_amount(), 0.0), "default thrust telemetry")
+    assert_true(
+        controller.get_last_force_local().is_equal_approx(Vector3.ZERO),
+        "final local force starts at zero"
+    )
+    assert_true(
+        controller.get_last_torque_local().is_equal_approx(Vector3.ZERO),
+        "final local torque starts at zero"
+    )
     assert_true(not controller.is_boost_locked_out(), "boost starts unlocked")
     assert_true(
         is_equal_approx(controller.get_active_speed_limit(), 160.0),
