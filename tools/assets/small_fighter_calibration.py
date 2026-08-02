@@ -131,17 +131,13 @@ def group_spatial_components(
         clusters.sort(key=lambda cluster: tuple(cluster))
 
     group_centroids = [cluster_centroid(cluster) for cluster in clusters]
-    maximum_intra_distance = 0.0
-    for cluster in clusters:
-        for left_offset, left_index in enumerate(cluster):
-            for right_index in cluster[left_offset + 1 :]:
-                maximum_intra_distance = max(
-                    maximum_intra_distance,
-                    _distance(
-                        component_centroids[left_index],
-                        component_centroids[right_index],
-                    ),
-                )
+    maximum_cluster_radius = 0.0
+    for cluster, center in zip(clusters, group_centroids):
+        for component_index in cluster:
+            maximum_cluster_radius = max(
+                maximum_cluster_radius,
+                _distance(component_centroids[component_index], center),
+            )
 
     minimum_inter_distance = float("inf")
     for left_index, left_center in enumerate(group_centroids):
@@ -152,13 +148,13 @@ def group_spatial_components(
             )
 
     if expected_groups > 1 and minimum_inter_distance <= max(
-        maximum_intra_distance * 3.0,
+        maximum_cluster_radius * 3.0,
         1e-5,
     ):
         raise ValueError(
             "plume component groups are not spatially distinct: "
             f"minimum_inter={minimum_inter_distance:.6f}, "
-            f"maximum_intra={maximum_intra_distance:.6f}, "
+            f"maximum_radius={maximum_cluster_radius:.6f}, "
             f"centroids={group_centroids}"
         )
 
