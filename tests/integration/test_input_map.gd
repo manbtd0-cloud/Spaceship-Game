@@ -12,9 +12,9 @@ func run() -> void:
         "Up Arrow must pitch the ship downward"
     )
 
-func _physical_key_for_action(action: StringName) -> Key:
+func _physical_key_for_action(action: StringName) -> int:
     for event: InputEvent in InputMap.action_get_events(action):
         var key_event := event as InputEventKey
         if key_event != null:
-            return key_event.physical_keycode
-    return KEY_NONE
+            return int(key_event.physical_keycode)
+    return int(KEY_NONE)
