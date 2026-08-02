@@ -2,9 +2,35 @@ class_name AsteroidField
 extends Node3D
 
 const ASTEROID_BODY_SCENE := preload("res://scenes/environment/asteroid_body.tscn")
+const RUNTIME_MODEL_PATHS := {
+    &"bennu": "res://assets/runtime/environment/asteroids/bennu.glb",
+    &"eros": "res://assets/runtime/environment/asteroids/eros.glb",
+    &"legacy_a": "res://assets/runtime/environment/asteroids/legacy_a.glb",
+    &"legacy_b": "res://assets/runtime/environment/asteroids/legacy_b.glb",
+}
 
 var _built := false
 var _family_counts: Dictionary = {}
+
+static func load_runtime_models() -> Dictionary:
+    var models: Dictionary = {}
+    for family: StringName in AsteroidFieldLayout.FAMILY_IDS:
+        var path := String(RUNTIME_MODEL_PATHS.get(family, ""))
+        if path.is_empty() or not ResourceLoader.exists(path):
+            push_warning("Canonical asteroid runtime asset missing: %s" % path)
+            return {}
+        var model := load(path) as PackedScene
+        if model == null:
+            push_warning("Canonical asteroid runtime asset failed to load: %s" % path)
+            return {}
+        models[family] = model
+    return models
+
+func build_runtime_pack() -> bool:
+    var models := load_runtime_models()
+    if models.size() != AsteroidFieldLayout.FAMILY_IDS.size():
+        return false
+    return build(models)
 
 func build(models: Dictionary) -> bool:
     clear_field()
