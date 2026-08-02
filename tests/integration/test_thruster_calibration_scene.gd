@@ -25,7 +25,7 @@ func run() -> void:
     if packed == null:
         return
 
-    var calibration := packed.instantiate()
+    var calibration := packed.instantiate() as ThrusterCalibration
     assert_true(calibration != null, "thruster calibration scene must instantiate")
     if calibration == null:
         return
