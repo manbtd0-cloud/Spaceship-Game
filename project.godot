@@ -58,11 +58,11 @@ roll_right={
 }
 pitch_up={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":4194320)]
+"events": [Object(InputEventKey,"physical_keycode":4194322)]
 }
 pitch_down={
 "deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":4194322)]
+"events": [Object(InputEventKey,"physical_keycode":4194320)]
 }
 yaw_left={
 "deadzone": 0.15,
