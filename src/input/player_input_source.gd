@@ -11,6 +11,10 @@ const REQUIRED_ACTIONS: Array[StringName] = [
     &"strafe_right",
     &"strafe_up",
     &"strafe_down",
+    &"pitch_up",
+    &"pitch_down",
+    &"yaw_left",
+    &"yaw_right",
     &"roll_left",
     &"roll_right",
     &"boost",
@@ -50,6 +54,10 @@ func sample_command(current_mode: FlightMode.Value) -> FlightCommand:
     )
     command.rotation = PlayerInputMath.compose_rotation(
         _mouse_delta,
+        _strength(&"pitch_up"),
+        _strength(&"pitch_down"),
+        _strength(&"yaw_left"),
+        _strength(&"yaw_right"),
         _strength(&"roll_left"),
         _strength(&"roll_right"),
         mouse_sensitivity,
