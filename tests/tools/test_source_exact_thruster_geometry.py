@@ -16,7 +16,10 @@ from nozzle_local_geometry import (  # noqa: E402
     reconstruct_canonical_vertices,
 )
 from small_fighter_calibration import group_spatial_component_indices  # noqa: E402
-from thruster_paths import classify_effect_name  # noqa: E402
+from thruster_paths import (  # noqa: E402
+    classify_effect_name,
+    effect_path_to_socket_path,
+)
 
 
 class SourceExactThrusterGeometryTests(unittest.TestCase):
@@ -49,6 +52,18 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
         self.assertEqual(
             classify_effect_name("FrontUpper", (-1.0, 0.0, 0.0)),
             "ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect",
+        )
+        self.assertEqual(
+            effect_path_to_socket_path(
+                "ThrusterEffects/MainEffects/MainLeftEffect"
+            ),
+            "Thrusters/Main/MainLeft",
+        )
+        self.assertEqual(
+            effect_path_to_socket_path(
+                "ThrusterEffects/ManeuverEffects/RearLowerRightEffect"
+            ),
+            "Thrusters/Maneuver/RearLowerRight",
         )
 
     def test_nozzle_local_conversion_reconstructs_canonical_vertices(self) -> None:
