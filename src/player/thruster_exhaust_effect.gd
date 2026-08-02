@@ -95,13 +95,13 @@ func _build_visuals() -> void:
     _core = MeshInstance3D.new()
     _core.name = "Core"
     _core.mesh = _make_plume_mesh(0.36, 0.08)
-    _core.rotation.x = PI * 0.5
+    _core.rotation.x = -PI * 0.5
     add_child(_core)
 
     _halo = MeshInstance3D.new()
     _halo.name = "Halo"
     _halo.mesh = _make_plume_mesh(0.48, 0.12)
-    _halo.rotation.x = PI * 0.5
+    _halo.rotation.x = -PI * 0.5
     add_child(_halo)
 
     var core_mesh := _core.mesh as CylinderMesh
