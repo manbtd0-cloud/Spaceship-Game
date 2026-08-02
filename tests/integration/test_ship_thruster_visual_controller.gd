@@ -1,6 +1,8 @@
 extends "res://tests/support/test_case.gd"
 
 func run() -> void:
+    _test_unique_logical_root_lookup()
+
     var packed := load("res://scenes/player/player_interceptor.tscn") as PackedScene
     assert_true(packed != null, "player interceptor scene must load")
     if packed == null:
@@ -44,3 +46,34 @@ func run() -> void:
         )
 
     player.free()
+
+func _test_unique_logical_root_lookup() -> void:
+    var imported_wrapper := Node3D.new()
+    var generated_root := Node3D.new()
+    var logical_root := Node3D.new()
+    logical_root.name = "ThrusterEffects"
+    imported_wrapper.add_child(generated_root)
+    generated_root.add_child(logical_root)
+
+    assert_equal(
+        ShipThrusterVisualController.find_unique_logical_root(
+            imported_wrapper,
+            &"ThrusterEffects"
+        ),
+        logical_root,
+        "logical hierarchy lookup must ignore imported wrapper depth"
+    )
+
+    var duplicate := Node3D.new()
+    duplicate.name = "ThrusterEffects"
+    imported_wrapper.add_child(duplicate)
+    assert_equal(
+        ShipThrusterVisualController.find_unique_logical_root(
+            imported_wrapper,
+            &"ThrusterEffects"
+        ),
+        null,
+        "duplicate logical roots must be rejected"
+    )
+
+    imported_wrapper.free()
