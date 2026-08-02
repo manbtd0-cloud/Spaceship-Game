@@ -71,6 +71,8 @@ $scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v3.p
 $validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v3.py"
 $outputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+$pendingOutputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.glb"
+$pendingManifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.manifest.json"
 
 foreach ($requiredPath in @($sourcePath, $scriptPath, $validatorPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
@@ -89,10 +91,9 @@ if ($sourceShaBefore -ne $expectedSourceSha) {
 
 $outputDirectory = Split-Path -Parent $outputPath
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
-
-foreach ($stalePath in @($outputPath, $manifestPath)) {
-    if (Test-Path -LiteralPath $stalePath -PathType Leaf) {
-        Remove-Item -LiteralPath $stalePath -Force
+foreach ($pendingPath in @($pendingOutputPath, $pendingManifestPath)) {
+    if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
+        Remove-Item -LiteralPath $pendingPath -Force
     }
 }
 
@@ -100,8 +101,9 @@ Write-Host "Using Blender: $blenderExecutable"
 Write-Host "Using Python: $pythonExecutable"
 Write-Host "Source: $sourcePath"
 Write-Host "Source SHA-256: $sourceShaBefore"
-Write-Host "Canonical GLB: $outputPath"
-Write-Host "Schema-3 manifest: $manifestPath"
+Write-Host "Pending GLB: $pendingOutputPath"
+Write-Host "Pending schema-3 manifest: $pendingManifestPath"
+Write-Host "Live GLB after validation: $outputPath"
 Write-Host "Thruster visual strategy: source-exact EngineFire geometry"
 
 $blenderArguments = @(
@@ -113,47 +115,65 @@ $blenderArguments = @(
     $scriptPath,
     "--",
     "--output",
-    $outputPath,
+    $pendingOutputPath,
     "--manifest",
-    $manifestPath
+    $pendingManifestPath
 )
 
-& $blenderExecutable @blenderArguments
-if ($LASTEXITCODE -ne 0) {
-    throw "Blender schema-3 fighter export failed with exit code $LASTEXITCODE"
-}
+try {
+    & $blenderExecutable @blenderArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Blender schema-3 fighter export failed with exit code $LASTEXITCODE"
+    }
 
-$sourceShaAfter = (
-    Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256
-).Hash.ToLowerInvariant()
-if ($sourceShaAfter -ne $sourceShaBefore) {
-    throw @"
+    $sourceShaAfter = (
+        Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if ($sourceShaAfter -ne $sourceShaBefore) {
+        throw @"
 The preserved Blender source changed during canonical export.
 Before: $sourceShaBefore
 After:  $sourceShaAfter
 "@
-}
-
-foreach ($generatedPath in @($outputPath, $manifestPath)) {
-    if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
-        throw "Expected canonical export output missing: $generatedPath"
     }
-    if ((Get-Item -LiteralPath $generatedPath).Length -le 0) {
-        throw "Expected canonical export output is empty: $generatedPath"
-    }
-}
 
-& $pythonExecutable $validatorPath `
-    --glb $outputPath `
-    --manifest $manifestPath `
-    --source-sha $sourceShaBefore
-if ($LASTEXITCODE -ne 0) {
-    throw "Schema-3 source-exact fighter validation failed with exit code $LASTEXITCODE"
+    foreach ($generatedPath in @($pendingOutputPath, $pendingManifestPath)) {
+        if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
+            throw "Expected pending canonical export output missing: $generatedPath"
+        }
+        if ((Get-Item -LiteralPath $generatedPath).Length -le 0) {
+            throw "Expected pending canonical export output is empty: $generatedPath"
+        }
+    }
+
+    $pendingManifest = Get-Content -LiteralPath $pendingManifestPath -Raw | ConvertFrom-Json
+    $pendingManifest.output_path = $outputPath.Replace("\", "/")
+    $pendingManifest |
+        ConvertTo-Json -Depth 100 |
+        Set-Content -LiteralPath $pendingManifestPath -Encoding utf8
+
+    & $pythonExecutable $validatorPath `
+        --glb $pendingOutputPath `
+        --manifest $pendingManifestPath `
+        --source-sha $sourceShaBefore
+    if ($LASTEXITCODE -ne 0) {
+        throw "Schema-3 source-exact fighter validation failed with exit code $LASTEXITCODE"
+    }
+
+    Move-Item -LiteralPath $pendingOutputPath -Destination $outputPath -Force
+    Move-Item -LiteralPath $pendingManifestPath -Destination $manifestPath -Force
+}
+finally {
+    foreach ($pendingPath in @($pendingOutputPath, $pendingManifestPath)) {
+        if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
+            Remove-Item -LiteralPath $pendingPath -Force
+        }
+    }
 }
 
 Write-Host "Schema-3 fighter export completed without modifying the source."
-Write-Host "Source SHA-256: $sourceShaAfter"
+Write-Host "Source SHA-256: $sourceShaBefore"
 Write-Host "Generated exact source exhaust geometry for twelve runtime effects."
-Write-Host "Generated:"
+Write-Host "Published validated assets:"
 Write-Host "  $outputPath"
 Write-Host "  $manifestPath"
