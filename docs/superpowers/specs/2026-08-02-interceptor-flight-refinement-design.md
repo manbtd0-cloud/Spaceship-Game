@@ -24,8 +24,6 @@ The player ship is an agile interceptor with simcade handling:
 
 ## Control Scheme
 
-The approved default mapping is:
-
 | Input | Action |
 |---|---|
 | W / S | Forward / reverse thrust |
@@ -39,7 +37,7 @@ The approved default mapping is:
 | R | Reset to the flight-room spawn |
 | Escape | Release / capture mouse |
 
-Mouse is the primary steering interface. Arrow keys mirror pitch and yaw for keyboard-only control. A/D are reserved for deliberate roll so banking and attitude control remain expressive.
+Mouse is the primary steering interface. Arrow keys mirror pitch and yaw for keyboard-only control. A/D are reserved for deliberate roll. Space/Ctrl remain true vertical translation; a nose-led climb is performed by pitching up and applying forward thrust.
 
 ## Flight Modes
 
@@ -52,7 +50,8 @@ Assisted mode combines direct thruster control with restrained flight-computer c
 - Q/E and Space/Ctrl remain independent lateral and vertical translation.
 - Forward thrust while the nose changes direction gradually curves the velocity vector toward local `-Z`.
 - Velocity-vector steering scales with forward-thrust input, current speed, alignment error, and tuning.
-- The correction is force-based or acceleration-based and continuous; it never replaces or rotates velocity instantly.
+- Steering is implemented as a bounded lateral force perpendicular to the current velocity vector, preserving speed magnitude as closely as the physics step permits.
+- Steering never assigns, rotates, or clamps velocity directly.
 - Lateral, vertical, and angular drift are damped gradually.
 - Forward momentum is preserved when forward thrust is released.
 - There is no automatic return to cruise speed and no automatic braking toward rest.
@@ -61,12 +60,13 @@ Assisted mode combines direct thruster control with restrained flight-computer c
 
 Assisted yaw produces a restrained automatic roll into the turn.
 
-- Initial maximum automatic bank target: approximately 22 degrees.
-- Bank target scales with yaw command and current maneuvering state.
-- Releasing yaw returns the bank target smoothly toward level.
+- Initial maximum automatic bank offset: 22 degrees.
+- Bank offset scales with yaw command and current maneuvering state.
+- The offset is tracked relative to the pilot-commanded attitude, not relative to global `Vector3.UP`; the system assumes no world horizon.
+- Releasing yaw smoothly returns only the generated bank offset toward zero.
 - Manual A/D roll input immediately overrides automatic banking.
 - Automatic banking resumes only after manual roll input is released.
-- The system must avoid oscillation and sudden roll snapping.
+- Torque is bounded and damped to avoid oscillation and snapping.
 
 ### Manual Mode
 
@@ -84,22 +84,22 @@ Mode changes preserve transform, linear velocity, angular velocity, boost heat, 
 
 ## Speed Envelope
 
-The speed envelope applies to total world-space speed, regardless of direction.
+The speed envelope applies to total world-space speed, regardless of direction. It modifies only the component of requested translational force that would increase total speed. Perpendicular steering force and force opposing the current velocity remain available.
 
 ### Normal Envelope
 
 - Target soft speed: 160 m/s.
-- Translational thrust authority fades smoothly as total speed approaches 160 m/s.
-- There is no hard velocity clamp.
-- There is no automatic braking force.
-- If the ship is already above 160 m/s, non-boosted thrust must not increase total speed further, but momentum remains untouched.
-- Thrust that reduces total speed or redirects the velocity vector remains available.
+- Positive-speed thrust attenuation begins at 120 m/s.
+- The increasing-speed component of thrust falls smoothly to zero at 160 m/s.
+- There is no hard velocity clamp or automatic braking force.
+- If already above 160 m/s, non-boosted thrust cannot increase total speed further, but momentum remains untouched.
+- Thrust that reduces speed or redirects the velocity vector remains available.
 
 ### Boost Envelope
 
 - Target boosted soft speed: 240 m/s.
-- Boost raises the active thrust envelope from 160 m/s to 240 m/s.
-- Thrust fades smoothly near 240 m/s.
+- Positive-speed thrust attenuation begins at 180 m/s while boost is effective.
+- The increasing-speed component of boosted thrust falls smoothly to zero at 240 m/s.
 - When boost ends above 160 m/s, excess speed is preserved.
 - Normal thrust cannot add further total speed until the ship falls below the normal envelope.
 - No immediate or gradual bleed-back to 160 m/s is applied.
@@ -110,16 +110,19 @@ The envelope is a gameplay-management system, not simulated atmospheric drag.
 
 Boost amplifies all translational thrust: forward, reverse, lateral, and vertical. Rotational torque is unchanged.
 
+Heat is normalized from `0.0` to `1.0`.
+
 ### Initial Endurance Cycle
 
-- Approximately 12 seconds of continuous full boost from cold to overheat.
-- Heat buildup is uniform per second whenever boost is actively amplifying non-zero translational input.
-- At maximum heat, boost enters a complete lockout.
+- Cold-to-overheat buildup rate: `1 / 12` heat per second.
+- Heat builds at the full configured rate whenever boost is held and any non-zero translational command is being amplified; direction and command magnitude do not weight the rate.
+- At `1.0` heat, boost enters complete lockout.
 - Normal thrust and all attitude controls remain available during lockout.
-- Boost becomes available only after heat falls below a recovery threshold corresponding to roughly 6 seconds of cooling from maximum heat.
-- Complete cooling should take approximately 14 to 16 seconds.
+- Cooling rate: `1 / 15` heat per second.
+- Recovery threshold: `0.60` heat, reached after approximately 6 seconds of cooling from maximum.
+- Full cooling takes approximately 15 seconds.
 - Heat and lockout state persist through flight-mode changes.
-- Reset returns the thermal state to the documented spawn default.
+- Reset returns heat to `0.0` and clears lockout.
 
 The HUD must display heat, active boost, overheat lockout, and recovery progress clearly.
 
@@ -129,21 +132,18 @@ The HUD must display heat, active boost, overheat lockout, and recovery progress
 
 `FlightTuning` remains the central editable resource and gains values for:
 
-- normal soft-speed threshold;
-- boosted soft-speed threshold;
-- speed-envelope onset and response curve;
+- normal envelope onset and soft-speed threshold;
+- boosted envelope onset and soft-speed threshold;
+- speed-envelope response curve;
 - translational boost multiplier;
-- heat buildup rate;
-- cooling rate;
-- lockout threshold;
-- recovery threshold;
+- heat buildup and cooling rates;
+- lockout and recovery thresholds;
 - assisted velocity-vector steering strength;
 - minimum speed for steering assistance;
-- maximum steering acceleration;
+- maximum steering force;
 - lateral and vertical drift damping;
 - angular damping;
-- auto-bank maximum angle;
-- auto-bank response and recovery;
+- auto-bank maximum offset, response, and recovery;
 - separate pitch, yaw, and roll torque multipliers;
 - camera speed pullback and FOV response.
 
@@ -151,14 +151,14 @@ The HUD must display heat, active boost, overheat lockout, and recovery progress
 
 The design adds or extends focused, deterministic units:
 
-- `FlightModel`: remains the only pure force and torque calculator;
+- `FlightModel`: remains the only pure calculator that produces final local force and torque commands;
 - `BoostThermalState`: computes heat, lockout, recovery, and effective boost state;
-- `FlightSteeringMath`: computes assisted velocity-vector steering without mutating physics state;
-- `CoordinatedTurnMath`: computes automatic bank targets and blending;
+- `FlightSteeringMath`: computes a bounded assisted steering-force contribution without mutating physics state;
+- `CoordinatedTurnMath`: computes automatic bank offset and corrective roll-torque contribution;
 - `PlayerInputMath`: composes mouse and arrow pitch/yaw, A/D roll, and Q/E lateral translation;
 - `ChaseCameraMath`: computes speed-aware pullback, look targeting, and FOV.
 
-Runtime nodes store state, call these units, and apply the resulting forces or torques. They do not duplicate core equations.
+`FlightModel` composes the contributions from the other pure helpers into the final output. Runtime nodes store state, call pure units, and apply only the resulting force and torque. Equations are not duplicated in runtime nodes.
 
 ### Controller Responsibilities
 
@@ -169,9 +169,8 @@ Runtime nodes store state, call these units, and apply the resulting forces or t
 3. boost thermal state;
 4. active speed envelope;
 5. pure flight-model computation;
-6. assisted steering and banking outputs;
-7. force and torque application;
-8. telemetry exposure.
+6. force and torque application;
+7. telemetry exposure.
 
 It must never hard-clamp `linear_velocity` during ordinary flight.
 
@@ -198,15 +197,11 @@ The source file remains untouched. A repeatable Blender preparation/export step 
 - preserve useful material slots;
 - generate valid normals and tangents;
 - avoid unnecessary animation, armature, or source-only data;
-- export one optimized GLB to:
-
-`assets/runtime/ships/player/small_sci_fi_fighter.glb`
+- export one optimized GLB to `assets/runtime/ships/player/small_sci_fighter.glb`.
 
 The Godot scene must not require a corrective rotation to make the ship face forward.
 
 ### Godot Player Hierarchy
-
-The player hierarchy becomes:
 
 ```text
 PlayerInterceptor (RigidBody3D)
@@ -228,22 +223,18 @@ Godot-owned nodes may provide engine glow, boost intensity, navigation lights, f
 
 ## Camera
 
-The chase camera retains smooth sibling-rig behavior and gains tuning for the higher speed range.
-
 - Base FOV remains approximately 68 degrees.
-- FOV widens gradually toward approximately 82 to 85 degrees near the boosted envelope.
+- FOV widens gradually toward 84 degrees near the boosted envelope.
 - Speed adds moderate camera pullback.
 - Boost adds a restrained additional FOV and pullback response.
 - Position, rotation, bank influence, and FOV remain exponentially smoothed.
 - No ordinary-flight camera snapping is allowed.
-- Camera prediction considers both world velocity and changing ship-forward direction.
+- Camera prediction considers world velocity and changing ship-forward direction.
 - Partial roll influence remains for spatial readability.
 
 ## Flight Room
 
-The current room remains one scene and preserves the low-speed handling section near spawn.
-
-It is extended modestly to support the 160/240 m/s envelopes:
+The current room remains one scene and preserves the low-speed handling section near spawn. It is extended modestly to support the 160/240 m/s envelopes:
 
 - longer route;
 - wider navigation-ring spacing;
@@ -278,25 +269,24 @@ Telemetry APIs remain read-only from the HUD.
 - Incorrect runtime asset path casing fails verification.
 - Invalid model bounds or orientation fail the asset contract.
 - Overheat affects boost only; it must not disable normal thrust or rotation.
-- Reset restores spawn transform, clears linear and angular velocity, and restores the documented thermal default.
+- Reset restores spawn transform, clears linear and angular velocity, resets heat to zero, and clears lockout.
 
 ## Automated Verification
 
 Deterministic tests must cover:
 
-- smooth force reduction approaching 160 m/s;
-- smooth force reduction approaching 240 m/s while boost is available;
-- no hard velocity clamp;
-- no forced braking above the normal envelope;
-- thrust that reduces speed remains available above the envelope;
-- uniform heat buildup for any boosted translation direction;
+- positive-speed force reduction from 120 to 160 m/s;
+- positive-speed boosted-force reduction from 180 to 240 m/s;
+- no hard velocity clamp or forced braking;
+- decelerating and perpendicular force remaining available above the envelope;
+- uniform heat buildup for any boosted translation direction or magnitude;
 - lockout at maximum heat;
-- recovery only below the configured threshold;
-- approximately 12-second heat endurance under fixed-step simulation;
-- expected recovery and full-cooling durations within documented tolerances;
-- assisted velocity-vector steering toward local `-Z`;
+- recovery only below `0.60` heat;
+- 12-second heat endurance under fixed-step simulation;
+- 6-second lockout recovery and 15-second full-cooling timing within fixed-step tolerance;
+- assisted perpendicular steering force toward local `-Z`;
 - no assisted steering in manual mode;
-- automatic bank bounded near 22 degrees;
+- automatic bank bounded at 22 degrees without using global up;
 - manual roll overriding automatic bank;
 - mouse and arrow pitch/yaw composition;
 - A/D roll mapping;
@@ -322,12 +312,12 @@ The milestone is accepted only when all of these are observed in Godot 4.7.1 Sta
 7. Releasing forward thrust in assisted mode preserves forward momentum.
 8. Manual mode has no hidden stabilization or steering.
 9. Manual angular velocity persists after rotational input is released.
-10. Normal acceleration fades smoothly near 160 m/s.
-11. Boost approaches 240 m/s without a hard clamp.
+10. Normal acceleration fades smoothly from 120 to 160 m/s.
+11. Boost acceleration fades smoothly from 180 to 240 m/s.
 12. Ending boost above 160 m/s preserves excess momentum.
 13. Boost overheats after approximately 12 seconds of sustained use.
 14. Overheat disables boost but not ordinary flight controls.
-15. Boost recovers only after cooling below the restart threshold.
+15. Boost recovers after approximately 6 seconds of cooling and fully cools in approximately 15 seconds.
 16. Camera pullback and FOV remain smooth across the full speed range.
 17. The extended course remains readable and navigable at low and high speed.
 18. The imported fighter faces `-Z`, uses `+Y` up, fits the approved envelope, and appears centered on its collider.
