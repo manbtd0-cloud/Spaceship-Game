@@ -48,8 +48,30 @@ if not isinstance(frame, dict) or any(frame.get(key) != value for key, value in 
     raise SystemExit(
         "Hero fighter canonical frame must be +X right, -Z forward, +Y up, identity root"
     )
-if len(manifest.get("sockets", [])) != 12:
+sockets = manifest.get("sockets", [])
+if len(sockets) != 12:
     raise SystemExit("Hero fighter manifest must contain exactly twelve thruster sockets")
+expected_socket_paths = {
+    "Thrusters/Main/MainLeft",
+    "Thrusters/Main/MainRight",
+    "Thrusters/Retro/RetroLeft",
+    "Thrusters/Retro/RetroRight",
+    "Thrusters/Maneuver/FrontUpperLeft",
+    "Thrusters/Maneuver/FrontUpperRight",
+    "Thrusters/Maneuver/RearUpperLeft",
+    "Thrusters/Maneuver/RearUpperRight",
+    "Thrusters/Maneuver/RearLowerLeft",
+    "Thrusters/Maneuver/RearLowerRight",
+    "Thrusters/Maneuver/FrontLowerLeft",
+    "Thrusters/Maneuver/FrontLowerRight",
+}
+actual_socket_paths = {str(socket.get("path", "")) for socket in sockets}
+if actual_socket_paths != expected_socket_paths:
+    missing = sorted(expected_socket_paths - actual_socket_paths)
+    unexpected = sorted(actual_socket_paths - expected_socket_paths)
+    raise SystemExit(
+        f"Hero fighter socket paths mismatch. Missing: {missing} Unexpected: {unexpected}"
+    )
 PY
 
 if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
