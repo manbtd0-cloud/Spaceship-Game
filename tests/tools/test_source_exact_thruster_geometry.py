@@ -126,6 +126,18 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
         self.assertIn("from_pydata", geometry_source)
         self.assertNotIn("CylinderMesh", v3_source + v4_source + geometry_source)
 
+    def test_schema_four_uses_empty_pivots_with_identity_mesh_children(self) -> None:
+        source = (
+            ASSET_TOOLS / "source_exact_thruster_geometry.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("pivot = _create_empty(leaf_name, parent, collection)", source)
+        self.assertIn('mesh_name = f"{leaf_name}Mesh"', source)
+        self.assertIn("effect_mesh.parent = pivot", source)
+        self.assertIn(
+            "effect_mesh.matrix_basis = Matrix.Identity(4)",
+            source,
+        )
+
     def test_blender_entrypoints_bootstrap_sibling_module_imports(self) -> None:
         for name in (
             "export_small_sci_fi_fighter_v3.py",
