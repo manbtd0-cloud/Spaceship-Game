@@ -5,6 +5,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_flight_model.gd",
     "res://tests/unit/test_flight_speed_envelope.gd",
     "res://tests/unit/test_boost_thermal_state.gd",
+    "res://tests/unit/test_flight_steering_math.gd",
     "res://tests/unit/test_player_input_math.gd",
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/integration/test_player_scene.gd",
