@@ -47,6 +47,7 @@ NOZZLE_NAME_TOKENS = (
     "retro",
     "rcs",
 )
+ZERO_VECTOR = Vector((0.0, 0.0, 0.0))
 OUTPUT_DIR: Path | None = None
 
 
@@ -273,7 +274,9 @@ def create_material(
         base_color = principled.inputs.get("Base Color")
         if base_color is not None:
             base_color.default_value = color
-        emission_color = principled.inputs.get("Emission Color") or principled.inputs.get("Emission")
+        emission_color = principled.inputs.get("Emission Color")
+        if emission_color is None:
+            emission_color = principled.inputs.get("Emission")
         if emission_color is not None:
             emission_color.default_value = color
         emission_input = principled.inputs.get("Emission Strength")
@@ -429,7 +432,13 @@ def build_overlay(
             collection,
         )
 
-    create_uv_sphere("AuditWorldOrigin", Vector.ZERO, marker_radius, magenta, collection)
+    create_uv_sphere(
+        "AuditWorldOrigin",
+        ZERO_VECTOR,
+        marker_radius,
+        magenta,
+        collection,
+    )
     create_uv_sphere("AuditBoundsCenter", center, marker_radius, yellow, collection)
 
     axis_length = maximum_dimension * 0.28
@@ -439,11 +448,11 @@ def build_overlay(
         ("Y", Vector((0.0, 1.0, 0.0)), green),
         ("Z", Vector((0.0, 0.0, 1.0)), blue),
     ):
-        shaft_end = Vector.ZERO + direction * (axis_length - cone_length)
-        tip = Vector.ZERO + direction * axis_length
+        shaft_end = ZERO_VECTOR + direction * (axis_length - cone_length)
+        tip = ZERO_VECTOR + direction * axis_length
         create_cylinder_between(
             f"AuditAxis{axis_name}",
-            Vector.ZERO,
+            ZERO_VECTOR,
             shaft_end,
             line_radius * 1.8,
             material,
@@ -470,7 +479,7 @@ def build_overlay(
     camera_label = create_text(
         "AuditCameraLabel",
         "",
-        Vector.ZERO,
+        ZERO_VECTOR,
         0.1,
         white,
         collection,
@@ -532,6 +541,10 @@ def configure_scene(
     scene.render.film_transparent = False
     scene.render.use_file_extension = True
 
+    for obj in scene.objects:
+        if obj.type == "LIGHT":
+            obj.hide_render = True
+
     world = scene.world or bpy.data.worlds.new("HeroShipAuditWorld")
     scene.world = world
     world.use_nodes = True
@@ -580,7 +593,7 @@ def configure_camera_label(
 ) -> None:
     label.parent = camera
     label.matrix_parent_inverse = Matrix.Identity(4)
-    label.rotation_euler = Vector.ZERO
+    label.rotation_euler = ZERO_VECTOR
     label.data.body = (
         f"VIEW: {view_name.upper()}\n"
         f"CAMERA FROM WORLD: ({camera_position_direction.x:+.2f}, "
