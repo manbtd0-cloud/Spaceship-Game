@@ -5,19 +5,21 @@ GODOT_BIN="${GODOT_BIN:-godot}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-required_runtime_files=(
+required_files=(
     "assets/runtime/ships/player/small_sci_fi_fighter.glb"
     "assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
+    "config/ships/small_sci_fi_fighter_thruster_actions.json"
+    "tools/assets/fighter_thruster_action_contract.py"
 )
 
-for relative_path in "${required_runtime_files[@]}"; do
+for relative_path in "${required_files[@]}"; do
     absolute_path="$REPO_ROOT/$relative_path"
     if [[ ! -f "$absolute_path" ]]; then
-        printf 'ERROR: Required runtime asset missing: %s\n' "$relative_path" >&2
+        printf 'ERROR: Required verification file missing: %s\n' "$relative_path" >&2
         exit 1
     fi
     if [[ ! -s "$absolute_path" ]]; then
-        printf 'ERROR: Required runtime asset is empty: %s\n' "$relative_path" >&2
+        printf 'ERROR: Required verification file is empty: %s\n' "$relative_path" >&2
         exit 1
     fi
 done
@@ -28,6 +30,9 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
 fi
 
 manifest_path="$REPO_ROOT/assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
+matrix_path="$REPO_ROOT/config/ships/small_sci_fi_fighter_thruster_actions.json"
+matrix_validator_path="$REPO_ROOT/tools/assets/fighter_thruster_action_contract.py"
+
 "$PYTHON_BIN" - "$manifest_path" <<'PY'
 import json
 import re
@@ -35,7 +40,7 @@ import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-manifest = json.loads(path.read_text(encoding="utf-8"))
+manifest = json.loads(path.read_text(encoding="utf-8-sig"))
 if manifest.get("schema_version") != 3:
     raise SystemExit("Hero fighter manifest schema_version must be 3")
 if manifest.get("thruster_visual_strategy") != "source_exact_enginefire_geometry":
@@ -100,6 +105,10 @@ for effect in effects:
     if re.fullmatch(r"[0-9a-f]{64}", str(effect.get("geometry_sha256", ""))) is None:
         raise SystemExit("Every fighter effect must include a valid geometry SHA-256")
 PY
+
+"$PYTHON_BIN" "$matrix_validator_path" \
+    --manifest "$manifest_path" \
+    --matrix "$matrix_path"
 
 if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
     printf 'ERROR: Godot executable not found: %s\n' "$GODOT_BIN" >&2
