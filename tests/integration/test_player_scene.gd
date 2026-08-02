@@ -91,6 +91,19 @@ func run() -> void:
         "generated bank starts neutral"
     )
 
+    var camera_packed := load("res://scenes/camera/chase_camera_rig.tscn") as PackedScene
+    assert_true(camera_packed != null, "camera scene must load")
+    if camera_packed != null:
+        var camera_rig := camera_packed.instantiate() as ChaseCameraRig
+        assert_true(camera_rig != null, "camera root must use ChaseCameraRig")
+        if camera_rig != null:
+            assert_equal(
+                camera_rig.target_path,
+                NodePath("../PlayerInterceptor/CameraTarget"),
+                "camera must follow the ship-owned target anchor"
+            )
+            camera_rig.free()
+
     var hud_packed := load("res://scenes/ui/flight_hud.tscn") as PackedScene
     assert_true(hud_packed != null, "HUD scene must load")
     if hud_packed != null:
