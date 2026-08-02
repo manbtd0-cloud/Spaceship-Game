@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import struct
 import sys
 import tempfile
 import unittest
@@ -28,17 +29,31 @@ def _class_for_socket(path: str) -> str:
     return "maneuver"
 
 
+def _write_glb(path: Path, document: dict[str, object]) -> None:
+    payload = json.dumps(document, separators=(",", ":")).encode("utf-8")
+    payload += b" " * ((4 - len(payload) % 4) % 4)
+    total_length = 12 + 8 + len(payload)
+    path.write_bytes(
+        struct.pack("<4sII", b"glTF", 2, total_length)
+        + struct.pack("<I4s", len(payload), b"JSON")
+        + payload
+    )
+
+
 class CanonicalFighterV4Tests(unittest.TestCase):
     def _valid_manifest(self) -> dict[str, object]:
         sockets = []
+        socket_positions: dict[str, list[float]] = {}
         for index, path in enumerate(sorted(EXPECTED_SOCKET_PATHS)):
+            position = [float(index + 1), 0.0, 0.0]
+            socket_positions[path] = position
             sockets.append(
                 {
                     "path": path,
                     "class": _class_for_socket(path),
                     "source_object": "EngineFire" if index < 2 else f"EngineFire.{index:03d}",
                     "source_component": index,
-                    "position": [float(index), 0.0, 0.0],
+                    "position": position,
                     "exhaust_direction": [0.0, 0.0, 1.0],
                     "reaction_direction": [0.0, 0.0, -1.0],
                     "basis": [
@@ -68,7 +83,7 @@ class CanonicalFighterV4Tests(unittest.TestCase):
                         [0.0, 1.0, 0.0],
                         [0.0, 0.0, 1.0],
                     ],
-                    "node_transform_origin": [float(index), 0.0, 0.0],
+                    "node_transform_origin": socket_positions[socket_path],
                     "local_exhaust_axis": [0.0, 0.0, -1.0],
                     "local_bounds_min": [-1.0, -1.0, -4.0],
                     "local_bounds_max": [1.0, 1.0, 0.0],
@@ -96,24 +111,107 @@ class CanonicalFighterV4Tests(unittest.TestCase):
             "thruster_effects": effects,
         }
 
+    def _valid_glb_document(
+        self,
+        manifest: dict[str, object],
+        baked_effect_path: str | None = None,
+    ) -> dict[str, object]:
+        sockets = manifest["sockets"]
+        effects = manifest["thruster_effects"]
+        assert isinstance(sockets, list)
+        assert isinstance(effects, list)
+
+        nodes: list[dict[str, object]] = []
+
+        def add_node(name: str, parent: int | None = None, **values: object) -> int:
+            index = len(nodes)
+            node: dict[str, object] = {"name": name, **values}
+            nodes.append(node)
+            if parent is not None:
+                parent_node = nodes[parent]
+                children = parent_node.setdefault("children", [])
+                assert isinstance(children, list)
+                children.append(index)
+            return index
+
+        root = add_node("SmallSciFiFighter")
+        thrusters = add_node("Thrusters", root)
+        effects_root = add_node("ThrusterEffects", root)
+        socket_groups = {
+            "Main": add_node("Main", thrusters),
+            "Maneuver": add_node("Maneuver", thrusters),
+            "Retro": add_node("Retro", thrusters),
+        }
+        effect_groups = {
+            "MainEffects": add_node("MainEffects", effects_root),
+            "ManeuverEffects": add_node("ManeuverEffects", effects_root),
+            "RetroEffects": add_node("RetroEffects", effects_root),
+        }
+
+        for socket in sockets:
+            assert isinstance(socket, dict)
+            path = str(socket["path"])
+            segments = path.split("/")
+            add_node(
+                segments[-1],
+                socket_groups[segments[-2]],
+                translation=socket["position"],
+            )
+
+        for effect in effects:
+            assert isinstance(effect, dict)
+            path = str(effect["path"])
+            segments = path.split("/")
+            translation = (
+                [0.0, 0.0, 0.0]
+                if path == baked_effect_path
+                else effect["node_transform_origin"]
+            )
+            add_node(
+                segments[-1],
+                effect_groups[segments[-2]],
+                translation=translation,
+                mesh=0,
+            )
+
+        return {
+            "asset": {"version": "2.0"},
+            "scene": 0,
+            "scenes": [{"nodes": [root]}],
+            "nodes": nodes,
+            "meshes": [{"primitives": []}],
+        }
+
     def _write_output(
         self,
         root: Path,
         manifest: dict[str, object] | None = None,
+        baked_effect_path: str | None = None,
     ) -> tuple[Path, Path]:
+        report = manifest or self._valid_manifest()
         glb = root / "fighter.glb"
-        glb.write_bytes(b"glTFfixture")
+        _write_glb(glb, self._valid_glb_document(report, baked_effect_path))
         manifest_path = root / "fighter.manifest.json"
-        manifest_path.write_text(
-            json.dumps(manifest or self._valid_manifest()),
-            encoding="utf-8",
-        )
+        manifest_path.write_text(json.dumps(report), encoding="utf-8")
         return glb, manifest_path
 
     def test_valid_schema_four_output_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             glb, manifest = self._write_output(Path(temporary))
             self.assertEqual(validate_output(glb, manifest, SOURCE_SHA256), [])
+
+    def test_baked_effect_pivot_is_rejected_from_actual_glb(self) -> None:
+        baked_path = "ThrusterEffects/MainEffects/MainLeftEffect"
+        with tempfile.TemporaryDirectory() as temporary:
+            glb, manifest = self._write_output(
+                Path(temporary),
+                baked_effect_path=baked_path,
+            )
+            errors = validate_output(glb, manifest, SOURCE_SHA256)
+        self.assertTrue(
+            any("GLB effect pivot does not match socket" in error for error in errors),
+            errors,
+        )
 
     def test_wrong_schema_and_strategy_are_rejected(self) -> None:
         manifest = self._valid_manifest()
