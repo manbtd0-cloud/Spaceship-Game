@@ -145,18 +145,18 @@ $actualSocketPaths = @($manifest.sockets | ForEach-Object { [string]$_.path })
 Assert-ExactPathSet -Expected $expectedSocketPaths -Actual $actualSocketPaths -Label "Hero fighter socket"
 
 $expectedEffectPaths = @(
-    "ThrusterEffects/Main/MainLeftEffect",
-    "ThrusterEffects/Main/MainRightEffect",
-    "ThrusterEffects/Retro/RetroLeftEffect",
-    "ThrusterEffects/Retro/RetroRightEffect",
-    "ThrusterEffects/Maneuver/FrontUpperLeftEffect",
-    "ThrusterEffects/Maneuver/FrontUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearUpperLeftEffect",
-    "ThrusterEffects/Maneuver/RearUpperRightEffect",
-    "ThrusterEffects/Maneuver/RearLowerLeftEffect",
-    "ThrusterEffects/Maneuver/RearLowerRightEffect",
-    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
-    "ThrusterEffects/Maneuver/FrontLowerRightEffect"
+    "ThrusterEffects/MainEffects/MainLeftEffect",
+    "ThrusterEffects/MainEffects/MainRightEffect",
+    "ThrusterEffects/RetroEffects/RetroLeftEffect",
+    "ThrusterEffects/RetroEffects/RetroRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearUpperRightEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/RearLowerRightEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect"
 )
 $actualEffectPaths = @($manifest.thruster_effects | ForEach-Object { [string]$_.path })
 Assert-ExactPathSet -Expected $expectedEffectPaths -Actual $actualEffectPaths -Label "Hero fighter effect"
