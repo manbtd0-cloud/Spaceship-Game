@@ -15,6 +15,8 @@ var _boost_amount := 0.0
 var _boost_heat := 0.0
 var _boost_locked_out := false
 var _local_velocity := Vector3.ZERO
+var _auto_bank_offset := 0.0
+var _auto_bank_rate := 0.0
 
 func _ready() -> void:
     _body = get_node_or_null(body_path) as RigidBody3D
@@ -58,6 +60,28 @@ func _physics_process(delta: float) -> void:
     _boost_locked_out = thermal_state.locked_out
     _boost_amount = thermal_state.effective_boost
     command.boost = _boost_amount
+
+    var pilot_roll := command.rotation.z
+    if command.mode == FlightMode.Value.ASSISTED:
+        var bank_state := CoordinatedTurnState.advance(
+            _auto_bank_offset,
+            _auto_bank_rate,
+            command.rotation.y,
+            pilot_roll,
+            delta,
+            tuning.auto_bank_max_degrees,
+            tuning.auto_bank_response
+        )
+        _auto_bank_offset = bank_state.bank_offset
+        _auto_bank_rate = bank_state.bank_rate
+        command.rotation.z = clampf(
+            pilot_roll + bank_state.roll_command,
+            -1.0,
+            1.0
+        )
+    else:
+        _auto_bank_offset = 0.0
+        _auto_bank_rate = 0.0
 
     var basis := _body.global_transform.basis.orthonormalized()
     var local_linear := basis.inverse() * _body.linear_velocity
@@ -104,6 +128,9 @@ func get_active_speed_limit() -> float:
         else tuning.normal_speed_limit
     )
 
+func get_auto_bank_offset_degrees() -> float:
+    return rad_to_deg(_auto_bank_offset)
+
 func get_local_velocity() -> Vector3:
     return _local_velocity
 
@@ -117,3 +144,5 @@ func reset_runtime_state() -> void:
     _boost_heat = 0.0
     _boost_locked_out = false
     _boost_amount = 0.0
+    _auto_bank_offset = 0.0
+    _auto_bank_rate = 0.0
