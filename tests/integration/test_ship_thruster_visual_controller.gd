@@ -28,15 +28,19 @@ func run() -> void:
         assert_equal(
             visual_controller.get_effect_count(),
             12,
-            "visual controller must create twelve exhaust effects"
+            "visual controller must resolve twelve imported source-exact effects"
         )
         assert_true(
             visual_controller.are_all_effects_hidden(),
-            "all canonical exhaust effects must be hidden at idle"
+            "all source-exact effects must be hidden at idle"
+        )
+        assert_true(
+            visual_controller.are_effect_transforms_unchanged(),
+            "runtime must not move, rotate, or scale source-exact effect meshes"
         )
         assert_true(
             visual_controller.is_contract_valid(),
-            "canonical thruster visual contract must be valid"
+            "source-exact thruster visual contract must be valid"
         )
 
     player.free()
