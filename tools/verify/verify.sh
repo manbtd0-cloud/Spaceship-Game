@@ -4,11 +4,13 @@ set -euo pipefail
 GODOT_BIN="${GODOT_BIN:-godot}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+EXPECTED_SOURCE_SHA="1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 
 required_files=(
     "assets/runtime/ships/player/small_sci_fi_fighter.glb"
     "assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
     "config/ships/small_sci_fi_fighter_thruster_actions.json"
+    "tools/assets/canonical_fighter_contract_v4.py"
     "tools/assets/fighter_thruster_action_contract.py"
 )
 
@@ -30,7 +32,9 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
 fi
 
 manifest_path="$REPO_ROOT/assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
+glb_path="$REPO_ROOT/assets/runtime/ships/player/small_sci_fi_fighter.glb"
 matrix_path="$REPO_ROOT/config/ships/small_sci_fi_fighter_thruster_actions.json"
+fighter_validator_path="$REPO_ROOT/tools/assets/canonical_fighter_contract_v4.py"
 matrix_validator_path="$REPO_ROOT/tools/assets/fighter_thruster_action_contract.py"
 
 "$PYTHON_BIN" - "$manifest_path" <<'PY'
@@ -41,10 +45,15 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 manifest = json.loads(path.read_text(encoding="utf-8-sig"))
-if manifest.get("schema_version") != 3:
-    raise SystemExit("Hero fighter manifest schema_version must be 3")
-if manifest.get("thruster_visual_strategy") != "source_exact_enginefire_geometry":
-    raise SystemExit("Hero fighter must use source_exact_enginefire_geometry")
+if manifest.get("schema_version") != 4:
+    raise SystemExit("Hero fighter manifest schema_version must be 4")
+if (
+    manifest.get("thruster_visual_strategy")
+    != "source_exact_nozzle_local_enginefire_geometry"
+):
+    raise SystemExit(
+        "Hero fighter must use source_exact_nozzle_local_enginefire_geometry"
+    )
 if manifest.get("procedural_exhaust_geometry") is not False:
     raise SystemExit("Hero fighter procedural_exhaust_geometry must be false")
 frame = manifest.get("canonical_frame")
@@ -54,7 +63,9 @@ expected = {
     "godot_up": "+Y",
     "root_identity": True,
 }
-if not isinstance(frame, dict) or any(frame.get(key) != value for key, value in expected.items()):
+if not isinstance(frame, dict) or any(
+    frame.get(key) != value for key, value in expected.items()
+):
     raise SystemExit(
         "Hero fighter canonical frame must be +X right, -Z forward, +Y up, identity root"
     )
@@ -72,12 +83,11 @@ expected_socket_paths = {
     "Thrusters/Maneuver/FrontLowerLeft",
     "Thrusters/Maneuver/FrontLowerRight",
 }
-actual_socket_paths = {str(socket.get("path", "")) for socket in manifest.get("sockets", [])}
+actual_socket_paths = {
+    str(socket.get("path", "")) for socket in manifest.get("sockets", [])
+}
 if actual_socket_paths != expected_socket_paths:
-    raise SystemExit(
-        f"Hero fighter socket paths mismatch. Missing: {sorted(expected_socket_paths - actual_socket_paths)} "
-        f"Unexpected: {sorted(actual_socket_paths - expected_socket_paths)}"
-    )
+    raise SystemExit("Hero fighter socket paths mismatch")
 expected_effect_paths = {
     "ThrusterEffects/MainEffects/MainLeftEffect",
     "ThrusterEffects/MainEffects/MainRightEffect",
@@ -95,16 +105,32 @@ expected_effect_paths = {
 effects = manifest.get("thruster_effects", [])
 actual_effect_paths = {str(effect.get("path", "")) for effect in effects}
 if actual_effect_paths != expected_effect_paths:
-    raise SystemExit(
-        f"Hero fighter effect paths mismatch. Missing: {sorted(expected_effect_paths - actual_effect_paths)} "
-        f"Unexpected: {sorted(actual_effect_paths - expected_effect_paths)}"
-    )
+    raise SystemExit("Hero fighter effect paths mismatch")
+effect_socket_paths = {str(effect.get("socket_path", "")) for effect in effects}
+if effect_socket_paths != expected_socket_paths or len(effects) != 12:
+    raise SystemExit("Hero fighter effect socket mapping must be one-to-one")
 for effect in effects:
-    if effect.get("identity_transform") is not True or effect.get("source_exact_geometry") is not True:
-        raise SystemExit("Every fighter effect must be identity-transform source-exact geometry")
+    if effect.get("source_exact_geometry") is not True:
+        raise SystemExit("Every fighter effect must use source-exact geometry")
     if re.fullmatch(r"[0-9a-f]{64}", str(effect.get("geometry_sha256", ""))) is None:
         raise SystemExit("Every fighter effect must include a valid geometry SHA-256")
+    if effect.get("node_transform_basis") is None:
+        raise SystemExit("Every fighter effect must include node_transform_basis")
+    if effect.get("node_transform_origin") is None:
+        raise SystemExit("Every fighter effect must include node_transform_origin")
+    if effect.get("local_exhaust_axis") is None:
+        raise SystemExit("Every fighter effect must include local_exhaust_axis")
+    reconstruction = float(effect.get("maximum_reconstruction_error_m", -1.0))
+    if not 0.0 <= reconstruction <= 0.0001:
+        raise SystemExit(
+            "Every fighter effect maximum_reconstruction_error_m must be within [0, 0.0001]"
+        )
 PY
+
+"$PYTHON_BIN" "$fighter_validator_path" \
+    --glb "$glb_path" \
+    --manifest "$manifest_path" \
+    --source-sha "$EXPECTED_SOURCE_SHA"
 
 "$PYTHON_BIN" "$matrix_validator_path" \
     --manifest "$manifest_path" \
