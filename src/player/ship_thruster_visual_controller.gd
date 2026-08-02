@@ -2,6 +2,7 @@ class_name ShipThrusterVisualController
 extends Node
 
 const VISIBILITY_THRESHOLD := 0.001
+const ACTION_MATRIX_PATH := "res://config/ships/small_sci_fi_fighter_thruster_actions.json"
 const SOCKET_SPECS := [
     {"socket": "Main/MainLeft", "effect": "MainEffects/MainLeftEffect", "class": &"main"},
     {"socket": "Main/MainRight", "effect": "MainEffects/MainRightEffect", "class": &"main"},
@@ -22,10 +23,12 @@ const SOCKET_SPECS := [
 
 var _controller: ShipFlightController
 var _model: Node3D
+var _action_matrix: ThrusterActionMatrix
 var _socket_nodes: Array[Node3D] = []
 var _effect_meshes: Array[MeshInstance3D] = []
 var _effect_materials: Array[StandardMaterial3D] = []
 var _socket_data: Array[Dictionary] = []
+var _socket_paths: Array[StringName] = []
 var _socket_classes: Array[StringName] = []
 var _effect_initial_transforms: Array[Transform3D] = []
 var _initialized := false
@@ -35,15 +38,11 @@ func _ready() -> void:
     initialize()
 
 func _process(_delta: float) -> void:
-    if not _contract_valid or _controller == null:
+    if not _contract_valid or _controller == null or _action_matrix == null:
         return
 
-    var intensities := ShipThrusterAllocator.solve(
-        _socket_data,
-        _controller.get_last_force_local(),
-        _controller.get_last_torque_local(),
-        _controller.get_force_reference(),
-        _controller.get_torque_reference()
+    var intensities := _action_matrix.intensities_for(
+        _controller.get_last_command()
     )
     var boost := _controller.get_boost_amount()
     for index: int in range(_effect_meshes.size()):
@@ -55,7 +54,7 @@ func _process(_delta: float) -> void:
         )
         _apply_effect_output(
             index,
-            intensities[index],
+            float(intensities.get(_socket_paths[index], 0.0)),
             class_boost,
             thruster_class
         )
@@ -77,6 +76,13 @@ func initialize() -> void:
         _disable_with_error(
             "ShipThrusterVisualController could not resolve model at %s"
             % model_path
+        )
+        return
+
+    _action_matrix = ThrusterActionMatrix.load_checked_in(ACTION_MATRIX_PATH)
+    if _action_matrix == null or not _action_matrix.is_valid():
+        _disable_with_error(
+            "Canonical fighter checked-in thruster action matrix is invalid"
         )
         return
 
@@ -142,6 +148,7 @@ func initialize() -> void:
         _effect_meshes.append(effect)
         _effect_materials.append(material)
         _effect_initial_transforms.append(effect.transform)
+        _socket_paths.append(StringName(socket_path))
         _socket_classes.append(thruster_class)
         _socket_data.append({
             "position": local_transform.origin,
@@ -155,6 +162,7 @@ func initialize() -> void:
         and _effect_meshes.size() == SOCKET_SPECS.size()
         and _effect_materials.size() == SOCKET_SPECS.size()
         and _socket_data.size() == SOCKET_SPECS.size()
+        and _socket_paths.size() == SOCKET_SPECS.size()
         and are_effect_transforms_unchanged()
     )
     if not _contract_valid:
@@ -186,6 +194,11 @@ func are_effect_transforms_unchanged() -> bool:
 
 func is_contract_valid() -> bool:
     return _contract_valid
+
+func direct_intensities_for_command(command: FlightCommand) -> Dictionary:
+    if _action_matrix == null:
+        return {}
+    return _action_matrix.intensities_for(command)
 
 static func find_unique_logical_root(
     root: Node,
