@@ -8,6 +8,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_flight_steering_math.gd",
     "res://tests/unit/test_coordinated_turn_state.gd",
     "res://tests/unit/test_player_input_math.gd",
+    "res://tests/integration/test_input_map.gd",
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/unit/test_ship_flight_controller_state.gd",
     "res://tests/unit/test_ship_thruster_allocator.gd",
