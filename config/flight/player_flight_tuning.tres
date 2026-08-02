@@ -27,7 +27,6 @@ assist_max_steering_acceleration = 18.0
 auto_bank_max_degrees = 22.0
 auto_bank_response = 5.0
 camera_speed_pullback = 0.05
-camera_max_pullback = 14.0
 camera_forward_look_ahead = 10.0
 camera_normal_max_fov = 82.0
 camera_boost_max_fov = 85.0
