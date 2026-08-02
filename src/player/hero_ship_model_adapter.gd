@@ -85,7 +85,9 @@ func _aligned_mesh_dimensions(alignment: Basis) -> Vector3:
     )
     if not bool(state["has_mesh"]):
         return Vector3.ZERO
-    return state["maximum"] - state["minimum"]
+    var minimum: Vector3 = state["minimum"]
+    var maximum: Vector3 = state["maximum"]
+    return maximum - minimum
 
 func _collect_mesh_bounds(
     node: Node,
