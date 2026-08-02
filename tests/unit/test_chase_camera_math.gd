@@ -4,6 +4,7 @@ func run() -> void:
     _test_exponential_interpolation()
     _test_preset_contract()
     _test_bounded_position()
+    _test_smoothed_rear_clamp()
     _test_prediction_and_interpolation()
     _test_ship_relative_orientation()
     _test_fov_envelopes()
@@ -87,7 +88,7 @@ func _test_bounded_position() -> void:
         )
         assert_true(
             result.is_equal_approx(zero),
-            "lateral, vertical, reverse, and invalid velocity must not move framing"
+            "irrelevant velocity must not move physical framing"
         )
 
     var rotated := Transform3D(
@@ -102,6 +103,31 @@ func _test_bounded_position() -> void:
         ),
         "forward speed must be extracted in ship-local space"
     )
+
+func _test_smoothed_rear_clamp() -> void:
+    var target := Transform3D(
+        Basis(Vector3.UP, PI * 0.5),
+        Vector3(10.0, 2.0, -4.0)
+    )
+    var outside := target.origin + target.basis * Vector3(3.0, 6.0, 30.0)
+    var clamped := ChaseCameraMath.clamp_rear_position(
+        target,
+        outside,
+        14.0
+    )
+    var local := target.basis.orthonormalized().inverse() * (
+        clamped - target.origin
+    )
+    assert_true(is_equal_approx(local.x, 3.0), "rear clamp must preserve local side")
+    assert_true(is_equal_approx(local.y, 6.0), "rear clamp must preserve local height")
+    assert_true(is_equal_approx(local.z, 14.0), "rear clamp must enforce active limit")
+
+    var in_front := target.origin + target.basis * Vector3(0.0, 4.0, -2.0)
+    var behind := ChaseCameraMath.clamp_rear_position(target, in_front, 14.0)
+    var behind_local := target.basis.orthonormalized().inverse() * (
+        behind - target.origin
+    )
+    assert_true(behind_local.z > 0.0, "camera must never cross in front of target")
 
 func _test_prediction_and_interpolation() -> void:
     var look := ChaseCameraMath.desired_look_target(
