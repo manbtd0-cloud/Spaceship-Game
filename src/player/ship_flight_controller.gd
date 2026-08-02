@@ -18,6 +18,11 @@ var _forward_thrust_amount := 0.0
 var _local_velocity := Vector3.ZERO
 var _auto_bank_offset := 0.0
 var _auto_bank_rate := 0.0
+var _last_command := FlightCommand.new()
+var _last_pilot_force_local := Vector3.ZERO
+var _last_pilot_torque_local := Vector3.ZERO
+var _last_assist_force_local := Vector3.ZERO
+var _last_assist_torque_local := Vector3.ZERO
 var _last_force_local := Vector3.ZERO
 var _last_torque_local := Vector3.ZERO
 
@@ -65,6 +70,7 @@ func _physics_process(delta: float) -> void:
     _boost_amount = thermal_state.effective_boost
     command.boost = _boost_amount
 
+    var assist_rotation_command := Vector3.ZERO
     var pilot_roll := command.rotation.z
     if command.mode == FlightMode.Value.ASSISTED:
         var bank_state := CoordinatedTurnState.advance(
@@ -78,14 +84,12 @@ func _physics_process(delta: float) -> void:
         )
         _auto_bank_offset = bank_state.bank_offset
         _auto_bank_rate = bank_state.bank_rate
-        command.rotation.z = clampf(
-            pilot_roll + bank_state.roll_command,
-            -1.0,
-            1.0
-        )
+        assist_rotation_command.z = bank_state.roll_command
     else:
         _auto_bank_offset = 0.0
         _auto_bank_rate = 0.0
+
+    _last_command = command.duplicate_command()
 
     var basis := _body.global_transform.basis.orthonormalized()
     var local_linear := basis.inverse() * _body.linear_velocity
@@ -97,8 +101,13 @@ func _physics_process(delta: float) -> void:
         tuning,
         local_linear,
         local_angular,
-        _body.mass
+        _body.mass,
+        assist_rotation_command
     )
+    _last_pilot_force_local = output.pilot_force_local
+    _last_pilot_torque_local = output.pilot_torque_local
+    _last_assist_force_local = output.assist_force_local
+    _last_assist_torque_local = output.assist_torque_local
     _last_force_local = output.force_local
     _last_torque_local = output.torque_local
     _body.apply_central_force(basis * output.force_local)
@@ -149,6 +158,21 @@ func get_world_velocity() -> Vector3:
 func get_body() -> RigidBody3D:
     return _body
 
+func get_last_command() -> FlightCommand:
+    return _last_command.duplicate_command()
+
+func get_last_pilot_force_local() -> Vector3:
+    return _last_pilot_force_local
+
+func get_last_pilot_torque_local() -> Vector3:
+    return _last_pilot_torque_local
+
+func get_last_assist_force_local() -> Vector3:
+    return _last_assist_force_local
+
+func get_last_assist_torque_local() -> Vector3:
+    return _last_assist_torque_local
+
 func get_last_force_local() -> Vector3:
     return _last_force_local
 
@@ -175,5 +199,10 @@ func reset_runtime_state() -> void:
     _forward_thrust_amount = 0.0
     _auto_bank_offset = 0.0
     _auto_bank_rate = 0.0
+    _last_command = FlightCommand.new()
+    _last_pilot_force_local = Vector3.ZERO
+    _last_pilot_torque_local = Vector3.ZERO
+    _last_assist_force_local = Vector3.ZERO
+    _last_assist_torque_local = Vector3.ZERO
     _last_force_local = Vector3.ZERO
     _last_torque_local = Vector3.ZERO
