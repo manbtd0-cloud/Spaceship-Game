@@ -76,5 +76,5 @@ text = "MOUSE  RELEASED - ESC TO CAPTURE"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.68, 0.78, 1)
 theme_override_font_sizes/font_size = 12
-text = "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   R RESET"
+text = "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   MOUSE PITCH/YAW   A/D YAW   DOWN=NOSE UP   UP=NOSE DOWN   LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   R RESET"
 autowrap_mode = 2
