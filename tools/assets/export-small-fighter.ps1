@@ -148,9 +148,13 @@ After:  $sourceShaAfter
 
     $pendingManifest = Get-Content -LiteralPath $pendingManifestPath -Raw | ConvertFrom-Json
     $pendingManifest.output_path = $outputPath.Replace("\", "/")
-    $pendingManifest |
-        ConvertTo-Json -Depth 100 |
-        Set-Content -LiteralPath $pendingManifestPath -Encoding utf8
+    $manifestJson = $pendingManifest | ConvertTo-Json -Depth 100
+    $utf8WithoutBom = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllText(
+        $pendingManifestPath,
+        $manifestJson + [Environment]::NewLine,
+        $utf8WithoutBom
+    )
 
     & $pythonExecutable $validatorPath `
         --glb $pendingOutputPath `
