@@ -2,7 +2,7 @@
 
 | Asset | Source path | Intended role | License | Status |
 |---|---|---|---|---|
-| Small Sci-Fi Fighter | `assets/source/ships/player_candidates/small_sci_fi_fighter/` | Selected player hero interceptor | No license evidence identified in repository | Development-only; repeatable GLB export prepared; redistribution blocked until license evidence is reviewed |
+| Small Sci-Fi Fighter | `assets/source/ships/player_candidates/small_sci_fi_fighter/` | Selected player hero interceptor | No license evidence identified in repository | Runtime GLB generated and integrated for development; redistribution blocked until license evidence is reviewed |
 | The Ship | `assets/source/ships/player_candidates/the_ship/` | Secondary hero/heavy-ship candidate | License evidence pending centralization | Source preserved; not selected for this milestone |
 | Space Station 87177 | `assets/source/structures/space_station_87177/` | Station hub visual base | CC0 1.0 | Source and original textures preserved |
 | Bennu | `assets/source/environment/asteroids/bennu/` | Irregular asteroid field | NASA source; usage review required | Source preserved; GLB conversion pending |
