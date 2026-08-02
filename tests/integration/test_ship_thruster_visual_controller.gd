@@ -1,9 +1,11 @@
 extends "res://tests/support/test_case.gd"
 
-const MAIN_LEFT_SOCKET := &"Main/MainLeft"
-const MAIN_RIGHT_SOCKET := &"Main/MainRight"
-const MAIN_LEFT_EFFECT := "ThrusterEffects/MainEffects/MainLeftEffect"
-const MAIN_RIGHT_EFFECT := "ThrusterEffects/MainEffects/MainRightEffect"
+const MAIN_LEFT_EFFECT := &"ThrusterEffects/MainEffects/MainLeftEffect"
+const MAIN_RIGHT_EFFECT := &"ThrusterEffects/MainEffects/MainRightEffect"
+const MAIN_EFFECTS := PackedStringArray([
+    "ThrusterEffects/MainEffects/MainLeftEffect",
+    "ThrusterEffects/MainEffects/MainRightEffect",
+])
 
 func run() -> void:
     _test_unique_logical_root_lookup()
@@ -21,11 +23,18 @@ func run() -> void:
     var visual_controller := player.get_node_or_null(
         "ShipThrusterVisualController"
     ) as ShipThrusterVisualController
+    var flight_controller := player.get_node_or_null(
+        "ShipFlightController"
+    ) as ShipFlightController
     assert_true(
         visual_controller != null,
         "player scene must contain ShipThrusterVisualController"
     )
-    if visual_controller == null:
+    assert_true(
+        flight_controller != null,
+        "player scene must contain ShipFlightController"
+    )
+    if visual_controller == null or flight_controller == null:
         player.free()
         return
 
@@ -42,109 +51,119 @@ func run() -> void:
     )
     assert_true(
         visual_controller.are_all_effects_hidden(),
-        "all source-exact effects must be hidden at idle"
+        "all effects must be hidden at idle"
     )
     assert_true(
-        visual_controller.are_effect_pivots_unchanged(),
-        "runtime initialization must preserve every nozzle pivot"
+        visual_controller.are_effect_origins_anchored(),
+        "every nozzle-local effect origin must begin anchored"
     )
     assert_true(
         visual_controller.is_contract_valid(),
         "schema-four thruster visual contract must be valid"
     )
 
+    var coast := FlightCommand.new()
+    visual_controller.set_test_command(coast)
+    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
+    visual_controller.step_visuals(0.25)
+    assert_true(
+        visual_controller.are_all_effects_hidden(),
+        "coasting without pilot or assist acceleration must remain dark"
+    )
+
     var forward := FlightCommand.new()
     forward.translation = Vector3.FORWARD
-    var forward_intensities := visual_controller.direct_intensities_for_command(
+    var direct_preview := visual_controller.direct_intensities_for_command(
         forward
     )
     assert_true(
         is_equal_approx(
-            float(forward_intensities.get(MAIN_LEFT_SOCKET, 0.0)),
+            float(direct_preview.get(&"Main/MainLeft", 0.0)),
             1.0
         ),
-        "forward command must activate the left main plume"
+        "forward command must map to the left main thruster"
     )
     assert_true(
         is_equal_approx(
-            float(forward_intensities.get(MAIN_RIGHT_SOCKET, 0.0)),
+            float(direct_preview.get(&"Main/MainRight", 0.0)),
             1.0
         ),
-        "forward command must activate the right main plume"
-    )
-    assert_equal(
-        forward_intensities.size(),
-        2,
-        "forward command must use only the symmetric main pair"
-    )
-
-    visual_controller.set_test_command(FlightCommand.new())
-    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
-    visual_controller.set_test_boost(1.0)
-    visual_controller.step_visuals(0.30)
-    assert_true(
-        visual_controller.are_all_effects_hidden(),
-        "coasting with no force request must remain dark even during boost state"
+        "forward command must map to the right main thruster"
     )
 
     visual_controller.set_test_command(forward)
-    visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
-    visual_controller.set_test_boost(0.0)
     visual_controller.step_visuals(0.25)
     assert_equal(
         visual_controller.get_active_effect_paths(),
-        PackedStringArray([MAIN_LEFT_EFFECT, MAIN_RIGHT_EFFECT]),
-        "forward must activate exactly both main effects"
+        MAIN_EFFECTS,
+        "forward must activate only the symmetric main pair"
     )
     assert_true(
-        is_equal_approx(visual_controller.get_direct_target(MAIN_LEFT_SOCKET), 1.0),
-        "left main direct target must be full"
+        is_equal_approx(
+            visual_controller.get_direct_target(MAIN_LEFT_EFFECT),
+            1.0
+        ),
+        "left main direct target must reach one"
     )
     assert_true(
-        is_equal_approx(visual_controller.get_direct_target(MAIN_RIGHT_SOCKET), 1.0),
-        "right main direct target must be full"
+        is_equal_approx(
+            visual_controller.get_direct_target(MAIN_RIGHT_EFFECT),
+            1.0
+        ),
+        "right main direct target must reach one"
     )
     assert_true(
-        is_equal_approx(visual_controller.get_envelope(MAIN_LEFT_SOCKET), 1.0),
-        "left main envelope must reach full after rise duration"
+        is_equal_approx(
+            visual_controller.get_envelope(MAIN_LEFT_EFFECT),
+            1.0
+        ),
+        "left main envelope must reach full output"
     )
     assert_true(
-        is_equal_approx(visual_controller.get_envelope(MAIN_RIGHT_SOCKET), 1.0),
-        "right main envelope must reach full after rise duration"
+        is_equal_approx(
+            visual_controller.get_envelope(MAIN_RIGHT_EFFECT),
+            1.0
+        ),
+        "right main envelope must reach full output"
     )
     assert_true(
-        visual_controller.are_effect_pivots_unchanged(),
-        "growing source-exact effects must not move nozzle pivots"
+        visual_controller.are_effect_origins_anchored(),
+        "plume growth must not move any nozzle origin"
     )
 
-    visual_controller.set_test_command(FlightCommand.new())
-    visual_controller.set_test_assist_wrench(Vector3.FORWARD, Vector3.ZERO)
+    visual_controller.set_test_command(coast)
+    visual_controller.set_test_assist_wrench(
+        Vector3.FORWARD * flight_controller.get_force_reference(),
+        Vector3.ZERO
+    )
     visual_controller.step_visuals(0.25)
-    assert_true(
-        visual_controller.get_direct_target(MAIN_LEFT_SOCKET) <= 0.0,
-        "assisted-only output must not create direct thrust"
-    )
-    assert_true(
-        visual_controller.get_assist_target(MAIN_LEFT_SOCKET) > 0.0,
-        "assisted correction must request the approved main pair"
-    )
-    assert_true(
-        visual_controller.get_merged_target(MAIN_LEFT_SOCKET) <= 0.35,
-        "assisted output must be capped at 35 percent exactly once"
-    )
-    assert_true(
-        visual_controller.get_merged_target(MAIN_RIGHT_SOCKET) <= 0.35,
-        "both assisted main outputs must remain dim"
-    )
+    for path: String in MAIN_EFFECTS:
+        var effect_path := StringName(path)
+        assert_true(
+            visual_controller.get_assist_target(effect_path) > 0.99,
+            "full assisted forward correction must reach raw target one"
+        )
+        assert_true(
+            visual_controller.get_merged_target(effect_path) <= 0.35,
+            "assisted output must be capped exactly once at 35 percent"
+        )
+        assert_true(
+            visual_controller.get_envelope(effect_path) <= 0.35,
+            "assisted plume envelope must remain dimmer than direct output"
+        )
 
     visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
-    visual_controller.step_visuals(0.30)
+    visual_controller.step_visuals(0.25)
     assert_true(
         visual_controller.are_all_effects_hidden(),
-        "released direct and assisted requests must decay to hidden"
+        "released direct and assisted thrust must decay to invisible"
+    )
+    assert_true(
+        visual_controller.are_effect_origins_anchored(),
+        "plume decay must preserve every nozzle origin"
     )
 
-    visual_controller.clear_test_overrides()
+    visual_controller.clear_test_inputs()
     player.free()
 
 func _test_unique_logical_root_lookup() -> void:
