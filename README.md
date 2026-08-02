@@ -4,7 +4,7 @@ A single-player, third-person space-flight vertical slice built with Godot 4.7.1
 
 ## Current milestone
 
-The playable flight room now uses the normalized **Small Sci-Fi Fighter** hero GLB with an agile simcade controller:
+The playable flight room uses the **Small Sci-Fi Fighter** hero GLB with an agile simcade controller:
 
 - six-axis local-space thrust;
 - assisted nose-led maneuvering and coordinated banking;
@@ -12,9 +12,11 @@ The playable flight room now uses the normalized **Small Sci-Fi Fighter** hero G
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained all-axis translational boost with thermal lockout;
 - ship-relative chase camera with no global horizon or preferred world-up direction;
+- marker-driven runtime model alignment and uniform visual scaling;
+- controller-owned rear exhaust that is completely hidden while idle;
 - high-speed course, collision obstacles, telemetry HUD, and safe reset handling.
 
-The existing `RigidBody3D`, 8500 kg mass, simple `8 x 2.5 x 12 m` gameplay collider, and force/torque architecture remain authoritative. The imported mesh never defines collision.
+The existing `RigidBody3D`, 8500 kg mass, simple `7.2 x 4.2 x 10.8 m` gameplay collider, and force/torque architecture remain authoritative. The imported mesh never defines collision.
 
 ## Requirements
 
@@ -89,13 +91,17 @@ Gameplay references only:
 assets/runtime/ships/player/small_sci_fi_fighter.glb
 ```
 
-Regenerate it from the preserved `.blend` source with:
+The runtime model adapter reads `ForwardMarker` and `UpMarker`, rotates any imported source axes into player-local `-Z` forward and `+Y` up, and uniformly enlarges the current pushed GLB to the approved visual envelope. This keeps the game correct even before the binary is regenerated.
+
+Regenerate the GLB from the preserved `.blend` source with:
 
 ```powershell
 .\tools\assets\export-small-fighter.ps1
 ```
 
-The exporter normalizes the craft to `-Z` forward and `+Y` up, fits it inside the gameplay envelope, and writes an accompanying manifest.
+The corrected exporter rotates the source's `-Y` nose into Blender `+Y`, which exports to Godot `-Z`, fits the craft to `7.2 x 4.2 x 10.8 m`, and writes an accompanying manifest.
+
+Rear exhaust is authored in Godot rather than taken from the model. It is invisible at idle, appears only while forward thrust is active, and lengthens under boost.
 
 The asset remains **development-only** until its original license evidence is added and reviewed. See:
 
@@ -132,7 +138,7 @@ When `godot` is available on `PATH`:
 Successful verification must import the project, print:
 
 ```text
-PASS: 12 suites
+PASS: 15 suites
 ```
 
 and boot the main scene briefly without parser, scene, path-case, or runtime errors.
@@ -149,8 +155,9 @@ After automated verification passes, confirm directly in the flight room:
 6. Normal and boosted acceleration fade smoothly near 160 and 240 m/s.
 7. Boost overheats, locks out, recovers, and never disables ordinary flight.
 8. Camera orientation remains ship-relative when rolled, inverted, and vertical.
-9. The hero fighter is centered, faces local `-Z`, and has no procedural fallback.
-10. The extended course remains readable at low and maximum boost speed.
+9. The enlarged hero fighter is centered and faces player-local `-Z`.
+10. Rear exhaust is absent while idle, visible under W thrust, and longer under Shift boost.
+11. The extended course remains readable at low and maximum boost speed.
 
 ## Asset policy
 
