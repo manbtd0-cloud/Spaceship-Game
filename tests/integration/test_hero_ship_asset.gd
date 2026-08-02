@@ -4,18 +4,18 @@ const HERO_GLB_PATH := "res://assets/runtime/ships/player/small_sci_fi_fighter.g
 const EXPECTED_DIMENSIONS := Vector3(13.714, 3.562, 12.0)
 const BOUNDS_TOLERANCE := 0.05
 const REQUIRED_SOCKET_PATHS: Array[String] = [
-    "Thrusters/Main/Left",
-    "Thrusters/Main/Right",
-    "Thrusters/Retro/Left",
-    "Thrusters/Retro/Right",
-    "Thrusters/Maneuver/FrontUpperLeft",
-    "Thrusters/Maneuver/FrontUpperRight",
-    "Thrusters/Maneuver/RearUpperLeft",
-    "Thrusters/Maneuver/RearUpperRight",
-    "Thrusters/Maneuver/RearLowerLeft",
-    "Thrusters/Maneuver/RearLowerRight",
-    "Thrusters/Maneuver/FrontLowerLeft",
-    "Thrusters/Maneuver/FrontLowerRight",
+    "Main/MainLeft",
+    "Main/MainRight",
+    "Retro/RetroLeft",
+    "Retro/RetroRight",
+    "Maneuver/FrontUpperLeft",
+    "Maneuver/FrontUpperRight",
+    "Maneuver/RearUpperLeft",
+    "Maneuver/RearUpperRight",
+    "Maneuver/RearLowerLeft",
+    "Maneuver/RearLowerRight",
+    "Maneuver/FrontLowerLeft",
+    "Maneuver/FrontLowerRight",
 ]
 
 func run() -> void:
@@ -51,18 +51,39 @@ func run() -> void:
         "canonical fighter must not contain baked EngineFire geometry"
     )
 
-    for socket_path: String in REQUIRED_SOCKET_PATHS:
-        var socket := fighter.get_node_or_null(socket_path) as Node3D
-        assert_true(socket != null, "required thruster socket missing: %s" % socket_path)
-        if socket != null:
+    var thruster_roots := fighter.find_children(
+        "Thrusters",
+        "Node3D",
+        true,
+        false
+    )
+    assert_equal(
+        thruster_roots.size(),
+        1,
+        "canonical fighter must contain exactly one Thrusters hierarchy"
+    )
+    var thruster_root: Node3D = null
+    if thruster_roots.size() == 1:
+        thruster_root = thruster_roots[0] as Node3D
+
+    if thruster_root != null:
+        for socket_path: String in REQUIRED_SOCKET_PATHS:
+            var socket := thruster_root.get_node_or_null(socket_path) as Node3D
             assert_true(
-                socket.scale.is_equal_approx(Vector3.ONE),
-                "thruster socket scale must be identity: %s" % socket_path
+                socket != null,
+                "required thruster socket missing: Thrusters/%s" % socket_path
             )
-            assert_true(
-                socket.transform.basis.is_finite(),
-                "thruster socket basis must be finite: %s" % socket_path
-            )
+            if socket != null:
+                assert_true(
+                    socket.scale.is_equal_approx(Vector3.ONE),
+                    "thruster socket scale must be identity: Thrusters/%s"
+                    % socket_path
+                )
+                assert_true(
+                    socket.transform.basis.is_finite(),
+                    "thruster socket basis must be finite: Thrusters/%s"
+                    % socket_path
+                )
 
     var bounds_state := {
         "has_mesh": false,
