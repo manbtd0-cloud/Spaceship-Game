@@ -1,7 +1,25 @@
 extends "res://tests/support/test_case.gd"
 
+const PLAYER_SCENE_PATH := "res://scenes/player/player_interceptor.tscn"
+const TUNING_RESOURCE_PATH := "res://config/flight/player_flight_tuning.tres"
+
 func run() -> void:
-    var packed := load("res://scenes/player/player_interceptor.tscn") as PackedScene
+    assert_true(
+        ResourceLoader.exists(TUNING_RESOURCE_PATH),
+        "player tuning resource must use a case-safe non-conflicting path"
+    )
+
+    var has_exact_tuning_dependency := false
+    for dependency: String in ResourceLoader.get_dependencies(PLAYER_SCENE_PATH):
+        if dependency.ends_with(TUNING_RESOURCE_PATH):
+            has_exact_tuning_dependency = true
+            break
+    assert_true(
+        has_exact_tuning_dependency,
+        "player scene must reference the exact case-safe tuning path"
+    )
+
+    var packed := load(PLAYER_SCENE_PATH) as PackedScene
     assert_true(packed != null, "player scene must load")
     if packed == null:
         return
