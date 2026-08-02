@@ -10,10 +10,8 @@ ASSET_TOOLS = REPO_ROOT / "tools" / "assets"
 if str(ASSET_TOOLS) not in sys.path:
     sys.path.insert(0, str(ASSET_TOOLS))
 
-from small_fighter_calibration import (  # noqa: E402
-    classify_effect_name,
-    group_spatial_component_indices,
-)
+from small_fighter_calibration import group_spatial_component_indices  # noqa: E402
+from thruster_paths import classify_effect_name  # noqa: E402
 
 
 class SourceExactThrusterGeometryTests(unittest.TestCase):
@@ -37,15 +35,15 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
     def test_effect_paths_are_unique_and_semantic(self) -> None:
         self.assertEqual(
             classify_effect_name("Main", (-1.0, 0.0, 0.0)),
-            "ThrusterEffects/Main/MainLeftEffect",
+            "ThrusterEffects/MainEffects/MainLeftEffect",
         )
         self.assertEqual(
             classify_effect_name("Retro", (1.0, 0.0, 0.0)),
-            "ThrusterEffects/Retro/RetroRightEffect",
+            "ThrusterEffects/RetroEffects/RetroRightEffect",
         )
         self.assertEqual(
             classify_effect_name("FrontUpper", (-1.0, 0.0, 0.0)),
-            "ThrusterEffects/Maneuver/FrontUpperLeftEffect",
+            "ThrusterEffects/ManeuverEffects/FrontUpperLeftEffect",
         )
 
     def test_exporter_contains_exact_mesh_pipeline_and_no_procedural_cones(self) -> None:
@@ -55,7 +53,7 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
         geometry_source = geometry_builder.read_text(encoding="utf-8")
         ast.parse(orchestrator_source)
         ast.parse(geometry_source)
-        self.assertIn("schema_version\": 3", orchestrator_source)
+        self.assertIn('"schema_version": 3', orchestrator_source)
         self.assertIn("ThrusterEffects", geometry_source)
         self.assertIn("source_component_indices", geometry_source)
         self.assertIn("geometry_sha256", geometry_source)
