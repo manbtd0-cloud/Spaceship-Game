@@ -96,31 +96,52 @@ func run() -> void:
     )
     if effect_root != null:
         for effect_path: String in REQUIRED_EFFECT_PATHS:
-            var effect := effect_root.get_node_or_null(effect_path) as MeshInstance3D
+            var pivot := effect_root.get_node_or_null(effect_path) as Node3D
             assert_true(
-                effect != null and effect.mesh != null,
-                "source-exact effect mesh missing: ThrusterEffects/%s" % effect_path
+                pivot != null,
+                "nozzle pivot missing: ThrusterEffects/%s" % effect_path
             )
-            if effect != null:
+            if pivot == null:
+                continue
+
+            assert_true(
+                pivot.transform.origin.is_finite(),
+                "nozzle pivot origin must be finite: ThrusterEffects/%s"
+                % effect_path
+            )
+            assert_true(
+                pivot.transform.basis.is_finite(),
+                "nozzle pivot basis must be finite: ThrusterEffects/%s"
+                % effect_path
+            )
+            assert_true(
+                absf(pivot.transform.basis.determinant()) > 0.000001,
+                "nozzle pivot basis must be non-degenerate: ThrusterEffects/%s"
+                % effect_path
+            )
+            assert_true(
+                pivot.scale.is_equal_approx(Vector3.ONE),
+                "authored nozzle pivot scale must begin at one: ThrusterEffects/%s"
+                % effect_path
+            )
+
+            var mesh_name := "%sMesh" % pivot.name
+            var effect_mesh := pivot.get_node_or_null(mesh_name) as MeshInstance3D
+            assert_true(
+                effect_mesh != null and effect_mesh.mesh != null,
+                "source-exact mesh child missing: ThrusterEffects/%s/%s"
+                % [effect_path, mesh_name]
+            )
+            if effect_mesh != null:
                 assert_true(
-                    effect.transform.origin.is_finite(),
-                    "nozzle-local effect origin must be finite: ThrusterEffects/%s"
-                    % effect_path
+                    effect_mesh.transform.origin.is_equal_approx(Vector3.ZERO),
+                    "effect mesh child must begin at pivot origin: ThrusterEffects/%s/%s"
+                    % [effect_path, mesh_name]
                 )
                 assert_true(
-                    effect.transform.basis.is_finite(),
-                    "nozzle-local effect basis must be finite: ThrusterEffects/%s"
-                    % effect_path
-                )
-                assert_true(
-                    absf(effect.transform.basis.determinant()) > 0.000001,
-                    "nozzle-local effect basis must be non-degenerate: ThrusterEffects/%s"
-                    % effect_path
-                )
-                assert_true(
-                    effect.scale.is_equal_approx(Vector3.ONE),
-                    "authored nozzle-local effect scale must begin at one: ThrusterEffects/%s"
-                    % effect_path
+                    effect_mesh.scale.is_equal_approx(Vector3.ONE),
+                    "effect mesh child scale must begin at one: ThrusterEffects/%s/%s"
+                    % [effect_path, mesh_name]
                 )
 
     var hull := fighter.find_child(
