@@ -118,6 +118,12 @@ class AuditContractTests(unittest.TestCase):
             errors = validate_audit_directory(audit_dir, VALID_SHA)
             self.assertTrue(any("confirmed_nose" in error for error in errors))
 
+    def test_blender_audit_script_contains_no_save_operation(self) -> None:
+        script_path = ASSET_TOOLS / "audit_small_sci_fi_fighter.py"
+        script = script_path.read_text(encoding="utf-8")
+        forbidden = ("save_as_mainfile", "save_mainfile", "save_homefile")
+        self.assertFalse(any(token in script for token in forbidden))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
