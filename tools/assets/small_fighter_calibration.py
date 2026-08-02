@@ -154,7 +154,7 @@ def group_spatial_components(
         raise ValueError(
             "plume component groups are not spatially distinct: "
             f"minimum_inter={minimum_inter_distance:.6f}, "
-            f"maximum_radius={maximum_cluster_radius:.6f}, "
+            f"maximum_cluster_radius={maximum_cluster_radius:.6f}, "
             f"centroids={group_centroids}"
         )
 
@@ -204,8 +204,10 @@ def principal_axis(points: list[Point3]) -> Point3:
 
 def classify_socket_name(group: str, position: Point3) -> str:
     side = "Left" if position[0] < 0.0 else "Right"
-    if group in {"Main", "Retro"}:
-        return f"Thrusters/{group}/{side}"
+    if group == "Main":
+        return f"Thrusters/Main/Main{side}"
+    if group == "Retro":
+        return f"Thrusters/Retro/Retro{side}"
     if group in {"FrontUpper", "RearUpper", "RearLower", "FrontLower"}:
         return f"Thrusters/Maneuver/{group}{side}"
     raise ValueError(f"unsupported socket group: {group}")
