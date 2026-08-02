@@ -101,7 +101,7 @@ func initialize() -> void:
             )
             return
 
-        var thruster_class: StringName = specification["class"]
+        var thruster_class := StringName(specification["class"])
         var effect := ThrusterExhaustEffect.new()
         effect.name = "ExhaustEffect"
         effect.visible = false
