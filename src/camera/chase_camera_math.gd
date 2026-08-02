@@ -40,6 +40,28 @@ static func desired_look_target(
         + forward * maxf(forward_look_ahead, 0.0)
     )
 
+static func desired_camera_basis(
+    camera_position: Vector3,
+    look_target: Vector3,
+    target_transform: Transform3D
+) -> Basis:
+    var target_basis := target_transform.basis.orthonormalized()
+    var look_direction := look_target - camera_position
+    if look_direction.length_squared() < 0.0001:
+        return target_basis
+
+    look_direction = look_direction.normalized()
+    var relative_up := target_basis.y.normalized()
+    if absf(look_direction.dot(relative_up)) > 0.98:
+        relative_up = target_basis.x.normalized()
+    if absf(look_direction.dot(relative_up)) > 0.98:
+        relative_up = target_basis.z.normalized()
+
+    return Transform3D(Basis.IDENTITY, camera_position).looking_at(
+        look_target,
+        relative_up
+    ).basis.orthonormalized()
+
 static func desired_fov(
     speed_mps: float,
     boost_amount: float,
