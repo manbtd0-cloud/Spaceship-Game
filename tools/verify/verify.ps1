@@ -64,6 +64,30 @@ function Invoke-GodotStep {
     }
 }
 
+function Assert-ExactPathSet {
+    param(
+        [string[]]$Expected,
+        [string[]]$Actual,
+        [string]$Label
+    )
+
+    $missing = @($Expected | Where-Object { $_ -notin $Actual })
+    $unexpected = @($Actual | Where-Object { $_ -notin $Expected })
+    $unique = @($Actual | Sort-Object -Unique)
+    if (
+        $missing.Count -gt 0 -or
+        $unexpected.Count -gt 0 -or
+        $unique.Count -ne $Expected.Count
+    ) {
+        throw (
+            "{0} paths mismatch. Missing: [{1}] Unexpected: [{2}]" -f
+            $Label,
+            ($missing -join ", "),
+            ($unexpected -join ", ")
+        )
+    }
+}
+
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 $requiredRuntimeFiles = @(
     "assets\runtime\ships\player\small_sci_fi_fighter.glb",
@@ -82,8 +106,14 @@ foreach ($relativePath in $requiredRuntimeFiles) {
 
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if ($manifest.schema_version -ne 2) {
-    throw "Hero fighter manifest schema_version must be 2"
+if ($manifest.schema_version -ne 3) {
+    throw "Hero fighter manifest schema_version must be 3"
+}
+if ($manifest.thruster_visual_strategy -ne "source_exact_enginefire_geometry") {
+    throw "Hero fighter must use source_exact_enginefire_geometry"
+}
+if ($manifest.procedural_exhaust_geometry -ne $false) {
+    throw "Hero fighter procedural_exhaust_geometry must be false"
 }
 if ($null -eq $manifest.canonical_frame) {
     throw "Hero fighter manifest canonical_frame is missing"
@@ -95,9 +125,6 @@ if (
     -not $manifest.canonical_frame.root_identity
 ) {
     throw "Hero fighter canonical frame must be +X right, -Z forward, +Y up, identity root"
-}
-if ($manifest.sockets.Count -ne 12) {
-    throw "Hero fighter manifest must contain exactly twelve thruster sockets"
 }
 
 $expectedSocketPaths = @(
@@ -114,26 +141,33 @@ $expectedSocketPaths = @(
     "Thrusters/Maneuver/FrontLowerLeft",
     "Thrusters/Maneuver/FrontLowerRight"
 )
-$actualSocketPaths = @(
-    $manifest.sockets | ForEach-Object { [string]$_.path }
+$actualSocketPaths = @($manifest.sockets | ForEach-Object { [string]$_.path })
+Assert-ExactPathSet -Expected $expectedSocketPaths -Actual $actualSocketPaths -Label "Hero fighter socket"
+
+$expectedEffectPaths = @(
+    "ThrusterEffects/Main/MainLeftEffect",
+    "ThrusterEffects/Main/MainRightEffect",
+    "ThrusterEffects/Retro/RetroLeftEffect",
+    "ThrusterEffects/Retro/RetroRightEffect",
+    "ThrusterEffects/Maneuver/FrontUpperLeftEffect",
+    "ThrusterEffects/Maneuver/FrontUpperRightEffect",
+    "ThrusterEffects/Maneuver/RearUpperLeftEffect",
+    "ThrusterEffects/Maneuver/RearUpperRightEffect",
+    "ThrusterEffects/Maneuver/RearLowerLeftEffect",
+    "ThrusterEffects/Maneuver/RearLowerRightEffect",
+    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
+    "ThrusterEffects/Maneuver/FrontLowerRightEffect"
 )
-$missingSocketPaths = @(
-    $expectedSocketPaths | Where-Object { $_ -notin $actualSocketPaths }
-)
-$unexpectedSocketPaths = @(
-    $actualSocketPaths | Where-Object { $_ -notin $expectedSocketPaths }
-)
-$uniqueSocketPaths = @($actualSocketPaths | Sort-Object -Unique)
-if (
-    $missingSocketPaths.Count -gt 0 -or
-    $unexpectedSocketPaths.Count -gt 0 -or
-    $uniqueSocketPaths.Count -ne 12
-) {
-    throw (
-        "Hero fighter socket paths mismatch. Missing: [{0}] Unexpected: [{1}]" -f
-        ($missingSocketPaths -join ", "),
-        ($unexpectedSocketPaths -join ", ")
-    )
+$actualEffectPaths = @($manifest.thruster_effects | ForEach-Object { [string]$_.path })
+Assert-ExactPathSet -Expected $expectedEffectPaths -Actual $actualEffectPaths -Label "Hero fighter effect"
+
+foreach ($effect in $manifest.thruster_effects) {
+    if (-not $effect.identity_transform -or -not $effect.source_exact_geometry) {
+        throw "Every fighter effect must be identity-transform source-exact geometry"
+    }
+    if ([string]$effect.geometry_sha256 -notmatch '^[0-9a-f]{64}$') {
+        throw "Every fighter effect must include a valid geometry SHA-256"
+    }
 }
 
 $godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
