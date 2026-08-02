@@ -15,6 +15,10 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertIn("$manifest.canonical_frame.godot_up", source)
         self.assertNotIn("$manifest.godot_forward", source)
         self.assertNotIn("$manifest.godot_up", source)
+        self.assertIn('"Thrusters/Main/MainLeft"', source)
+        self.assertIn('"Thrusters/Retro/RetroRight"', source)
+        self.assertNotIn('"Thrusters/Main/Left"', source)
+        self.assertNotIn('"Thrusters/Retro/Left"', source)
 
     def test_linux_verifier_reads_schema_two_canonical_frame(self) -> None:
         source = (REPO_ROOT / "tools" / "verify" / "verify.sh").read_text(
@@ -23,6 +27,10 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertIn('manifest.get("canonical_frame")', source)
         self.assertIn('manifest.get("schema_version") != 2', source)
         self.assertIn('len(manifest.get("sockets", [])) != 12', source)
+        self.assertIn('"Thrusters/Main/MainLeft"', source)
+        self.assertIn('"Thrusters/Retro/RetroRight"', source)
+        self.assertNotIn('"Thrusters/Main/Left"', source)
+        self.assertNotIn('"Thrusters/Retro/Left"', source)
 
     def test_asset_wrappers_fail_on_blender_python_exceptions(self) -> None:
         for relative_path in (
