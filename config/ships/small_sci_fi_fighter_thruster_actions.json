@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "asset": "Small Sci-Fi Fighter",
+  "runtime_generated": false,
+  "actions": [
+    {
+      "action": "forward",
+      "weights": {
+        "Main/MainLeft": 1.0,
+        "Main/MainRight": 1.0
+      }
+    },
+    {
+      "action": "reverse",
+      "weights": {
+        "Retro/RetroLeft": 1.0,
+        "Retro/RetroRight": 1.0
+      }
+    },
+    {
+      "action": "strafe_left",
+      "weights": {
+        "Maneuver/FrontLowerRight": 1.0,
+        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/RearLowerRight": 1.0,
+        "Maneuver/RearUpperRight": 1.0
+      }
+    },
+    {
+      "action": "strafe_right",
+      "weights": {
+        "Maneuver/FrontLowerLeft": 1.0,
+        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/RearLowerLeft": 1.0,
+        "Maneuver/RearUpperLeft": 1.0
+      }
+    },
+    {
+      "action": "strafe_up",
+      "weights": {
+        "Maneuver/FrontLowerLeft": 1.0,
+        "Maneuver/FrontLowerRight": 1.0,
+        "Maneuver/RearLowerLeft": 1.0,
+        "Maneuver/RearLowerRight": 1.0
+      }
+    },
+    {
+      "action": "strafe_down",
+      "weights": {
+        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/RearUpperLeft": 1.0,
+        "Maneuver/RearUpperRight": 1.0
+      }
+    },
+    {
+      "action": "pitch_up",
+      "weights": {
+        "Maneuver/FrontLowerLeft": 0.46,
+        "Maneuver/FrontLowerRight": 0.47,
+        "Maneuver/RearUpperLeft": 0.54,
+        "Maneuver/RearUpperRight": 0.56
+      }
+    },
+    {
+      "action": "pitch_down",
+      "weights": {
+        "Maneuver/FrontUpperLeft": 0.56,
+        "Maneuver/FrontUpperRight": 0.58,
+        "Maneuver/RearLowerLeft": 0.53,
+        "Maneuver/RearLowerRight": 0.59
+      }
+    },
+    {
+      "action": "yaw_left",
+      "weights": {
+        "Maneuver/FrontLowerRight": 0.86,
+        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/RearLowerLeft": 0.79,
+        "Maneuver/RearUpperLeft": 0.77
+      }
+    },
+    {
+      "action": "yaw_right",
+      "weights": {
+        "Maneuver/FrontLowerLeft": 0.88,
+        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/RearLowerRight": 0.83,
+        "Maneuver/RearUpperRight": 0.85
+      }
+    },
+    {
+      "action": "roll_left",
+      "weights": {
+        "Maneuver/FrontLowerRight": 1.0,
+        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/RearLowerRight": 1.0,
+        "Maneuver/RearUpperLeft": 1.0
+      }
+    },
+    {
+      "action": "roll_right",
+      "weights": {
+        "Maneuver/FrontLowerLeft": 1.0,
+        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/RearLowerLeft": 1.0,
+        "Maneuver/RearUpperRight": 1.0
+      }
+    }
+  ]
+}
