@@ -69,6 +69,8 @@ func run() -> void:
                 "SafeArea/Layout/SpeedLabel",
                 "SafeArea/Layout/ModeLabel",
                 "SafeArea/Layout/BoostLabel",
+                "SafeArea/Layout/HeatLabel",
+                "SafeArea/Layout/EnvelopeLabel",
                 "SafeArea/Layout/CaptureLabel",
                 "SafeArea/Layout/ControlsLabel"
             ]:
