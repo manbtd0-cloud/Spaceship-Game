@@ -49,14 +49,18 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
         )
 
     def test_exporter_contains_exact_mesh_pipeline_and_no_procedural_cones(self) -> None:
-        exporter = ASSET_TOOLS / "export_small_sci_fi_fighter.py"
-        source = exporter.read_text(encoding="utf-8")
-        ast.parse(source)
-        self.assertIn("ThrusterEffects", source)
-        self.assertIn("source_component_indices", source)
-        self.assertIn("geometry_sha256", source)
-        self.assertIn("from_pydata", source)
-        self.assertNotIn("CylinderMesh", source)
+        orchestrator = ASSET_TOOLS / "export_small_sci_fi_fighter_v3.py"
+        geometry_builder = ASSET_TOOLS / "source_exact_thruster_geometry.py"
+        orchestrator_source = orchestrator.read_text(encoding="utf-8")
+        geometry_source = geometry_builder.read_text(encoding="utf-8")
+        ast.parse(orchestrator_source)
+        ast.parse(geometry_source)
+        self.assertIn("schema_version\": 3", orchestrator_source)
+        self.assertIn("ThrusterEffects", geometry_source)
+        self.assertIn("source_component_indices", geometry_source)
+        self.assertIn("geometry_sha256", geometry_source)
+        self.assertIn("from_pydata", geometry_source)
+        self.assertNotIn("CylinderMesh", orchestrator_source + geometry_source)
 
 
 if __name__ == "__main__":
