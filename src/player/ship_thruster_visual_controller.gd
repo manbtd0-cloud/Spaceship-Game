@@ -2,6 +2,7 @@ class_name ShipThrusterVisualController
 extends Node
 
 const VISIBILITY_THRESHOLD := 0.001
+const ASSIST_VISUAL_CAP := 0.35
 const ACTION_MATRIX_PATH := "res://config/ships/small_sci_fi_fighter_thruster_actions.json"
 const SOCKET_SPECS := [
     {"socket": "Main/MainLeft", "effect": "MainEffects/MainLeftEffect", "class": &"main"},
@@ -27,7 +28,6 @@ var _action_matrix: ThrusterActionMatrix
 var _socket_nodes: Array[Node3D] = []
 var _effect_meshes: Array[MeshInstance3D] = []
 var _effect_materials: Array[StandardMaterial3D] = []
-var _socket_data: Array[Dictionary] = []
 var _socket_paths: Array[StringName] = []
 var _socket_classes: Array[StringName] = []
 var _effect_initial_transforms: Array[Transform3D] = []
@@ -41,20 +41,35 @@ func _process(_delta: float) -> void:
     if not _contract_valid or _controller == null or _action_matrix == null:
         return
 
-    var intensities := _action_matrix.intensities_for(
-        _controller.get_last_command()
-    )
+    var direct := preview_direct_intensities(_controller.get_last_command())
+    var assisted := _assisted_intensities()
     var boost := _controller.get_boost_amount()
+
     for index: int in range(_effect_meshes.size()):
+        var socket_path := _socket_paths[index]
+        var direct_amount := clampf(
+            float(direct.get(socket_path, 0.0)),
+            0.0,
+            1.0
+        )
+        var assist_amount := clampf(
+            float(assisted.get(socket_path, 0.0)),
+            0.0,
+            1.0
+        ) * ASSIST_VISUAL_CAP
+        var final_amount := maxf(direct_amount, assist_amount)
         var thruster_class: StringName = _socket_classes[index]
         var class_boost := (
             boost
-            if thruster_class == &"main" or thruster_class == &"retro"
+            if (
+                direct_amount > VISIBILITY_THRESHOLD
+                and (thruster_class == &"main" or thruster_class == &"retro")
+            )
             else 0.0
         )
         _apply_effect_output(
             index,
-            float(intensities.get(_socket_paths[index], 0.0)),
+            final_amount,
             class_boost,
             thruster_class
         )
@@ -150,18 +165,11 @@ func initialize() -> void:
         _effect_initial_transforms.append(effect.transform)
         _socket_paths.append(StringName(socket_path))
         _socket_classes.append(thruster_class)
-        _socket_data.append({
-            "position": local_transform.origin,
-            "reaction_direction": reaction_direction,
-            "capacity": _capacity_for_class(thruster_class),
-            "class": thruster_class,
-        })
 
     _contract_valid = (
         _socket_nodes.size() == SOCKET_SPECS.size()
         and _effect_meshes.size() == SOCKET_SPECS.size()
         and _effect_materials.size() == SOCKET_SPECS.size()
-        and _socket_data.size() == SOCKET_SPECS.size()
         and _socket_paths.size() == SOCKET_SPECS.size()
         and are_effect_transforms_unchanged()
     )
@@ -169,6 +177,14 @@ func initialize() -> void:
         _disable_with_error(
             "Source-exact thruster contract did not resolve twelve socket/effect pairs"
         )
+
+func preview_direct_intensities(command: FlightCommand) -> Dictionary:
+    if _action_matrix == null or not _action_matrix.is_valid():
+        return {}
+    return _action_matrix.intensities_for(command)
+
+func direct_intensities_for_command(command: FlightCommand) -> Dictionary:
+    return preview_direct_intensities(command)
 
 func get_socket_count() -> int:
     return _socket_nodes.size()
@@ -195,11 +211,6 @@ func are_effect_transforms_unchanged() -> bool:
 func is_contract_valid() -> bool:
     return _contract_valid
 
-func direct_intensities_for_command(command: FlightCommand) -> Dictionary:
-    if _action_matrix == null:
-        return {}
-    return _action_matrix.intensities_for(command)
-
 static func find_unique_logical_root(
     root: Node,
     logical_name: StringName
@@ -218,6 +229,24 @@ static func _collect_named_node3d(
         matches.append(node_3d)
     for child: Node in node.get_children():
         _collect_named_node3d(child, logical_name, matches)
+
+func _assisted_intensities() -> Dictionary:
+    var command := FlightCommand.new()
+    var force_reference := maxf(_controller.get_force_reference(), 0.001)
+    var torque_reference := maxf(_controller.get_torque_reference(), 0.001)
+    var assist_force := _controller.get_last_assist_force_local()
+    var assist_torque := _controller.get_last_assist_torque_local()
+    command.translation = Vector3(
+        clampf(assist_force.x / force_reference, -1.0, 1.0),
+        clampf(assist_force.y / force_reference, -1.0, 1.0),
+        clampf(assist_force.z / force_reference, -1.0, 1.0)
+    )
+    command.rotation = Vector3(
+        clampf(assist_torque.x / torque_reference, -1.0, 1.0),
+        clampf(assist_torque.y / torque_reference, -1.0, 1.0),
+        clampf(assist_torque.z / torque_reference, -1.0, 1.0)
+    )
+    return _action_matrix.intensities_for(command)
 
 func _apply_effect_output(
     index: int,
@@ -260,15 +289,6 @@ func _create_effect_material(thruster_class: StringName) -> StandardMaterial3D:
     material.emission = _class_color(thruster_class)
     material.emission_energy_multiplier = 0.0
     return material
-
-func _capacity_for_class(thruster_class: StringName) -> float:
-    match thruster_class:
-        &"main":
-            return 0.55
-        &"retro":
-            return 0.35
-        _:
-            return 0.22
 
 func _class_color(thruster_class: StringName) -> Color:
     match thruster_class:
