@@ -133,3 +133,70 @@ func run() -> void:
         inertial_output.force_local.x >= -0.001,
         "manual model receives no nose-steering force"
     )
+
+    tuning.assist_lateral_damping = 4.0
+    tuning.assist_vertical_damping = 4.0
+    var coasting_assisted := FlightCommand.new()
+    coasting_assisted.mode = FlightMode.Value.ASSISTED
+    var split := FlightModel.compute(
+        coasting_assisted,
+        tuning,
+        Vector3(12.0, -3.0, -80.0),
+        Vector3(0.2, -0.4, 0.1),
+        8500.0
+    )
+    assert_equal(
+        split.pilot_force_local,
+        Vector3.ZERO,
+        "coasting must produce zero pilot force"
+    )
+    assert_equal(
+        split.pilot_torque_local,
+        Vector3.ZERO,
+        "coasting must produce zero pilot torque"
+    )
+    assert_true(
+        split.assist_force_local.length() > 0.0,
+        "assisted drift correction must be isolated"
+    )
+    assert_true(
+        split.assist_torque_local.length() > 0.0,
+        "assisted angular damping must be isolated"
+    )
+    assert_equal(
+        split.force_local,
+        split.pilot_force_local + split.assist_force_local,
+        "total force must equal split contributions"
+    )
+    assert_equal(
+        split.torque_local,
+        split.pilot_torque_local + split.assist_torque_local,
+        "total torque must equal split contributions"
+    )
+
+    var yaw_only := FlightCommand.new()
+    yaw_only.mode = FlightMode.Value.ASSISTED
+    yaw_only.rotation.y = 0.5
+    var with_auto_bank := FlightModel.compute(
+        yaw_only,
+        tuning,
+        Vector3.ZERO,
+        Vector3.ZERO,
+        8500.0,
+        Vector3(0.0, 0.0, -0.25)
+    )
+    assert_equal(
+        with_auto_bank.pilot_torque_local,
+        Vector3(0.0, 10.0, 0.0),
+        "pilot yaw torque must remain isolated from auto-bank"
+    )
+    assert_equal(
+        with_auto_bank.assist_torque_local,
+        Vector3(0.0, 0.0, -7.5),
+        "auto-bank must enter the assisted torque channel"
+    )
+    assert_equal(
+        with_auto_bank.torque_local,
+        Vector3(0.0, 10.0, -7.5),
+        "total torque must preserve pilot plus auto-bank physics"
+    )
