@@ -3,18 +3,18 @@ extends Node
 
 const VISIBILITY_THRESHOLD := 0.001
 const SOCKET_SPECS := [
-    {"socket": "Main/MainLeft", "effect": "Main/MainLeftEffect", "class": &"main"},
-    {"socket": "Main/MainRight", "effect": "Main/MainRightEffect", "class": &"main"},
-    {"socket": "Retro/RetroLeft", "effect": "Retro/RetroLeftEffect", "class": &"retro"},
-    {"socket": "Retro/RetroRight", "effect": "Retro/RetroRightEffect", "class": &"retro"},
-    {"socket": "Maneuver/FrontUpperLeft", "effect": "Maneuver/FrontUpperLeftEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/FrontUpperRight", "effect": "Maneuver/FrontUpperRightEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/RearUpperLeft", "effect": "Maneuver/RearUpperLeftEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/RearUpperRight", "effect": "Maneuver/RearUpperRightEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/RearLowerLeft", "effect": "Maneuver/RearLowerLeftEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/RearLowerRight", "effect": "Maneuver/RearLowerRightEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/FrontLowerLeft", "effect": "Maneuver/FrontLowerLeftEffect", "class": &"maneuver"},
-    {"socket": "Maneuver/FrontLowerRight", "effect": "Maneuver/FrontLowerRightEffect", "class": &"maneuver"},
+    {"socket": "Main/MainLeft", "effect": "MainEffects/MainLeftEffect", "class": &"main"},
+    {"socket": "Main/MainRight", "effect": "MainEffects/MainRightEffect", "class": &"main"},
+    {"socket": "Retro/RetroLeft", "effect": "RetroEffects/RetroLeftEffect", "class": &"retro"},
+    {"socket": "Retro/RetroRight", "effect": "RetroEffects/RetroRightEffect", "class": &"retro"},
+    {"socket": "Maneuver/FrontUpperLeft", "effect": "ManeuverEffects/FrontUpperLeftEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/FrontUpperRight", "effect": "ManeuverEffects/FrontUpperRightEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/RearUpperLeft", "effect": "ManeuverEffects/RearUpperLeftEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/RearUpperRight", "effect": "ManeuverEffects/RearUpperRightEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/RearLowerLeft", "effect": "ManeuverEffects/RearLowerLeftEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/RearLowerRight", "effect": "ManeuverEffects/RearLowerRightEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/FrontLowerLeft", "effect": "ManeuverEffects/FrontLowerLeftEffect", "class": &"maneuver"},
+    {"socket": "Maneuver/FrontLowerRight", "effect": "ManeuverEffects/FrontLowerRightEffect", "class": &"maneuver"},
 ]
 
 @export var controller_path: NodePath
