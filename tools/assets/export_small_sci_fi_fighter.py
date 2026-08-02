@@ -32,6 +32,7 @@ from small_fighter_calibration import (  # noqa: E402
     UNIFORM_SCALE,
     classify_socket_name,
     connected_components,
+    group_spatial_components,
     principal_axis,
 )
 
@@ -111,7 +112,7 @@ def disable_thruster_emission(obj: bpy.types.Object) -> None:
         material = slot.material
         if material is None or material.name.split(".")[0] != "Thrusters":
             continue
-        if not material.use_nodes or material.node_tree is None:
+        if material.node_tree is None:
             continue
         for node in material.node_tree.nodes:
             if node.type == "EMISSION":
@@ -321,13 +322,30 @@ def extract_all_sockets(
         source = bpy.data.objects.get(source_name)
         if source is None or source.type != "MESH":
             raise RuntimeError(f"Approved plume evidence is missing: {source_name}")
-        components = evaluated_component_points(source, source_frame_inverse)
-        expected_components = int(specification["components"])
-        if len(components) != expected_components:
-            raise RuntimeError(
-                f"{source_name} component count mismatch: "
-                f"expected {expected_components}, got {len(components)}"
+        raw_components = evaluated_component_points(source, source_frame_inverse)
+        expected_sockets = int(specification["sockets"])
+        tuple_components = [
+            [tuple(point) for point in component]
+            for component in raw_components
+        ]
+        try:
+            grouped_components = group_spatial_components(
+                tuple_components,
+                expected_sockets,
             )
+        except ValueError as error:
+            raise RuntimeError(
+                f"{source_name} plume grouping failed from "
+                f"{len(raw_components)} mesh islands into {expected_sockets} sockets: {error}"
+            ) from error
+        components = [
+            [Vector(point) for point in component]
+            for component in grouped_components
+        ]
+        print(
+            f"{source_name}: {len(raw_components)} mesh islands -> "
+            f"{len(components)} physical plume groups"
+        )
         for component_index, points in enumerate(components):
             records.append(
                 extract_socket_from_component(
@@ -570,7 +588,7 @@ def main() -> None:
 
     print(f"Source SHA validated: {actual_sha}")
     print("Cube-local hull dimensions validated")
-    print(f"{len(socket_records)} socket components extracted")
+    print(f"{len(socket_records)} physical plume sockets extracted")
     print("2 main / 2 retro / 8 maneuver sockets")
     print(f"Canonical GLB: {output_path}")
     print(f"Manifest: {manifest_path}")
