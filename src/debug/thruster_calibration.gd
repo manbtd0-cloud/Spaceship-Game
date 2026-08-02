@@ -126,31 +126,10 @@ func _apply_case() -> void:
 func _command_for_action(action_name: StringName) -> FlightCommand:
     var command := FlightCommand.new()
     var action := ThrusterAction.from_name(action_name)
-    match action:
-        ThrusterAction.Value.FORWARD:
-            command.translation = Vector3.FORWARD
-        ThrusterAction.Value.REVERSE:
-            command.translation = Vector3.BACK
-        ThrusterAction.Value.STRAFE_LEFT:
-            command.translation = Vector3.LEFT
-        ThrusterAction.Value.STRAFE_RIGHT:
-            command.translation = Vector3.RIGHT
-        ThrusterAction.Value.STRAFE_UP:
-            command.translation = Vector3.UP
-        ThrusterAction.Value.STRAFE_DOWN:
-            command.translation = Vector3.DOWN
-        ThrusterAction.Value.PITCH_UP:
-            command.rotation = Vector3.RIGHT
-        ThrusterAction.Value.PITCH_DOWN:
-            command.rotation = Vector3.LEFT
-        ThrusterAction.Value.YAW_LEFT:
-            command.rotation = Vector3.UP
-        ThrusterAction.Value.YAW_RIGHT:
-            command.rotation = Vector3.DOWN
-        ThrusterAction.Value.ROLL_LEFT:
-            command.rotation = Vector3.BACK
-        ThrusterAction.Value.ROLL_RIGHT:
-            command.rotation = Vector3.FORWARD
+    if action < 0:
+        return command
+    command.translation = ThrusterAction.target_force(action)
+    command.rotation = ThrusterAction.target_torque(action)
     return command
 
 func _update_report() -> void:
