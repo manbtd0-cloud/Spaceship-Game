@@ -18,6 +18,8 @@ var _forward_thrust_amount := 0.0
 var _local_velocity := Vector3.ZERO
 var _auto_bank_offset := 0.0
 var _auto_bank_rate := 0.0
+var _last_force_local := Vector3.ZERO
+var _last_torque_local := Vector3.ZERO
 
 func _ready() -> void:
     _body = get_node_or_null(body_path) as RigidBody3D
@@ -97,6 +99,8 @@ func _physics_process(delta: float) -> void:
         local_angular,
         _body.mass
     )
+    _last_force_local = output.force_local
+    _last_torque_local = output.torque_local
     _body.apply_central_force(basis * output.force_local)
     _body.apply_torque(basis * output.torque_local)
 
@@ -145,6 +149,25 @@ func get_world_velocity() -> Vector3:
 func get_body() -> RigidBody3D:
     return _body
 
+func get_last_force_local() -> Vector3:
+    return _last_force_local
+
+func get_last_torque_local() -> Vector3:
+    return _last_torque_local
+
+func get_force_reference() -> float:
+    if tuning == null:
+        return 1.0
+    return maxf(
+        maxf(tuning.forward_force, tuning.strafe_force) * tuning.boost_multiplier,
+        tuning.reverse_force
+    )
+
+func get_torque_reference() -> float:
+    if tuning == null:
+        return 1.0
+    return maxf(tuning.pitch_torque, maxf(tuning.yaw_torque, tuning.roll_torque))
+
 func reset_runtime_state() -> void:
     _boost_heat = 0.0
     _boost_locked_out = false
@@ -152,3 +175,5 @@ func reset_runtime_state() -> void:
     _forward_thrust_amount = 0.0
     _auto_bank_offset = 0.0
     _auto_bank_rate = 0.0
+    _last_force_local = Vector3.ZERO
+    _last_torque_local = Vector3.ZERO
