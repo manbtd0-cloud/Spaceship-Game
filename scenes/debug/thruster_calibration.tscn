@@ -1,0 +1,82 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/debug/thruster_calibration.gd" id="1_calibration"]
+[ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="2_player"]
+
+[sub_resource type="Environment" id="Environment_calibration"]
+background_mode = 1
+background_color = Color(0.004, 0.008, 0.018, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.2, 0.32, 0.5, 1)
+ambient_light_energy = 0.7
+
+[node name="ThrusterCalibration" type="Node3D"]
+script = ExtResource("1_calibration")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_calibration")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-35, -25, 0)
+light_color = Color(0.72, 0.82, 1, 1)
+light_energy = 1.8
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(25, 145, 0)
+light_color = Color(0.25, 0.55, 1, 1)
+light_energy = 0.7
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 5.5, 22)
+current = true
+fov = 48.0
+
+[node name="PlayerInterceptor" parent="." instance=ExtResource("2_player")]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="Panel" parent="UI"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 680.0
+offset_bottom = 520.0
+
+[node name="Margin" type="MarginContainer" parent="UI/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="UI/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="UI/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "FIGHTER THRUSTER CALIBRATION"
+
+[node name="Instructions" type="Label" parent="UI/Panel/Margin/VBox"]
+layout_mode = 2
+text = "LEFT/RIGHT: case    SPACE: pause output    ESC: exit"
+
+[node name="CaseLabel" type="Label" parent="UI/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "CASE"
+
+[node name="Divider" type="HSeparator" parent="UI/Panel/Margin/VBox"]
+layout_mode = 2
+
+[node name="ReportLabel" type="Label" parent="UI/Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "No active thrusters"
+vertical_alignment = 1
