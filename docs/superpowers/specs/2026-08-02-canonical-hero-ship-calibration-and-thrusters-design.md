@@ -2,34 +2,52 @@
 
 ## Status
 
-Approved design for replacing the unreliable runtime-alignment experiment with a canonical Blender export and a deterministic dynamic-thruster system.
+Approved design for replacing unreliable runtime alignment with a canonical Blender export and a deterministic socket-driven thruster system.
 
-## Problem Statement
+## Problem
 
-The current Small Sci-Fi Fighter runtime asset is visibly misaligned and underscaled. The existing `ForwardMarker` and `UpMarker` were generated from an unverified source-axis assumption, so runtime marker alignment cannot guarantee that the visible nose and top are correct. The current exhaust implementation also treats rear flames as simple always-present scene meshes rather than representing all visible maneuvering nozzles dynamically.
+The current Small Sci-Fi Fighter is visibly misaligned and underscaled. Its markers were generated from an unverified source-axis assumption, so they describe the assumption rather than proving the visible nose and top. Runtime rotation and scale correction therefore cannot guarantee the right result.
 
-The next milestone must establish the ship orientation, scale, center, and actual nozzle layout from visual evidence before generating a new runtime GLB.
+The current exhaust implementation is also incomplete: it represents rear flames only and does not model the fighter's visible maneuvering nozzles or the final force and torque actually applied by the flight controller.
 
 ## Goals
 
-- Produce an objective Blender audit of the preserved source without modifying it.
-- Establish the true nose direction, top direction, physical center, and desired scale from rendered evidence.
-- Export one canonical GLB whose root uses identity rotation and scale in Godot.
-- Add named sockets only at visible, confirmed nozzles.
-- Drive every exhaust effect from the controller's final local force and torque output.
-- Support main engines, retro thrust, translation jets, pitch, yaw, roll, assisted steering, drift correction, and automatic banking.
-- Keep flames, lights, particles, and animation entirely under Godot control.
-- Remove runtime model-alignment adapters and corrective scene transforms after the canonical GLB is integrated.
+- Audit the preserved `.blend` without modifying it.
+- Establish the true nose, top, physical center, dimensions, visible nozzles, and baked exhaust geometry from rendered evidence.
+- Export one canonical GLB with identity root transform in Godot.
+- Create sockets only at confirmed visible nozzles.
+- Drive exhaust from the controller's final local force and torque, including assistance and automatic banking.
+- Support main, retro, translation, pitch, yaw, and roll jets wherever the audited model physically provides them.
+- Keep flames, particles, lights, and animation entirely under Godot control.
+- Remove all runtime model-alignment adapters after canonical integration.
 
 ## Non-Goals
 
-- Do not change flight physics, speed envelopes, thermal timing, input mapping, mass, or camera behavior.
-- Do not invent nozzles that are not visibly present on the audited ship.
-- Do not use mesh-derived gameplay collision.
-- Do not add final production VFX, sound, damage, weapons, or alternate ships.
-- Do not overwrite or delete the source `.blend`.
+- No changes to flight physics, speed limits, thermal timing, controls, mass, or camera behavior.
+- No invented nozzles.
+- No mesh-derived gameplay collision.
+- No final production VFX, audio, combat, damage, or alternate ships.
+- Never overwrite or delete the preserved source `.blend`.
 
-## Phase 1: Non-Destructive Blender Audit
+## Mandatory Execution Staging
+
+This work has two separately approved implementation stages.
+
+### Stage A — Audit only
+
+The first implementation plan creates and verifies only the Blender audit tooling. It ends when the eight renders and JSON report are pushed.
+
+### Calibration gate
+
+The audit outputs are reviewed and a concrete calibration record is committed and approved. That record supplies the exact nose axis, top axis, center, canonical dimensions, baked-flame removals, and socket list.
+
+### Stage B — Canonical export and runtime thrusters
+
+Only after the calibration record is approved may a second implementation plan define the exact Blender rotations, dimensions, socket transforms, manifest contents, Godot hierarchy, solver fixtures, and runtime integration.
+
+This staging prevents another exporter or socket layout from being built on guesses.
+
+## Stage A: Non-Destructive Blender Audit
 
 ### Command
 
@@ -37,7 +55,7 @@ The next milestone must establish the ship orientation, scale, center, and actua
 .\tools\assets\audit-small-fighter.ps1
 ```
 
-The wrapper opens the preserved source headlessly and writes audit outputs under:
+### Outputs
 
 ```text
 artifacts/hero_ship_audit/
@@ -52,117 +70,100 @@ artifacts/hero_ship_audit/
 └── ship_audit.json
 ```
 
-### Render Requirements
+### Render contract
 
-All renders use the same neutral background, fixed lighting, consistent focal treatment, and a visible bounding box. Each image includes:
+All images use the same neutral background and fixed lighting. Orthographic renders share one scale. Each image visibly includes:
 
-- view name and camera direction;
+- view name;
+- camera position and viewing direction;
 - Blender world-axis legend;
-- object origin;
-- dimensions;
-- bounding-box center;
-- source-file SHA-256.
+- source object origin;
+- aggregate bounding box and center;
+- aggregate dimensions;
+- source SHA-256.
 
-The six orthographic views must be geometrically consistent. Perspective views exist only to resolve ambiguous silhouette and nozzle details.
+The six orthographic views are geometrically consistent. Perspective views exist only to resolve ambiguous silhouette, cockpit, tail, and nozzle details.
 
-### JSON Requirements
+### JSON contract
 
 `ship_audit.json` records:
 
 - source path and SHA-256;
 - Blender version;
-- every visible object, parent, type, transform, dimensions, and bounding box;
-- mesh and material names;
+- every visible object's name, parent, type, world transform, dimensions, and world bounds;
+- all mesh and material names;
 - emissive materials and nodes;
-- current empties and helpers;
-- candidate nozzle-related names;
-- camera transforms used for each render;
+- existing empties and helpers;
+- names containing engine, thrust, nozzle, flame, glow, jet, exhaust, or similar terms;
 - aggregate bounds and center;
-- no claimed nose, top, or nozzle role unless explicitly confirmed later.
+- exact camera transforms used by each render.
 
-The audit tool must not save the source file or modify the source on disk.
+It does not claim which direction is the nose or top and does not assign nozzle roles. The audit script must not save the source file. The source SHA before and after execution must match.
 
-## Phase 2: Calibration Decision Record
+## Calibration Decision Record
 
-After the audit outputs are pushed, one committed calibration document records the visually confirmed facts:
+After Stage A, create:
 
 ```text
-Blender nose direction
-Blender top direction
-Godot target forward: -Z
-Godot target up: +Y
-physical center
-canonical dimensions
-visible main-engine nozzles
-visible retro nozzles
-visible translation/maneuver nozzles
-baked flame or emissive geometry to remove
+docs/assets/small-sci-fi-fighter-calibration.md
 ```
 
-Object names are supporting evidence only. The orthographic and perspective renders are the authoritative evidence.
+It records exact approved values for:
 
-No canonical exporter or socket placement is implemented until this record is approved.
+- Blender-space nose direction;
+- Blender-space top direction;
+- Godot target forward `-Z`;
+- Godot target up `+Y`;
+- physical-center definition and coordinates;
+- canonical Godot dimensions;
+- collider dimensions if a change is justified;
+- meshes/materials to remove as baked exhaust;
+- every confirmed nozzle's position, exhaust direction, class, and role;
+- audit images supporting each decision.
 
-## Phase 3: Canonical Blender Export
+Object and material names are supporting evidence only. The rendered model is authoritative.
 
-The exporter works on an in-memory copy of the source scene and produces:
+## Stage B: Canonical Blender Export
+
+The exporter works on an in-memory copy and writes:
 
 ```text
 assets/runtime/ships/player/small_sci_fi_fighter.glb
 assets/runtime/ships/player/small_sci_fi_fighter.manifest.json
 ```
 
-### Canonical Transform Contract
-
-In Godot, the exported root must have:
+### Canonical Godot contract
 
 ```text
-rotation = 0, 0, 0
-scale    = 1, 1, 1
-forward  = local -Z
-up       = local +Y
-origin   = approved physical center
+root rotation = identity
+root scale    = 1,1,1
+visible nose = local -Z
+visible top  = local +Y
+origin       = approved physical center
 ```
 
-The visible ship must require no Godot corrective rotation, runtime alignment adapter, or guessed marker transformation.
+The player scene requires no corrective rotation, corrective scale, marker-driven adapter, or guessed transform.
 
-### Canonical Scale
+Scaling is uniform. The collider remains a simple independent box and changes only if the approved calibration record requires it.
 
-The calibration record defines one exact visual envelope. The exporter scales uniformly, never non-uniformly. The gameplay collider is updated only if the approved canonical dimensions require it, and remains a simple box independent from the mesh.
-
-### Cleanup
-
-The exporter removes from the runtime derivative:
-
-- cameras and lights;
-- source-only helpers;
-- hidden or irrelevant geometry;
-- armatures or animations not required by the static ship;
-- visible baked flame meshes;
-- source emissive objects that represent permanent exhaust rather than hardware.
-
-Materials and actual ship geometry are preserved.
+The runtime derivative removes cameras, lights, source-only helpers, irrelevant hidden geometry, unused armatures/animations, baked flame meshes, and permanent exhaust-only emissive geometry. Actual ship hardware and useful materials remain.
 
 ## Thruster Socket Contract
 
-Sockets are Blender empties parented under a `Thrusters` hierarchy. Only sockets supported by visible nozzle evidence are created.
+Sockets are Blender empties under `Thrusters`. Only audited visible nozzles receive sockets.
 
-### Local Axis Convention
-
-For every socket:
+### Axis convention
 
 ```text
-origin   = nozzle exit center
-local -Z = exhaust plume travel direction
-local +Z = reaction-force direction applied to the ship
-scale    = 1, 1, 1
+socket origin   = nozzle exit center
+socket local -Z = exhaust plume travel direction
+socket local +Z = reaction-force direction on the ship
+socket scale    = 1,1,1
 ```
-
-This convention matches Godot's local forward convention and prevents effect-direction ambiguity.
 
 ### Naming
 
-Sockets use stable semantic paths, for example:
+Stable semantic paths are used where those nozzles exist, for example:
 
 ```text
 Thrusters/Main/Left
@@ -191,157 +192,141 @@ Thrusters/RollRight/Upper
 Thrusters/RollRight/Lower
 ```
 
-The final hierarchy may contain fewer sockets. Missing physical nozzles are not fabricated merely to complete the taxonomy.
-
-Each socket is unique, uses identity scale, and is positioned close to visible nozzle geometry. The manifest records socket path, position, exhaust direction, role, and class (`main`, `retro`, or `maneuver`).
+The final list may be smaller. The manifest records each socket's path, class, role, position, exhaust direction, reaction direction, and maximum visual authority.
 
 ## Runtime Wrench Telemetry
 
-`ShipFlightController` exposes the final local-space wrench after all flight computations:
+`ShipFlightController` exposes read-only final local-space telemetry:
 
 ```text
-final local force
-final local torque
+final force_local
+final torque_local
 boost amount
 flight mode
 ```
 
-This telemetry is read-only. It represents the actual force and torque applied after:
+These values are captured after pilot input, speed attenuation, assisted damping, nose-led steering, coordinated banking, counter-thrust, and thermal boost availability. Visuals never infer activation from keyboard state.
 
-- pilot translation and rotation input;
-- speed-envelope attenuation;
-- assisted drift damping;
-- nose-led steering;
-- coordinated banking;
-- counter-thrust;
-- boost thermal availability.
+## Deterministic Thruster Resolver
 
-The visual layer must never infer thruster activation directly from keyboard state.
-
-## Runtime Thruster Resolution
-
-### Socket Physics Model
-
-For a socket at local position `r` with reaction direction `d`, a normalized activation contributes:
+For socket `i` at local position `r_i` with normalized reaction direction `d_i`, one unit of activation contributes:
 
 ```text
-force contribution  = d
- torque contribution = r × d
+force_i  = d_i
+ torque_i = r_i × d_i
 ```
 
-The runtime resolver compares the requested local force and torque against all exported sockets and calculates non-negative activation values from `0.0` to `1.0`.
+The resolver constructs one six-dimensional column per socket:
 
-The resolver prioritizes:
+```text
+column_i = [d_i.x, d_i.y, d_i.z,
+            (r_i × d_i).x / L,
+            (r_i × d_i).y / L,
+            (r_i × d_i).z / L]
+```
 
-1. correct force direction;
-2. correct torque direction;
-3. using the smallest physically sensible socket set;
-4. avoiding unnecessary opposing simultaneous jets;
-5. stable values without frame-to-frame flicker.
+`L` is one documented reference length derived from the canonical ship dimensions. The target vector is the normalized requested force and torque using the same torque scaling.
 
-Main and retro engines primarily satisfy translation. Maneuver sockets may satisfy translation, rotation, or a combined wrench depending on their real position and direction.
+The resolver computes bounded non-negative activations `x_i ∈ [0,1]` by minimizing:
 
-### Fallback Behavior
+```text
+||W(Ax - b)||² + λ||x - previous_x||² + μ||x||²
+```
 
-- Missing individual sockets disable only the corresponding visual contribution and emit one clear warning.
-- A missing `Thrusters` hierarchy disables dynamic exhaust without affecting flight physics.
-- No generic rear flame or procedural fallback hull is displayed.
+- `W` controls force-versus-torque importance.
+- `λ` supplies temporal stability without leaving idle output.
+- `μ` discourages unnecessary simultaneous jets.
+- Zero requested wrench returns exactly zero activation before smoothing.
+- A small dead zone prevents numerical flicker.
+- Opposing sockets activate together only when that improves the requested combined wrench.
 
-## Godot-Owned Exhaust Effects
+Use a deterministic fixed-iteration projected-gradient or active-set implementation with no per-frame allocation. Solver weights and iteration count are data-driven and covered by pure tests.
 
-The GLB contains ship geometry and sockets only. Godot instantiates effect scenes at each socket.
+Main and retro engines primarily satisfy translation. Maneuvering sockets may satisfy translation, rotation, or a combined wrench according to their actual position and direction.
 
-### Effect Classes
+## Godot Exhaust Effects
 
-- Main engines: longer sustained plume, brightest core, strongest boost response.
-- Retro engines: shorter but substantial plume.
+The GLB contains ship geometry and sockets only. Godot instantiates one effect scene per socket.
+
+- Main engines: longest plume, brightest core, strongest boost response.
+- Retro engines: shorter substantial plume.
 - Maneuvering jets: short, sharp, fast-response pulses.
 
-### Activation Rules
+Rules:
 
-- Zero activation means fully invisible and non-emissive.
-- Low activation produces a short pulse.
-- High activation increases plume length, core brightness, and light energy.
+- Zero activation means invisible mesh, particles stopped, light energy zero, and emission energy at idle value zero.
+- Low activation creates a short pulse.
+- Higher activation increases plume length, particle rate, emission, and light energy.
 - Boost strengthens only active translational exhaust.
-- Rotational torque alone does not create main-engine boost flames.
-- Opposing sockets may activate together only when the final requested wrench genuinely requires both.
-- Smoothing prevents flicker but must not leave visible idle exhaust.
+- Pure torque does not activate main engines unless their real lever arm contributes to that torque.
+- Smoothing may decay quickly but must reach complete invisibility at idle.
 
-## Removal of Temporary Runtime Correction
+## Failure Isolation
 
-After the canonical GLB is verified:
+- Missing individual sockets disable only those effects and emit one warning per missing path.
+- Missing `Thrusters` disables all exhaust visuals but not physics.
+- Invalid duplicate socket paths fail the asset contract.
+- Invalid zero-length socket directions fail verification.
+- No generic rear flame, guessed socket, runtime corrective model transform, or procedural hull fallback is permitted.
+
+## Removing Temporary Corrections
+
+After the canonical GLB passes verification:
 
 - remove `HeroShipModelAdapter` from the player scene;
-- remove runtime marker alignment and scale correction code;
-- remove any corrective model rotation or scale from `player_interceptor.tscn`;
-- keep the final root transform at identity;
-- retain only the canonical GLB, socket-driven exhaust system, collider, camera target, input source, and flight controller.
+- remove runtime marker-alignment and scale code;
+- remove corrective model transforms;
+- keep the GLB root at identity;
+- retain only the canonical visual, sockets, effect controller, collider, camera target, input source, and flight controller.
 
 ## Verification
 
-### Audit Verification
+### Stage A
 
-- All eight renders exist and are non-empty.
-- JSON source SHA matches the preserved `.blend`.
-- The audit script leaves the source SHA unchanged after execution.
-- Every image uses the documented camera direction.
+- All eight PNGs and JSON exist and are non-empty.
+- Render dimensions and camera transforms match the audit contract.
+- JSON source SHA matches the preserved source.
+- Source SHA is unchanged after the audit.
+- The audit can be run twice with identical structural JSON and equivalent renders.
 
-### Canonical Asset Verification
+### Stage B asset contract
 
 - GLB imports as `PackedScene`.
-- Root rotation is identity.
-- Root scale is identity.
-- Confirmed nose points toward Godot local `-Z`.
-- Confirmed top points toward Godot local `+Y`.
-- Bounds match the approved canonical envelope within tolerance.
-- Origin matches the approved physical center tolerance.
-- No baked exhaust geometry remains visible.
-- Every socket has identity scale and valid non-zero exhaust direction.
-- Socket positions and roles match the approved calibration record.
-- No runtime model adapter or corrective transform remains.
+- Root rotation and scale are identity.
+- Visible nose and top match approved directions.
+- Bounds and center match the calibration record within tolerance.
+- No baked exhaust remains.
+- Every socket has a unique path, identity scale, non-zero direction, and approved transform.
+- No runtime adapter or corrective transform remains.
 
-### Thruster Solver Tests
+### Resolver tests
 
-Pure tests cover:
-
-- main engines responding to forward force;
-- retro engines responding to reverse force;
-- correct lateral and vertical socket selection;
-- pitch, yaw, and roll torque selecting physically appropriate pairs;
-- combined force and torque requests;
-- assisted steering and generated bank using final wrench telemetry;
-- no activation at zero wrench;
-- no unrelated main-engine activation from pure rotation;
-- bounded activation values;
-- stable smoothing and complete idle disappearance;
-- graceful handling of missing sockets.
+- Forward, reverse, lateral, and vertical force select physically correct sockets.
+- Pitch, yaw, and roll torque select physically correct nozzle combinations.
+- Combined force and torque are approximated within documented error tolerance.
+- Assisted steering and automatic banking use final wrench telemetry.
+- Zero wrench produces exact zero activation.
+- Pure rotation does not create unrelated main-engine exhaust.
+- Activations remain bounded and deterministic.
+- Smoothing does not leave idle exhaust.
+- Missing sockets degrade safely.
 
 ## Manual Acceptance
 
-The milestone is accepted only when:
-
-1. The ship appears correctly oriented from spawn with no corrective runtime transform.
-2. The ship's visible size matches the approved calibration renders and collider.
-3. Idle ship has no flame, glow, or exhaust light.
-4. Forward thrust activates the confirmed main engines.
-5. Reverse thrust activates confirmed retro thrusters.
-6. Left/right and up/down translation activate visible nozzles that produce the correct reaction direction.
-7. Pitch, yaw, and roll activate physically sensible nozzle pairs.
-8. Assisted steering and automatic banking activate the corresponding maneuvering jets.
+1. Correct orientation at spawn with identity runtime transform.
+2. Approved size and centered collider relationship.
+3. No idle flame, particles, glow, or exhaust light.
+4. Forward thrust uses confirmed main engines.
+5. Reverse thrust uses confirmed retro engines.
+6. Lateral and vertical translation use physically correct visible nozzles.
+7. Pitch, yaw, and roll use physically sensible nozzle combinations.
+8. Assisted steering and automatic banking visibly use maneuvering jets.
 9. Boost intensifies active translational exhaust only.
-10. The exhaust direction matches each nozzle orientation.
+10. Every plume follows its socket's exported direction.
 11. No visible nozzle is assigned an impossible role.
 12. Missing optional sockets do not affect physics or crash the scene.
-13. The full local verifier passes without parser, import, scene, or runtime errors.
+13. Local Godot 4.7.1 verifier passes without parser, import, scene, or runtime errors.
 
 ## Completion Gate
 
-The milestone is not complete until:
-
-- audit outputs and JSON are generated and reviewed;
-- the calibration decision record is approved;
-- the canonical GLB and manifest are regenerated;
-- runtime correction adapters are removed;
-- dynamic socket-based exhaust is integrated;
-- automated tests pass locally;
-- manual orientation, scale, and all available thruster groups are verified in Godot 4.7.1.
+The overall milestone is complete only after Stage A audit review, calibration-record approval, Stage B canonical export, removal of runtime correction, dynamic socket integration, automated verification, and manual validation of every nozzle group actually present on the ship.
