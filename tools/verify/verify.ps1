@@ -64,8 +64,29 @@ function Invoke-GodotStep {
     }
 }
 
-$godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
+$requiredRuntimeFiles = @(
+    "assets\runtime\ships\player\small_sci_fi_fighter.glb",
+    "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+)
+
+foreach ($relativePath in $requiredRuntimeFiles) {
+    $absolutePath = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $absolutePath -PathType Leaf)) {
+        throw "Required runtime asset missing: $relativePath"
+    }
+    if ((Get-Item -LiteralPath $absolutePath).Length -le 0) {
+        throw "Required runtime asset is empty: $relativePath"
+    }
+}
+
+$manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+if ($manifest.godot_forward -ne "-Z" -or $manifest.godot_up -ne "+Y") {
+    throw "Hero fighter manifest orientation must be -Z forward and +Y up"
+}
+
+$godotExecutable = Resolve-GodotExecutable -RequestedExecutable $GodotBin
 
 Write-Host "Using Godot: $godotExecutable"
 Write-Host "Project root: $repoRoot"
