@@ -4,6 +4,7 @@ import argparse
 import json
 import math
 import re
+import struct
 import sys
 from collections import Counter
 from pathlib import Path
@@ -47,6 +48,14 @@ EXPECTED_EFFECT_TO_SOCKET = {
 EXPECTED_EFFECT_PATHS = set(EXPECTED_EFFECT_TO_SOCKET)
 EXPECTED_LOCAL_EXHAUST_AXIS = (0.0, 0.0, -1.0)
 MAXIMUM_RECONSTRUCTION_ERROR_M = 0.0001
+GLB_PIVOT_TOLERANCE_M = 0.001
+
+Matrix4 = tuple[
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+    tuple[float, float, float, float],
+]
 
 
 def _vector3(
@@ -324,15 +333,14 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
             f"{label}.local_exhaust_axis",
             errors,
         )
-        if local_axis is not None:
-            if any(
-                abs(local_axis[axis] - EXPECTED_LOCAL_EXHAUST_AXIS[axis]) > 1e-6
-                for axis in range(3)
-            ):
-                errors.append(
-                    f"{label}.local_exhaust_axis must be "
-                    f"{list(EXPECTED_LOCAL_EXHAUST_AXIS)}"
-                )
+        if local_axis is not None and any(
+            abs(local_axis[axis] - EXPECTED_LOCAL_EXHAUST_AXIS[axis]) > 1e-6
+            for axis in range(3)
+        ):
+            errors.append(
+                f"{label}.local_exhaust_axis must be "
+                f"{list(EXPECTED_LOCAL_EXHAUST_AXIS)}"
+            )
 
         minimum = _vector3(
             effect.get("local_bounds_min"),
@@ -386,6 +394,216 @@ def validate_manifest(path: Path, expected_source_sha: str) -> list[str]:
     return errors
 
 
+def _identity_matrix() -> Matrix4:
+    return (
+        (1.0, 0.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0, 0.0),
+        (0.0, 0.0, 1.0, 0.0),
+        (0.0, 0.0, 0.0, 1.0),
+    )
+
+
+def _multiply(left: Matrix4, right: Matrix4) -> Matrix4:
+    rows = []
+    for row in range(4):
+        rows.append(
+            tuple(
+                sum(left[row][axis] * right[axis][column] for axis in range(4))
+                for column in range(4)
+            )
+        )
+    return tuple(rows)  # type: ignore[return-value]
+
+
+def _node_matrix(node: dict[str, Any]) -> Matrix4:
+    raw_matrix = node.get("matrix")
+    if isinstance(raw_matrix, list) and len(raw_matrix) == 16:
+        values = [float(value) for value in raw_matrix]
+        return tuple(
+            tuple(values[column * 4 + row] for column in range(4))
+            for row in range(4)
+        )  # type: ignore[return-value]
+
+    translation = node.get("translation", [0.0, 0.0, 0.0])
+    rotation = node.get("rotation", [0.0, 0.0, 0.0, 1.0])
+    scale = node.get("scale", [1.0, 1.0, 1.0])
+    if (
+        not isinstance(translation, list)
+        or len(translation) != 3
+        or not isinstance(rotation, list)
+        or len(rotation) != 4
+        or not isinstance(scale, list)
+        or len(scale) != 3
+    ):
+        raise ValueError("node TRS fields have invalid dimensions")
+
+    tx, ty, tz = (float(value) for value in translation)
+    x, y, z, w = (float(value) for value in rotation)
+    sx, sy, sz = (float(value) for value in scale)
+    quaternion_length = math.sqrt(x * x + y * y + z * z + w * w)
+    if quaternion_length <= 1e-12:
+        raise ValueError("node quaternion has zero length")
+    x /= quaternion_length
+    y /= quaternion_length
+    z /= quaternion_length
+    w /= quaternion_length
+
+    rotation_rows = (
+        (
+            1.0 - 2.0 * (y * y + z * z),
+            2.0 * (x * y - z * w),
+            2.0 * (x * z + y * w),
+        ),
+        (
+            2.0 * (x * y + z * w),
+            1.0 - 2.0 * (x * x + z * z),
+            2.0 * (y * z - x * w),
+        ),
+        (
+            2.0 * (x * z - y * w),
+            2.0 * (y * z + x * w),
+            1.0 - 2.0 * (x * x + y * y),
+        ),
+    )
+    scales = (sx, sy, sz)
+    return (
+        tuple(rotation_rows[0][column] * scales[column] for column in range(3))
+        + (tx,),
+        tuple(rotation_rows[1][column] * scales[column] for column in range(3))
+        + (ty,),
+        tuple(rotation_rows[2][column] * scales[column] for column in range(3))
+        + (tz,),
+        (0.0, 0.0, 0.0, 1.0),
+    )
+
+
+def _load_glb_document(path: Path) -> dict[str, Any]:
+    data = path.read_bytes()
+    if len(data) < 20:
+        raise ValueError("GLB is too small")
+    magic, version, total_length = struct.unpack_from("<4sII", data, 0)
+    if magic != b"glTF":
+        raise ValueError("GLB magic is invalid")
+    if version != 2:
+        raise ValueError(f"GLB version must be 2, got {version}")
+    if total_length != len(data):
+        raise ValueError(
+            f"GLB header length {total_length} does not match file size {len(data)}"
+        )
+
+    offset = 12
+    while offset + 8 <= len(data):
+        chunk_length, chunk_type = struct.unpack_from("<I4s", data, offset)
+        offset += 8
+        chunk_end = offset + chunk_length
+        if chunk_end > len(data):
+            raise ValueError("GLB chunk exceeds file length")
+        if chunk_type == b"JSON":
+            try:
+                document = json.loads(data[offset:chunk_end].decode("utf-8").rstrip(" \t\r\n\0"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                raise ValueError(f"GLB JSON is unreadable: {error}") from error
+            if not isinstance(document, dict):
+                raise ValueError("GLB JSON root must be an object")
+            return document
+        offset = chunk_end
+    raise ValueError("GLB JSON chunk is missing")
+
+
+def _collect_glb_nodes(
+    document: dict[str, Any],
+) -> list[tuple[str, dict[str, Any], Matrix4]]:
+    nodes = document.get("nodes")
+    scenes = document.get("scenes")
+    if not isinstance(nodes, list) or not isinstance(scenes, list) or not scenes:
+        raise ValueError("GLB must contain nodes and a scene")
+    scene_index = int(document.get("scene", 0))
+    if scene_index < 0 or scene_index >= len(scenes):
+        raise ValueError("GLB default scene index is invalid")
+    scene = scenes[scene_index]
+    if not isinstance(scene, dict) or not isinstance(scene.get("nodes"), list):
+        raise ValueError("GLB default scene has no root nodes")
+
+    entries: list[tuple[str, dict[str, Any], Matrix4]] = []
+
+    def visit(
+        node_index: int,
+        parent_path: str,
+        parent_matrix: Matrix4,
+        ancestors: set[int],
+    ) -> None:
+        if node_index in ancestors:
+            raise ValueError("GLB node hierarchy contains a cycle")
+        if node_index < 0 or node_index >= len(nodes):
+            raise ValueError(f"GLB node index is invalid: {node_index}")
+        node = nodes[node_index]
+        if not isinstance(node, dict):
+            raise ValueError(f"GLB node {node_index} must be an object")
+        name = str(node.get("name", f"Node{node_index}"))
+        path = f"{parent_path}/{name}" if parent_path else name
+        world = _multiply(parent_matrix, _node_matrix(node))
+        entries.append((path, node, world))
+        children = node.get("children", [])
+        if not isinstance(children, list):
+            raise ValueError(f"GLB node children must be a list: {path}")
+        next_ancestors = {*ancestors, node_index}
+        for child in children:
+            visit(int(child), path, world, next_ancestors)
+
+    for root in scene["nodes"]:
+        visit(int(root), "", _identity_matrix(), set())
+    return entries
+
+
+def _find_unique_glb_node(
+    entries: list[tuple[str, dict[str, Any], Matrix4]],
+    semantic_path: str,
+) -> tuple[str, dict[str, Any], Matrix4] | None:
+    matches = [
+        entry
+        for entry in entries
+        if entry[0] == semantic_path or entry[0].endswith(f"/{semantic_path}")
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def validate_glb_thruster_pivots(path: Path) -> list[str]:
+    try:
+        document = _load_glb_document(path)
+        entries = _collect_glb_nodes(document)
+    except (OSError, ValueError, TypeError) as error:
+        return [f"GLB hierarchy unreadable: {error}"]
+
+    errors: list[str] = []
+    for effect_path, socket_path in sorted(EXPECTED_EFFECT_TO_SOCKET.items()):
+        socket_entry = _find_unique_glb_node(entries, socket_path)
+        effect_entry = _find_unique_glb_node(entries, effect_path)
+        if socket_entry is None:
+            errors.append(f"GLB socket path missing or duplicated: {socket_path}")
+            continue
+        if effect_entry is None:
+            errors.append(f"GLB effect path missing or duplicated: {effect_path}")
+            continue
+        if "mesh" not in effect_entry[1]:
+            errors.append(f"GLB effect node has no mesh: {effect_path}")
+            continue
+
+        socket_origin = tuple(socket_entry[2][axis][3] for axis in range(3))
+        effect_origin = tuple(effect_entry[2][axis][3] for axis in range(3))
+        distance = math.sqrt(
+            sum(
+                (socket_origin[axis] - effect_origin[axis]) ** 2
+                for axis in range(3)
+            )
+        )
+        if distance > GLB_PIVOT_TOLERANCE_M:
+            errors.append(
+                "GLB effect pivot does not match socket: "
+                f"{effect_path} distance={distance:.9f}"
+            )
+    return errors
+
+
 def validate_output(
     glb_path: Path,
     manifest_path: Path,
@@ -396,6 +614,8 @@ def validate_output(
         errors.append(f"GLB missing: {glb_path}")
     elif glb_path.stat().st_size <= 0:
         errors.append(f"GLB empty: {glb_path}")
+    else:
+        errors.extend(validate_glb_thruster_pivots(glb_path))
     errors.extend(validate_manifest(manifest_path, expected_source_sha))
     return errors
 
