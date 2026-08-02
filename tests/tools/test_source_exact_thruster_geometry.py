@@ -60,6 +60,16 @@ class SourceExactThrusterGeometryTests(unittest.TestCase):
         self.assertIn("from_pydata", geometry_source)
         self.assertNotIn("CylinderMesh", orchestrator_source + geometry_source)
 
+    def test_blender_entrypoint_bootstraps_sibling_module_imports(self) -> None:
+        orchestrator = ASSET_TOOLS / "export_small_sci_fi_fighter_v3.py"
+        source = orchestrator.read_text(encoding="utf-8")
+        self.assertIn("SCRIPT_DIR = Path(__file__).resolve().parent", source)
+        self.assertIn("sys.path.insert(0, str(SCRIPT_DIR))", source)
+        self.assertLess(
+            source.index("sys.path.insert(0, str(SCRIPT_DIR))"),
+            source.index("import export_small_sci_fi_fighter as base"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
