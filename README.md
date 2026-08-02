@@ -12,9 +12,11 @@ The playable flight room uses the **Small Sci-Fi Fighter** hero GLB with an agil
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained all-axis translational boost with thermal lockout;
 - ship-relative chase camera with no global horizon or preferred world-up direction;
-- marker-driven runtime model alignment and uniform visual scaling;
+- temporary marker-driven runtime model alignment and uniform visual scaling;
 - controller-owned rear exhaust that is completely hidden while idle;
 - high-speed course, collision obstacles, telemetry HUD, and safe reset handling.
+
+The current runtime alignment is temporary. The canonical asset workflow begins with a non-destructive Blender audit before any final orientation, scale, or maneuver-thruster sockets are chosen.
 
 The existing `RigidBody3D`, 8500 kg mass, simple `7.2 x 4.2 x 10.8 m` gameplay collider, and force/torque architecture remain authoritative. The imported mesh never defines collision.
 
@@ -23,7 +25,7 @@ The existing `RigidBody3D`, 8500 kg mass, simple `7.2 x 4.2 x 10.8 m` gameplay c
 - Godot 4.7.1 Standard
 - GL Compatibility renderer
 - PowerShell on Windows, or Bash on Linux
-- Blender only when regenerating the runtime fighter from its preserved source
+- Blender only when auditing or regenerating the runtime fighter from its preserved source
 
 No external Godot add-ons or runtime dependencies are required.
 
@@ -83,25 +85,65 @@ Manual flight removes velocity steering, drift damping, automatic banking, and a
 
 Space has no preferred upright direction. The chase camera uses the ship's local up axis for its entire perspective, including when the ship is rolled, inverted, or flying vertically. It never blends back toward global `Vector3.UP`.
 
+## Canonical hero ship audit
+
+Before rebuilding the final GLB or assigning maneuvering-thruster sockets, generate objective evidence from the preserved Blender source:
+
+```powershell
+.\tools\assets\audit-small-fighter.ps1
+```
+
+If Blender is not detected automatically:
+
+```powershell
+.\tools\assets\audit-small-fighter.ps1 `
+  -BlenderBin "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
+```
+
+The command creates:
+
+```text
+artifacts/hero_ship_audit/
+├── front.png
+├── rear.png
+├── left.png
+├── right.png
+├── top.png
+├── bottom.png
+├── perspective_front.png
+├── perspective_rear.png
+└── ship_audit.json
+```
+
+The renders use consistent cameras, lighting, bounds, origin and center markers, world-axis indicators, dimensions, and source-hash labels. The JSON records the untouched source hierarchy, transforms, mesh bounds, materials, emissive candidates, empties, and names that may indicate nozzles or thrusters.
+
+The wrapper verifies the source `.blend` SHA-256 before and after Blender runs and fails if the source changes. This audit intentionally does **not** decide the ship's nose, top, final dimensions, or thruster roles. Those decisions happen only after the generated evidence is reviewed.
+
+Validate an existing audit independently with:
+
+```powershell
+python .\tools\assets\hero_ship_audit_contract.py `
+  --audit-dir .\artifacts\hero_ship_audit `
+  --source ".\assets\source\ships\player_candidates\small_sci_fi_fighter\Small Sci-Fi Fighter.blend"
+```
+
 ## Hero ship asset
 
-Gameplay references only:
+Gameplay currently references:
 
 ```text
 assets/runtime/ships/player/small_sci_fi_fighter.glb
 ```
 
-The runtime model adapter reads `ForwardMarker` and `UpMarker`, rotates any imported source axes into player-local `-Z` forward and `+Y` up, and uniformly enlarges the current pushed GLB to the approved visual envelope. This keeps the game correct even before the binary is regenerated.
+The temporary runtime model adapter reads `ForwardMarker` and `UpMarker`, rotates imported source axes into player-local `-Z` forward and `+Y` up, and uniformly scales the current pushed GLB. It will be removed after the audit-backed canonical GLB is approved and integrated.
 
-Regenerate the GLB from the preserved `.blend` source with:
+The existing exporter remains available for development experiments:
 
 ```powershell
 .\tools\assets\export-small-fighter.ps1
 ```
 
-The corrected exporter rotates the source's `-Y` nose into Blender `+Y`, which exports to Godot `-Z`, fits the craft to `7.2 x 4.2 x 10.8 m`, and writes an accompanying manifest.
-
-Rear exhaust is authored in Godot rather than taken from the model. It is invisible at idle, appears only while forward thrust is active, and lengthens under boost.
+The final canonical exporter and dynamic main, retro, translation, pitch, yaw, and roll thruster sockets will be implemented only after the audit evidence and calibration record are approved.
 
 The asset remains **development-only** until its original license evidence is added and reviewed. See:
 
@@ -155,9 +197,9 @@ After automated verification passes, confirm directly in the flight room:
 6. Normal and boosted acceleration fade smoothly near 160 and 240 m/s.
 7. Boost overheats, locks out, recovers, and never disables ordinary flight.
 8. Camera orientation remains ship-relative when rolled, inverted, and vertical.
-9. The enlarged hero fighter is centered and faces player-local `-Z`.
-10. Rear exhaust is absent while idle, visible under W thrust, and longer under Shift boost.
-11. The extended course remains readable at low and maximum boost speed.
+9. The extended course remains readable at low and maximum boost speed.
+
+The current ship orientation, visual scale, and rear-only exhaust are not final acceptance targets. They are superseded by the audit-backed canonical calibration and full dynamic-thruster milestone.
 
 ## Asset policy
 
