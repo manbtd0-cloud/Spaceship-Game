@@ -66,15 +66,28 @@ function Resolve-PythonExecutable {
 
 $expectedSourceSha = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-$sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fi_fighter\Small Sci-Fi Fighter.blend"
-$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v3.py"
-$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v3.py"
+$sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fighter\Small Sci-Fi Fighter.blend"
+if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+    $sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fi_fighter\Small Sci-Fi Fighter.blend"
+}
+$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v4.py"
+$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v4.py"
+$matrixGeneratorPath = Join-Path $repoRoot "tools\assets\generate_fighter_thruster_action_matrix.py"
+$matrixValidatorPath = Join-Path $repoRoot "tools\assets\fighter_thruster_action_contract.py"
 $outputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
+$matrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.json"
 $pendingOutputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.glb"
 $pendingManifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.pending.manifest.json"
+$pendingMatrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.pending.json"
 
-foreach ($requiredPath in @($sourcePath, $scriptPath, $validatorPath)) {
+foreach ($requiredPath in @(
+    $sourcePath,
+    $scriptPath,
+    $validatorPath,
+    $matrixGeneratorPath,
+    $matrixValidatorPath
+)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required canonical export input missing: $requiredPath"
     }
@@ -89,9 +102,13 @@ if ($sourceShaBefore -ne $expectedSourceSha) {
     throw "Unexpected fighter source SHA: $sourceShaBefore"
 }
 
-$outputDirectory = Split-Path -Parent $outputPath
-New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
-foreach ($pendingPath in @($pendingOutputPath, $pendingManifestPath)) {
+New-Item -ItemType Directory -Path (Split-Path -Parent $outputPath) -Force | Out-Null
+New-Item -ItemType Directory -Path (Split-Path -Parent $matrixPath) -Force | Out-Null
+foreach ($pendingPath in @(
+    $pendingOutputPath,
+    $pendingManifestPath,
+    $pendingMatrixPath
+)) {
     if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
         Remove-Item -LiteralPath $pendingPath -Force
     }
@@ -102,9 +119,10 @@ Write-Host "Using Python: $pythonExecutable"
 Write-Host "Source: $sourcePath"
 Write-Host "Source SHA-256: $sourceShaBefore"
 Write-Host "Pending GLB: $pendingOutputPath"
-Write-Host "Pending schema-3 manifest: $pendingManifestPath"
+Write-Host "Pending schema-4 manifest: $pendingManifestPath"
+Write-Host "Pending action matrix: $pendingMatrixPath"
 Write-Host "Live GLB after validation: $outputPath"
-Write-Host "Thruster visual strategy: source-exact EngineFire geometry"
+Write-Host "Thruster visual strategy: source-exact nozzle-local EngineFire geometry"
 
 $blenderArguments = @(
     "--background",
@@ -123,7 +141,7 @@ $blenderArguments = @(
 try {
     & $blenderExecutable @blenderArguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Blender schema-3 fighter export failed with exit code $LASTEXITCODE"
+        throw "Blender schema-4 fighter export failed with exit code $LASTEXITCODE"
     }
 
     $sourceShaAfter = (
@@ -161,23 +179,52 @@ After:  $sourceShaAfter
         --manifest $pendingManifestPath `
         --source-sha $sourceShaBefore
     if ($LASTEXITCODE -ne 0) {
-        throw "Schema-3 source-exact fighter validation failed with exit code $LASTEXITCODE"
+        throw "Schema-4 nozzle-local fighter validation failed with exit code $LASTEXITCODE"
+    }
+
+    & $pythonExecutable $matrixGeneratorPath `
+        --manifest $pendingManifestPath `
+        --output $pendingMatrixPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fighter thruster action matrix generation failed with exit code $LASTEXITCODE"
+    }
+
+    & $pythonExecutable $matrixValidatorPath `
+        --manifest $pendingManifestPath `
+        --matrix $pendingMatrixPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fighter thruster action matrix validation failed with exit code $LASTEXITCODE"
+    }
+
+    foreach ($generatedPath in @($pendingMatrixPath)) {
+        if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
+            throw "Expected pending matrix output missing: $generatedPath"
+        }
+        if ((Get-Item -LiteralPath $generatedPath).Length -le 0) {
+            throw "Expected pending matrix output is empty: $generatedPath"
+        }
     }
 
     Move-Item -LiteralPath $pendingOutputPath -Destination $outputPath -Force
     Move-Item -LiteralPath $pendingManifestPath -Destination $manifestPath -Force
+    Move-Item -LiteralPath $pendingMatrixPath -Destination $matrixPath -Force
 }
 finally {
-    foreach ($pendingPath in @($pendingOutputPath, $pendingManifestPath)) {
+    foreach ($pendingPath in @(
+        $pendingOutputPath,
+        $pendingManifestPath,
+        $pendingMatrixPath
+    )) {
         if (Test-Path -LiteralPath $pendingPath -PathType Leaf) {
             Remove-Item -LiteralPath $pendingPath -Force
         }
     }
 }
 
-Write-Host "Schema-3 fighter export completed without modifying the source."
+Write-Host "Schema-4 fighter export completed without modifying the source."
 Write-Host "Source SHA-256: $sourceShaBefore"
-Write-Host "Generated exact source exhaust geometry for twelve runtime effects."
-Write-Host "Published validated assets:"
+Write-Host "Generated nozzle-local source exhaust geometry for twelve runtime effects."
+Write-Host "Published validated outputs:"
 Write-Host "  $outputPath"
 Write-Host "  $manifestPath"
+Write-Host "  $matrixPath"
