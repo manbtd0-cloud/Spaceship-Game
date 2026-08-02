@@ -10,7 +10,6 @@ from mathutils import Matrix, Vector
 import export_small_sci_fi_fighter as base
 from small_fighter_calibration import (
     COLLIDER_SIZE_GODOT,
-    HULL_CENTER_LOCAL,
     PLUME_GROUPS,
     SOURCE_FRAME_OBJECT,
     SOURCE_SHA256,
@@ -19,7 +18,6 @@ from small_fighter_calibration import (
 from source_exact_thruster_geometry import (
     EffectGeometryRecord,
     build_source_exact_thruster_effects,
-    effect_record_to_manifest,
 )
 
 
@@ -37,6 +35,34 @@ def _socket_record_to_manifest(record: base.SocketRecord) -> dict[str, Any]:
         "exhaust_direction": [round(float(value), 8) for value in exhaust_godot],
         "reaction_direction": [round(float(value), 8) for value in reaction_godot],
         "basis": base.blender_basis_to_godot_rows(record.basis_blender),
+    }
+
+
+def _effect_record_to_manifest(record: EffectGeometryRecord) -> dict[str, Any]:
+    minimum = record.bounds_min_blender
+    maximum = record.bounds_max_blender
+    bounds_min_godot = [
+        round(float(minimum.x), 8),
+        round(float(minimum.z), 8),
+        round(float(-maximum.y), 8),
+    ]
+    bounds_max_godot = [
+        round(float(maximum.x), 8),
+        round(float(maximum.z), 8),
+        round(float(-minimum.y), 8),
+    ]
+    return {
+        "path": record.path,
+        "class": record.socket_class,
+        "source_object": record.source_object,
+        "source_component_indices": list(record.source_component_indices),
+        "vertex_count": record.vertex_count,
+        "face_count": record.face_count,
+        "bounds_min": bounds_min_godot,
+        "bounds_max": bounds_max_godot,
+        "geometry_sha256": record.geometry_sha256,
+        "identity_transform": True,
+        "source_exact_geometry": True,
     }
 
 
@@ -77,7 +103,7 @@ def write_schema_three_manifest(
             for record in socket_records
         ],
         "thruster_effects": [
-            effect_record_to_manifest(record, base.blender_to_godot_vector)
+            _effect_record_to_manifest(record)
             for record in effect_records
         ],
     }
