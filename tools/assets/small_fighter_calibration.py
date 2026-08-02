@@ -78,11 +78,10 @@ def _distance(left: Point3, right: Point3) -> float:
     )
 
 
-def group_spatial_components(
+def _cluster_spatial_component_indices(
     components: list[list[Point3]],
     expected_groups: int,
-) -> list[list[Point3]]:
-    """Merge layered mesh islands into distinct physical plume point clouds."""
+) -> list[list[int]]:
     if expected_groups <= 0:
         raise ValueError("expected_groups must be positive")
     if len(components) < expected_groups:
@@ -158,7 +157,25 @@ def group_spatial_components(
             f"centroids={group_centroids}"
         )
 
-    grouped = [
+    clusters.sort(key=lambda cluster: cluster_centroid(cluster))
+    return [sorted(cluster) for cluster in clusters]
+
+
+def group_spatial_component_indices(
+    components: list[list[Point3]],
+    expected_groups: int,
+) -> list[list[int]]:
+    """Return exact raw mesh-island indices for each physical plume."""
+    return _cluster_spatial_component_indices(components, expected_groups)
+
+
+def group_spatial_components(
+    components: list[list[Point3]],
+    expected_groups: int,
+) -> list[list[Point3]]:
+    """Merge layered mesh islands into distinct physical plume point clouds."""
+    clusters = _cluster_spatial_component_indices(components, expected_groups)
+    return [
         [
             point
             for component_index in cluster
@@ -166,8 +183,6 @@ def group_spatial_components(
         ]
         for cluster in clusters
     ]
-    grouped.sort(key=_centroid)
-    return grouped
 
 
 def _normalize(vector: Point3) -> Point3:
@@ -211,3 +226,14 @@ def classify_socket_name(group: str, position: Point3) -> str:
     if group in {"FrontUpper", "RearUpper", "RearLower", "FrontLower"}:
         return f"Thrusters/Maneuver/{group}{side}"
     raise ValueError(f"unsupported socket group: {group}")
+
+
+def classify_effect_name(group: str, position: Point3) -> str:
+    side = "Left" if position[0] < 0.0 else "Right"
+    if group == "Main":
+        return f"ThrusterEffects/Main/Main{side}Effect"
+    if group == "Retro":
+        return f"ThrusterEffects/Retro/Retro{side}Effect"
+    if group in {"FrontUpper", "RearUpper", "RearLower", "FrontLower"}:
+        return f"ThrusterEffects/Maneuver/{group}{side}Effect"
+    raise ValueError(f"unsupported effect group: {group}")
