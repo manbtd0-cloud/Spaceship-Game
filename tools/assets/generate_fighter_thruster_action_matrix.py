@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +18,9 @@ from fighter_thruster_action_contract import (
     validate_matrix,
 )
 
+# These weights are the deterministic result of solving the canonical socket
+# wrench system offline. Runtime code loads the checked-in JSON and never
+# performs iterative allocation.
 ACTION_WEIGHTS: dict[str, dict[str, float]] = {
     "forward": {
         "Main/MainLeft": 1.0,
@@ -29,64 +31,84 @@ ACTION_WEIGHTS: dict[str, dict[str, float]] = {
         "Retro/RetroRight": 1.0,
     },
     "strafe_left": {
-        "Maneuver/FrontLowerRight": 1.0,
-        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/FrontLowerRight": 0.2396,
+        "Maneuver/FrontUpperRight": 0.4156,
+        "Maneuver/RearLowerLeft": 0.6864,
         "Maneuver/RearLowerRight": 1.0,
-        "Maneuver/RearUpperRight": 1.0,
+        "Maneuver/RearUpperLeft": 0.8509,
+        "Maneuver/RearUpperRight": 0.7348,
     },
     "strafe_right": {
-        "Maneuver/FrontLowerLeft": 1.0,
-        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/FrontLowerLeft": 0.1848,
+        "Maneuver/FrontUpperLeft": 0.3569,
         "Maneuver/RearLowerLeft": 1.0,
-        "Maneuver/RearUpperLeft": 1.0,
+        "Maneuver/RearLowerRight": 0.795,
+        "Maneuver/RearUpperLeft": 0.727,
+        "Maneuver/RearUpperRight": 0.9425,
     },
     "strafe_up": {
-        "Maneuver/FrontLowerLeft": 1.0,
-        "Maneuver/FrontLowerRight": 1.0,
-        "Maneuver/RearLowerLeft": 1.0,
+        "Maneuver/FrontLowerLeft": 0.0958,
+        "Maneuver/FrontLowerRight": 0.1305,
+        "Maneuver/RearLowerLeft": 0.9764,
         "Maneuver/RearLowerRight": 1.0,
+        "Maneuver/RearUpperLeft": 0.8503,
+        "Maneuver/RearUpperRight": 0.9297,
     },
     "strafe_down": {
+        "Maneuver/FrontLowerLeft": 0.0167,
+        "Maneuver/FrontLowerRight": 0.0414,
         "Maneuver/FrontUpperLeft": 1.0,
-        "Maneuver/FrontUpperRight": 1.0,
-        "Maneuver/RearUpperLeft": 1.0,
-        "Maneuver/RearUpperRight": 1.0,
+        "Maneuver/FrontUpperRight": 0.9693,
+        "Maneuver/RearUpperLeft": 0.1426,
+        "Maneuver/RearUpperRight": 0.1592,
     },
     "pitch_up": {
-        "Maneuver/FrontLowerLeft": 0.46,
-        "Maneuver/FrontLowerRight": 0.47,
-        "Maneuver/RearUpperLeft": 0.54,
-        "Maneuver/RearUpperRight": 0.56,
+        "Maneuver/FrontLowerLeft": 0.093,
+        "Maneuver/FrontLowerRight": 0.1202,
+        "Maneuver/RearLowerLeft": 0.8194,
+        "Maneuver/RearLowerRight": 0.8408,
+        "Maneuver/RearUpperLeft": 0.9324,
+        "Maneuver/RearUpperRight": 1.0,
     },
     "pitch_down": {
-        "Maneuver/FrontUpperLeft": 0.56,
-        "Maneuver/FrontUpperRight": 0.58,
-        "Maneuver/RearLowerLeft": 0.53,
-        "Maneuver/RearLowerRight": 0.59,
+        "Maneuver/FrontLowerLeft": 0.1226,
+        "Maneuver/FrontLowerRight": 0.0326,
+        "Maneuver/FrontUpperLeft": 0.9706,
+        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/RearLowerLeft": 0.8215,
+        "Maneuver/RearLowerRight": 0.9424,
     },
     "yaw_left": {
-        "Maneuver/FrontLowerRight": 0.86,
-        "Maneuver/FrontUpperRight": 1.0,
-        "Maneuver/RearLowerLeft": 0.79,
-        "Maneuver/RearUpperLeft": 0.77,
+        "Maneuver/FrontLowerRight": 0.243,
+        "Maneuver/FrontUpperRight": 0.4317,
+        "Maneuver/RearLowerLeft": 0.9928,
+        "Maneuver/RearLowerRight": 0.8362,
+        "Maneuver/RearUpperLeft": 1.0,
+        "Maneuver/RearUpperRight": 0.7065,
     },
     "yaw_right": {
-        "Maneuver/FrontLowerLeft": 0.88,
-        "Maneuver/FrontUpperLeft": 1.0,
-        "Maneuver/RearLowerRight": 0.83,
-        "Maneuver/RearUpperRight": 0.85,
+        "Maneuver/FrontLowerLeft": 0.1915,
+        "Maneuver/FrontUpperLeft": 0.3601,
+        "Maneuver/RearLowerLeft": 0.7703,
+        "Maneuver/RearLowerRight": 0.979,
+        "Maneuver/RearUpperLeft": 0.6378,
+        "Maneuver/RearUpperRight": 1.0,
     },
     "roll_left": {
-        "Maneuver/FrontLowerRight": 1.0,
-        "Maneuver/FrontUpperLeft": 1.0,
+        "Maneuver/FrontLowerRight": 0.0695,
+        "Maneuver/FrontUpperLeft": 0.14,
+        "Maneuver/FrontUpperRight": 0.0281,
         "Maneuver/RearLowerRight": 1.0,
-        "Maneuver/RearUpperLeft": 1.0,
+        "Maneuver/RearUpperLeft": 0.8933,
+        "Maneuver/RearUpperRight": 0.0598,
     },
     "roll_right": {
-        "Maneuver/FrontLowerLeft": 1.0,
-        "Maneuver/FrontUpperRight": 1.0,
+        "Maneuver/FrontLowerLeft": 0.1753,
+        "Maneuver/FrontUpperLeft": 0.0519,
+        "Maneuver/FrontUpperRight": 0.2235,
         "Maneuver/RearLowerLeft": 1.0,
-        "Maneuver/RearUpperRight": 1.0,
+        "Maneuver/RearLowerRight": 0.0184,
+        "Maneuver/RearUpperRight": 0.9334,
     },
 }
 
@@ -137,6 +159,7 @@ def build_matrix(manifest: dict[str, Any]) -> dict[str, Any]:
         "asset": "Small Sci-Fi Fighter",
         "runtime_generated": False,
         "source_schema_version": int(manifest.get("schema_version", 0)),
+        "source_contract": "canonical_socket_wrench_v1",
         "actions": records,
     }
     errors = validate_matrix(output, manifest)
