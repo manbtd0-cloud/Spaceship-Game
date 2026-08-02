@@ -31,6 +31,10 @@ func run() -> void:
 
     var collision := body.get_node("Collision") as CollisionShape3D
     assert_true(collision.shape != null, "imported convex collision must be adopted")
+    assert_true(
+        collision.transform.origin.is_equal_approx(Vector3(2.0, 3.0, 0.0)),
+        "collision transform must be copied through local ancestors without SceneTree access"
+    )
     assert_equal(
         body.get_node("ModelMount").get_child_count(),
         1,
@@ -58,11 +62,13 @@ func _make_test_model() -> PackedScene:
 
     var imported_body := StaticBody3D.new()
     imported_body.name = "CollisionProxy"
+    imported_body.position = Vector3(2.0, 0.0, 0.0)
     root.add_child(imported_body)
     imported_body.owner = root
 
     var imported_collision := CollisionShape3D.new()
     imported_collision.name = "CollisionShape3D"
+    imported_collision.position = Vector3(0.0, 3.0, 0.0)
     imported_collision.shape = SphereShape3D.new()
     imported_body.add_child(imported_collision)
     imported_collision.owner = root
