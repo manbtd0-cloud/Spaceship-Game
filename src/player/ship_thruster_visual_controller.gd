@@ -2,18 +2,18 @@ class_name ShipThrusterVisualController
 extends Node
 
 const SOCKET_SPECS := [
-    {"path": "Thrusters/Main/Left", "class": &"main"},
-    {"path": "Thrusters/Main/Right", "class": &"main"},
-    {"path": "Thrusters/Retro/Left", "class": &"retro"},
-    {"path": "Thrusters/Retro/Right", "class": &"retro"},
-    {"path": "Thrusters/Maneuver/FrontUpperLeft", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/FrontUpperRight", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/RearUpperLeft", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/RearUpperRight", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/RearLowerLeft", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/RearLowerRight", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/FrontLowerLeft", "class": &"maneuver"},
-    {"path": "Thrusters/Maneuver/FrontLowerRight", "class": &"maneuver"},
+    {"path": "Main/MainLeft", "class": &"main"},
+    {"path": "Main/MainRight", "class": &"main"},
+    {"path": "Retro/RetroLeft", "class": &"retro"},
+    {"path": "Retro/RetroRight", "class": &"retro"},
+    {"path": "Maneuver/FrontUpperLeft", "class": &"maneuver"},
+    {"path": "Maneuver/FrontUpperRight", "class": &"maneuver"},
+    {"path": "Maneuver/RearUpperLeft", "class": &"maneuver"},
+    {"path": "Maneuver/RearUpperRight", "class": &"maneuver"},
+    {"path": "Maneuver/RearLowerLeft", "class": &"maneuver"},
+    {"path": "Maneuver/RearLowerRight", "class": &"maneuver"},
+    {"path": "Maneuver/FrontLowerLeft", "class": &"maneuver"},
+    {"path": "Maneuver/FrontLowerRight", "class": &"maneuver"},
 ]
 
 @export var controller_path: NodePath
@@ -83,20 +83,38 @@ func initialize() -> void:
         )
         return
 
+    var thruster_candidates := _model.find_children(
+        "Thrusters",
+        "Node3D",
+        true,
+        false
+    )
+    if thruster_candidates.size() != 1:
+        _disable_with_error(
+            "Canonical fighter must contain exactly one Thrusters hierarchy; found %d"
+            % thruster_candidates.size()
+        )
+        return
+    var thruster_root := thruster_candidates[0] as Node3D
+    if thruster_root == null:
+        _disable_with_error("Canonical fighter Thrusters hierarchy is not Node3D")
+        return
+
     for specification: Dictionary in SOCKET_SPECS:
         var socket_path := String(specification["path"])
-        var socket := _model.get_node_or_null(socket_path) as Node3D
+        var socket := thruster_root.get_node_or_null(socket_path) as Node3D
         if socket == null:
             _disable_with_error(
-                "Canonical fighter thruster socket missing: %s" % socket_path
+                "Canonical fighter thruster socket missing: Thrusters/%s"
+                % socket_path
             )
             return
 
-        var local_transform := body.global_transform.affine_inverse() * socket.global_transform
+        var local_transform := _local_transform_to_ancestor(socket, body)
         var reaction_direction := local_transform.basis.z.normalized()
         if not reaction_direction.is_finite() or reaction_direction.length_squared() < 0.99:
             _disable_with_error(
-                "Canonical fighter thruster socket has invalid reaction axis: %s"
+                "Canonical fighter thruster socket has invalid reaction axis: Thrusters/%s"
                 % socket_path
             )
             return
@@ -151,6 +169,26 @@ func _capacity_for_class(thruster_class: StringName) -> float:
             return 0.35
         _:
             return 0.22
+
+func _local_transform_to_ancestor(
+    node: Node3D,
+    ancestor: Node3D
+) -> Transform3D:
+    var chain: Array[Node3D] = []
+    var current: Node = node
+    while current != ancestor:
+        var current_3d := current as Node3D
+        if current_3d == null:
+            return Transform3D.IDENTITY
+        chain.push_front(current_3d)
+        current = current.get_parent()
+        if current == null:
+            return Transform3D.IDENTITY
+
+    var result := Transform3D.IDENTITY
+    for item: Node3D in chain:
+        result *= item.transform
+    return result
 
 func _disable_with_error(message: String) -> void:
     push_error(message)
