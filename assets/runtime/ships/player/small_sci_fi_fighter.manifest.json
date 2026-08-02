@@ -1,0 +1,39 @@
+{
+  "asset": "Small Sci-Fi Fighter",
+  "development_only": true,
+  "license_evidence_reviewed": false,
+  "source_path": "D:/Cloned/Spaceship/Spaceship-Game/assets/source/ships/player_candidates/small_sci_fi_fighter/Small Sci-Fi Fighter.blend",
+  "source_sha256": "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478",
+  "output_path": "D:/Cloned/Spaceship/Spaceship-Game/assets/runtime/ships/player/small_sci_fi_fighter.glb",
+  "blender_version": "5.2.0 LTS",
+  "source_forward": "-Y",
+  "source_up": "+Z",
+  "godot_forward": "-Z",
+  "godot_up": "+Y",
+  "mesh_dimensions_blender_xyz": [
+    3.129579,
+    6.008671,
+    2.35
+  ],
+  "mesh_dimensions_godot_xyz": [
+    3.129579,
+    2.35,
+    6.008671
+  ],
+  "target_dimensions_blender_xyz": [
+    7.599999904632568,
+    11.399999618530273,
+    2.3499999046325684
+  ],
+  "gameplay_envelope_godot_xyz": [
+    8.0,
+    2.5,
+    12.0
+  ],
+  "required_nodes": [
+    "SmallSciFiFighter",
+    "SmallSciFiFighterMesh",
+    "ForwardMarker",
+    "UpMarker"
+  ]
+}
