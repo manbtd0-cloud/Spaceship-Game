@@ -45,6 +45,29 @@ func run() -> void:
             "source-exact thruster visual contract must be valid"
         )
 
+        var forward := FlightCommand.new()
+        forward.translation = Vector3.FORWARD
+        var forward_intensities := visual_controller.preview_direct_intensities(forward)
+        assert_true(
+            is_equal_approx(
+                float(forward_intensities.get(&"Main/MainLeft", 0.0)),
+                1.0
+            ),
+            "forward command must activate the left main plume"
+        )
+        assert_true(
+            is_equal_approx(
+                float(forward_intensities.get(&"Main/MainRight", 0.0)),
+                1.0
+            ),
+            "forward command must activate the right main plume"
+        )
+        assert_equal(
+            forward_intensities.size(),
+            2,
+            "forward command must use only the symmetric main pair"
+        )
+
     player.free()
 
 func _test_unique_logical_root_lookup() -> void:
