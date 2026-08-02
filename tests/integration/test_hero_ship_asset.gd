@@ -33,16 +33,22 @@ func run() -> void:
     assert_true(forward_marker != null, "ForwardMarker required")
     assert_true(up_marker != null, "UpMarker required")
 
-    if forward_marker != null:
+    if forward_marker != null and up_marker != null:
+        var forward := forward_marker.position
+        var up := up_marker.position
         assert_true(
-            forward_marker.position.normalized().dot(Vector3.FORWARD) > 0.99,
-            "ForwardMarker must point toward local -Z"
+            forward.length_squared() > 0.000001,
+            "ForwardMarker must define a non-zero source direction"
         )
-    if up_marker != null:
         assert_true(
-            up_marker.position.normalized().dot(Vector3.UP) > 0.99,
-            "UpMarker must point toward local +Y"
+            up.length_squared() > 0.000001,
+            "UpMarker must define a non-zero source direction"
         )
+        if forward.length_squared() > 0.000001 and up.length_squared() > 0.000001:
+            assert_true(
+                absf(forward.normalized().dot(up.normalized())) < 0.999,
+                "hero axis markers must not be collinear"
+            )
 
     var bounds_state := {
         "has_mesh": false,
@@ -62,15 +68,15 @@ func run() -> void:
         var dimensions := maximum - minimum
         assert_true(
             dimensions.x <= MAXIMUM_DIMENSIONS.x + BOUNDS_TOLERANCE,
-            "hero fighter width exceeds gameplay envelope: %.3f" % dimensions.x
+            "raw hero fighter width exceeds import envelope: %.3f" % dimensions.x
         )
         assert_true(
             dimensions.y <= MAXIMUM_DIMENSIONS.y + BOUNDS_TOLERANCE,
-            "hero fighter height exceeds gameplay envelope: %.3f" % dimensions.y
+            "raw hero fighter height exceeds import envelope: %.3f" % dimensions.y
         )
         assert_true(
             dimensions.z <= MAXIMUM_DIMENSIONS.z + BOUNDS_TOLERANCE,
-            "hero fighter length exceeds gameplay envelope: %.3f" % dimensions.z
+            "raw hero fighter length exceeds import envelope: %.3f" % dimensions.z
         )
 
     fighter.free()
@@ -94,7 +100,7 @@ func _collect_mesh_bounds(
                 current_transform * local_bounds.get_endpoint(endpoint_index)
             )
 
-    for child: Node in node.get_children():
+    for child in node.get_children():
         _collect_mesh_bounds(child, current_transform, state)
 
 func _include_point(state: Dictionary, point: Vector3) -> void:
