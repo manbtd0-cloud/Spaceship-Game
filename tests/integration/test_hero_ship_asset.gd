@@ -57,9 +57,9 @@ func run() -> void:
     assert_true(bool(bounds_state["has_mesh"]), "hero fighter must contain a mesh")
 
     if bool(bounds_state["has_mesh"]):
-        var dimensions: Vector3 = (
-            bounds_state["maximum"] - bounds_state["minimum"]
-        )
+        var minimum: Vector3 = bounds_state["minimum"]
+        var maximum: Vector3 = bounds_state["maximum"]
+        var dimensions := maximum - minimum
         assert_true(
             dimensions.x <= MAXIMUM_DIMENSIONS.x + BOUNDS_TOLERANCE,
             "hero fighter width exceeds gameplay envelope: %.3f" % dimensions.x
@@ -88,7 +88,7 @@ func _collect_mesh_bounds(
     var mesh_instance := node as MeshInstance3D
     if mesh_instance != null and mesh_instance.mesh != null:
         var local_bounds := mesh_instance.get_aabb()
-        for endpoint_index: int in range(8):
+        for endpoint_index in range(8):
             _include_point(
                 state,
                 current_transform * local_bounds.get_endpoint(endpoint_index)
