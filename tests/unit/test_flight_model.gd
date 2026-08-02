@@ -5,9 +5,16 @@ func run() -> void:
     tuning.forward_force = 100.0
     tuning.reverse_force = 40.0
     tuning.strafe_force = 50.0
-    tuning.rotation_torque = 25.0
+    tuning.pitch_torque = 10.0
+    tuning.yaw_torque = 20.0
+    tuning.roll_torque = 30.0
     tuning.boost_multiplier = 1.8
-    tuning.assist_linear_damping = 4.0
+    tuning.normal_speed_soft_start = 120.0
+    tuning.normal_speed_limit = 160.0
+    tuning.boost_speed_soft_start = 180.0
+    tuning.boost_speed_limit = 240.0
+    tuning.assist_lateral_damping = 4.0
+    tuning.assist_vertical_damping = 4.0
     tuning.assist_angular_damping = 3.0
 
     var assisted := FlightCommand.new()
@@ -40,13 +47,59 @@ func run() -> void:
 
     var reverse := FlightCommand.new()
     reverse.mode = FlightMode.Value.MANUAL
-    reverse.translation = Vector3(0.0, 0.0, 1.0)
+    reverse.translation = Vector3.BACK
     var reverse_output := FlightModel.compute(reverse, tuning, Vector3.ZERO, Vector3.ZERO)
     assert_true(is_equal_approx(reverse_output.force_local.z, 40.0), "reverse input must use reverse thrust")
 
     var boosted := FlightCommand.new()
     boosted.mode = FlightMode.Value.MANUAL
-    boosted.translation = Vector3(0.0, 0.0, -1.0)
+    boosted.translation = Vector3.FORWARD
     boosted.boost = 1.0
     var boosted_output := FlightModel.compute(boosted, tuning, Vector3.ZERO, Vector3.ZERO)
     assert_true(is_equal_approx(boosted_output.force_local.z, -180.0), "full boost must scale forward thrust")
+
+    var all_axis_boost := FlightCommand.new()
+    all_axis_boost.mode = FlightMode.Value.MANUAL
+    all_axis_boost.translation = Vector3(1.0, 1.0, -1.0).normalized()
+    all_axis_boost.rotation = Vector3.ONE
+    all_axis_boost.boost = 1.0
+    var all_axis_output := FlightModel.compute(
+        all_axis_boost, tuning, Vector3.ZERO, Vector3.ZERO
+    )
+    assert_true(all_axis_output.force_local.x > tuning.strafe_force, "boost scales lateral thrust")
+    assert_true(all_axis_output.force_local.y > tuning.strafe_force, "boost scales vertical thrust")
+    assert_equal(all_axis_output.torque_local, Vector3(10.0, 20.0, 30.0), "axis torques")
+
+    var normal_limit_output := FlightModel.compute(
+        assisted,
+        tuning,
+        Vector3(0.0, 0.0, -160.0),
+        Vector3.ZERO
+    )
+    assert_true(
+        is_equal_approx(normal_limit_output.force_local.z, 0.0),
+        "normal increasing thrust stops at 160 m/s"
+    )
+
+    var boosted_at_normal_limit := FlightCommand.new()
+    boosted_at_normal_limit.mode = FlightMode.Value.MANUAL
+    boosted_at_normal_limit.translation = Vector3.FORWARD
+    boosted_at_normal_limit.boost = 1.0
+    var boosted_at_normal_output := FlightModel.compute(
+        boosted_at_normal_limit,
+        tuning,
+        Vector3(0.0, 0.0, -160.0),
+        Vector3.ZERO
+    )
+    assert_true(boosted_at_normal_output.force_local.z < 0.0, "boost remains available at 160 m/s")
+
+    var braking_above_limit := FlightCommand.new()
+    braking_above_limit.mode = FlightMode.Value.MANUAL
+    braking_above_limit.translation = Vector3.BACK
+    var braking_output := FlightModel.compute(
+        braking_above_limit,
+        tuning,
+        Vector3(0.0, 0.0, -180.0),
+        Vector3.ZERO
+    )
+    assert_true(braking_output.force_local.z > 0.0, "braking remains available above limit")
