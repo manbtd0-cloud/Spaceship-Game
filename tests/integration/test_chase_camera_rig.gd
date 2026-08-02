@@ -1,6 +1,8 @@
 extends "res://tests/support/test_case.gd"
 
 func run() -> void:
+    _test_all_preset_hard_limits()
+
     var fixture := Node3D.new()
     fixture.name = "CameraFixture"
 
@@ -143,3 +145,47 @@ func run() -> void:
 
     fixture.get_parent().remove_child(fixture)
     fixture.free()
+
+func _test_all_preset_hard_limits() -> void:
+    var presets: Array[Dictionary] = [
+        {
+            "name": "Close",
+            "rear": 10.5,
+            "height": 3.2,
+            "pullback": 3.5,
+            "limit": 14.0,
+        },
+        {
+            "name": "Standard",
+            "rear": 14.0,
+            "height": 4.0,
+            "pullback": 5.0,
+            "limit": 19.0,
+        },
+        {
+            "name": "Far",
+            "rear": 20.0,
+            "height": 5.0,
+            "pullback": 7.0,
+            "limit": 27.0,
+        },
+    ]
+
+    for preset: Dictionary in presets:
+        var result := ChaseCameraMath.desired_position(
+            Transform3D.IDENTITY,
+            Vector3(0.0, 0.0, -240.0),
+            float(preset["rear"]),
+            float(preset["height"]),
+            0.05,
+            float(preset["pullback"]),
+            float(preset["limit"])
+        )
+        assert_true(
+            result.z > 0.0,
+            "%s camera must remain behind the ship" % String(preset["name"])
+        )
+        assert_true(
+            result.z <= float(preset["limit"]) + 0.0001,
+            "%s camera must respect its hard rear limit" % String(preset["name"])
+        )
