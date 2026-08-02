@@ -12,7 +12,18 @@ func run() -> void:
         return
 
     assert_true(room.get_node_or_null("PlayerInterceptor") is RigidBody3D, "player required")
-    assert_true(room.get_node_or_null("ChaseCameraRig") is ChaseCameraRig, "camera required")
+    var camera_rig := room.get_node_or_null("ChaseCameraRig") as ChaseCameraRig
+    assert_true(camera_rig != null, "camera required")
+    if camera_rig != null:
+        assert_equal(
+            camera_rig.get_selected_preset(),
+            ChaseCameraRig.Preset.STANDARD,
+            "flight room camera must begin in Standard"
+        )
+        assert_true(
+            camera_rig.get_node_or_null("Camera3D") is Camera3D,
+            "camera rig must own Camera3D"
+        )
     assert_true(room.get_node_or_null("FlightHud") is FlightHud, "HUD required")
     assert_true(room.get_node_or_null("ResetVolume") is Area3D, "reset volume required")
     assert_true(room.get_node_or_null("FlightRoomController") is FlightRoomController, "room controller required")
