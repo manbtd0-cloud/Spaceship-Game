@@ -1,13 +1,14 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/input/player_input_source.gd" id="1_input"]
 [ext_resource type="Script" path="res://src/player/ship_flight_controller.gd" id="2_controller"]
 [ext_resource type="Resource" path="res://config/flight/player_flight_tuning.tres" id="3_tuning"]
 [ext_resource type="PackedScene" path="res://assets/runtime/ships/player/small_sci_fi_fighter.glb" id="4_fighter"]
 [ext_resource type="Script" path="res://src/player/ship_visual_controller.gd" id="5_visual_controller"]
+[ext_resource type="Script" path="res://src/player/hero_ship_model_adapter.gd" id="6_model_adapter"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_player"]
-size = Vector3(8, 2.5, 12)
+size = Vector3(7.2, 4.2, 10.8)
 
 [sub_resource type="StandardMaterial3D" id="Mat_engine_glow"]
 albedo_color = Color(0.04, 0.55, 1, 0.92)
@@ -43,21 +44,28 @@ shape = SubResource("BoxShape_player")
 
 [node name="SmallSciFiFighter" parent="VisualRoot" instance=ExtResource("4_fighter")]
 
+[node name="HeroShipModelAdapter" type="Node" parent="."]
+script = ExtResource("6_model_adapter")
+model_path = NodePath("../VisualRoot/SmallSciFiFighter")
+target_dimensions = Vector3(7.2, 4.2, 10.8)
+
 [node name="CameraTarget" type="Node3D" parent="."]
-position = Vector3(0, 0.8, -1.5)
+position = Vector3(0, 1.0, -2.0)
 
 [node name="LeftEngineGlowAnchor" type="Node3D" parent="."]
-position = Vector3(-0.85, -0.1, 2.72)
+position = Vector3(-1.35, -0.3, 4.8)
 rotation_degrees = Vector3(90, 0, 0)
 
 [node name="Glow" type="MeshInstance3D" parent="LeftEngineGlowAnchor"]
+visible = false
 mesh = SubResource("Mesh_engine_glow")
 
 [node name="RightEngineGlowAnchor" type="Node3D" parent="."]
-position = Vector3(0.85, -0.1, 2.72)
+position = Vector3(1.35, -0.3, 4.8)
 rotation_degrees = Vector3(90, 0, 0)
 
 [node name="Glow" type="MeshInstance3D" parent="RightEngineGlowAnchor"]
+visible = false
 mesh = SubResource("Mesh_engine_glow")
 
 [node name="PlayerInputSource" type="Node" parent="."]
