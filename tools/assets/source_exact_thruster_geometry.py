@@ -270,24 +270,29 @@ def _create_nozzle_local_effect_mesh(
         )
 
     leaf_name = path.split("/")[-1]
-    mesh_data = bpy.data.meshes.new(leaf_name)
+    mesh_name = f"{leaf_name}Mesh"
+    mesh_data = bpy.data.meshes.new(mesh_name)
     mesh_data.from_pydata([tuple(vertex) for vertex in local_vertices], [], faces)
     mesh_data.validate(clean_customdata=False)
     mesh_data.update()
     mesh_data.materials.append(material)
 
-    effect = bpy.data.objects.new(leaf_name, mesh_data)
-    effect.parent = parent
-    effect.matrix_parent_inverse = Matrix.Identity(4)
-    effect.matrix_basis = socket_transform
-    effect["thruster_class"] = socket_record.socket_class
-    effect["socket_path"] = socket_record.path
-    effect["source_object"] = source_object
-    effect["source_component_indices"] = list(component_indices)
-    effect["source_exact_geometry"] = True
-    effect["local_exhaust_axis"] = [0.0, 0.0, -1.0]
-    effect["maximum_reconstruction_error_m"] = maximum_error
-    collection.objects.link(effect)
+    pivot = _create_empty(leaf_name, parent, collection)
+    pivot.matrix_basis = socket_transform
+    pivot["thruster_class"] = socket_record.socket_class
+    pivot["socket_path"] = socket_record.path
+    pivot["source_object"] = source_object
+    pivot["source_component_indices"] = list(component_indices)
+    pivot["source_exact_geometry"] = True
+    pivot["local_exhaust_axis"] = [0.0, 0.0, -1.0]
+    pivot["maximum_reconstruction_error_m"] = maximum_error
+
+    effect_mesh = bpy.data.objects.new(mesh_name, mesh_data)
+    effect_mesh.parent = pivot
+    effect_mesh.matrix_parent_inverse = Matrix.Identity(4)
+    effect_mesh.matrix_basis = Matrix.Identity(4)
+    effect_mesh["thruster_effect_mesh"] = True
+    collection.objects.link(effect_mesh)
 
     minimum, maximum = _bounds(local_vertices)
     return NozzleLocalEffectGeometryRecord(
