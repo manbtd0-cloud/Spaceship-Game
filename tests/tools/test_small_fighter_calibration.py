@@ -158,6 +158,16 @@ class CalibrationTests(unittest.TestCase):
             self.assertTrue(any("GLB missing" in error for error in errors))
             self.assertTrue(any("dimension X" in error for error in errors))
 
+    def test_exporter_uses_canonical_frame_and_never_saves_source(self) -> None:
+        exporter_path = ASSET_TOOLS / "export_small_sci_fi_fighter.py"
+        source = exporter_path.read_text(encoding="utf-8")
+        for forbidden in ("save_as_mainfile", "save_mainfile", "save_homefile"):
+            self.assertNotIn(forbidden, source)
+        self.assertIn("SOURCE_FRAME_OBJECT", source)
+        self.assertIn("source_frame_inverse @ source.matrix_world", source)
+        self.assertIn("EngineFire", source)
+        self.assertIn("export_extras=True", source)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
