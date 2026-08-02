@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import bpy
 from mathutils import Matrix, Vector
@@ -16,6 +17,9 @@ from small_fighter_calibration import (
 )
 from thruster_paths import classify_effect_name
 
+if TYPE_CHECKING:
+    from export_small_sci_fi_fighter import SocketRecord
+
 
 @dataclass(frozen=True)
 class EffectGeometryRecord:
@@ -28,6 +32,24 @@ class EffectGeometryRecord:
     bounds_min_blender: Vector
     bounds_max_blender: Vector
     geometry_sha256: str
+
+
+@dataclass(frozen=True)
+class NozzleLocalEffectGeometryRecord:
+    path: str
+    socket_path: str
+    socket_class: str
+    source_object: str
+    source_component_indices: tuple[int, ...]
+    vertex_count: int
+    face_count: int
+    local_bounds_min_blender: Vector
+    local_bounds_max_blender: Vector
+    geometry_sha256: str
+    node_transform_basis_blender: Matrix
+    node_transform_origin_blender: Vector
+    local_exhaust_axis_blender: Vector
+    maximum_reconstruction_error_m: float
 
 
 def _create_empty(
@@ -206,17 +228,104 @@ def _create_effect_mesh(
     )
 
 
+def _effect_path_to_socket_path(effect_path: str) -> str:
+    if effect_path.startswith("ThrusterEffects/MainEffects/"):
+        leaf = effect_path.removeprefix("ThrusterEffects/MainEffects/").removesuffix("Effect")
+        return f"Thrusters/Main/{leaf}"
+    if effect_path.startswith("ThrusterEffects/RetroEffects/"):
+        leaf = effect_path.removeprefix("ThrusterEffects/RetroEffects/").removesuffix("Effect")
+        return f"Thrusters/Retro/{leaf}"
+    if effect_path.startswith("ThrusterEffects/ManeuverEffects/"):
+        leaf = effect_path.removeprefix("ThrusterEffects/ManeuverEffects/").removesuffix("Effect")
+        return f"Thrusters/Maneuver/{leaf}"
+    raise RuntimeError(f"Unsupported effect path: {effect_path}")
+
+
+def _create_nozzle_local_effect_mesh(
+    path: str,
+    socket_record: SocketRecord,
+    source_object: str,
+    component_indices: list[int],
+    canonical_vertices: list[Vector],
+    faces: list[tuple[int, ...]],
+    parent: bpy.types.Object,
+    collection: bpy.types.Collection,
+    material: bpy.types.Material,
+) -> NozzleLocalEffectGeometryRecord:
+    socket_transform = (
+        Matrix.Translation(socket_record.position_blender)
+        @ socket_record.basis_blender
+    )
+    inverse_socket = socket_transform.inverted_safe()
+    local_vertices = [inverse_socket @ vertex for vertex in canonical_vertices]
+    reconstructed = [socket_transform @ vertex for vertex in local_vertices]
+    maximum_error = max(
+        (expected - actual).length
+        for expected, actual in zip(canonical_vertices, reconstructed, strict=True)
+    )
+    if maximum_error > 0.0001:
+        raise RuntimeError(
+            f"Nozzle-local reconstruction exceeds tolerance for {path}: "
+            f"{maximum_error:.9f} m"
+        )
+
+    leaf_name = path.split("/")[-1]
+    mesh_data = bpy.data.meshes.new(leaf_name)
+    mesh_data.from_pydata([tuple(vertex) for vertex in local_vertices], [], faces)
+    mesh_data.validate(clean_customdata=False)
+    mesh_data.update()
+    mesh_data.materials.append(material)
+
+    effect = bpy.data.objects.new(leaf_name, mesh_data)
+    effect.parent = parent
+    effect.matrix_parent_inverse = Matrix.Identity(4)
+    effect.matrix_basis = socket_transform
+    effect["thruster_class"] = socket_record.socket_class
+    effect["socket_path"] = socket_record.path
+    effect["source_object"] = source_object
+    effect["source_component_indices"] = list(component_indices)
+    effect["source_exact_geometry"] = True
+    effect["local_exhaust_axis"] = [0.0, 0.0, -1.0]
+    effect["maximum_reconstruction_error_m"] = maximum_error
+    collection.objects.link(effect)
+
+    minimum, maximum = _bounds(local_vertices)
+    return NozzleLocalEffectGeometryRecord(
+        path=path,
+        socket_path=socket_record.path,
+        socket_class=socket_record.socket_class,
+        source_object=source_object,
+        source_component_indices=tuple(component_indices),
+        vertex_count=len(local_vertices),
+        face_count=len(faces),
+        local_bounds_min_blender=minimum,
+        local_bounds_max_blender=maximum,
+        geometry_sha256=_geometry_digest(local_vertices, faces),
+        node_transform_basis_blender=socket_record.basis_blender.copy(),
+        node_transform_origin_blender=socket_record.position_blender.copy(),
+        local_exhaust_axis_blender=Vector((0.0, 0.0, -1.0)),
+        maximum_reconstruction_error_m=float(maximum_error),
+    )
+
+
+def _effect_groups(
+    root: bpy.types.Object,
+    collection: bpy.types.Collection,
+) -> dict[str, bpy.types.Object]:
+    effect_root = _create_empty("ThrusterEffects", root, collection)
+    return {
+        "Main": _create_empty("MainEffects", effect_root, collection),
+        "Retro": _create_empty("RetroEffects", effect_root, collection),
+        "Maneuver": _create_empty("ManeuverEffects", effect_root, collection),
+    }
+
+
 def build_source_exact_thruster_effects(
     root: bpy.types.Object,
     collection: bpy.types.Collection,
     source_frame_inverse: Matrix,
 ) -> list[EffectGeometryRecord]:
-    effect_root = _create_empty("ThrusterEffects", root, collection)
-    group_nodes: dict[str, bpy.types.Object] = {
-        "Main": _create_empty("MainEffects", effect_root, collection),
-        "Retro": _create_empty("RetroEffects", effect_root, collection),
-        "Maneuver": _create_empty("ManeuverEffects", effect_root, collection),
-    }
+    group_nodes = _effect_groups(root, collection)
     material = _hidden_import_material()
     records: list[EffectGeometryRecord] = []
 
@@ -274,5 +383,89 @@ def build_source_exact_thruster_effects(
     if len(records) != 12 or len(set(paths)) != 12:
         raise RuntimeError(
             f"Expected twelve unique source-exact effect meshes, got {paths}"
+        )
+    return records
+
+
+def build_nozzle_local_thruster_effects(
+    root: bpy.types.Object,
+    collection: bpy.types.Collection,
+    source_frame_inverse: Matrix,
+    socket_records: list[SocketRecord],
+) -> list[NozzleLocalEffectGeometryRecord]:
+    group_nodes = _effect_groups(root, collection)
+    material = _hidden_import_material()
+    sockets_by_path = {record.path: record for record in socket_records}
+    records: list[NozzleLocalEffectGeometryRecord] = []
+
+    for source_name, specification in PLUME_GROUPS.items():
+        source = bpy.data.objects.get(source_name)
+        if source is None or source.type != "MESH":
+            raise RuntimeError(f"Source-exact exhaust mesh is missing: {source_name}")
+
+        source_vertices, source_faces, raw_components = _evaluated_source_geometry(
+            source,
+            source_frame_inverse,
+        )
+        component_points = [
+            [tuple(source_vertices[index]) for index in component]
+            for component in raw_components
+        ]
+        component_groups = group_spatial_component_indices(
+            component_points,
+            int(specification["sockets"]),
+        )
+
+        for component_indices in component_groups:
+            canonical_vertices, faces = _extract_group_mesh(
+                source_vertices,
+                source_faces,
+                raw_components,
+                component_indices,
+            )
+            centroid = (
+                sum(canonical_vertices, Vector((0.0, 0.0, 0.0)))
+                / len(canonical_vertices)
+            )
+            effect_path = classify_effect_name(
+                str(specification["group"]),
+                tuple(centroid),
+            )
+            socket_path = _effect_path_to_socket_path(effect_path)
+            socket_record = sockets_by_path.get(socket_path)
+            if socket_record is None:
+                raise RuntimeError(
+                    f"No socket record matches source-exact effect {effect_path}: "
+                    f"expected {socket_path}"
+                )
+            parent_group = (
+                "Maneuver"
+                if socket_record.socket_class == "maneuver"
+                else str(specification["group"])
+            )
+            records.append(
+                _create_nozzle_local_effect_mesh(
+                    effect_path,
+                    socket_record,
+                    source_name,
+                    component_indices,
+                    canonical_vertices,
+                    faces,
+                    group_nodes[parent_group],
+                    collection,
+                    material,
+                )
+            )
+
+    records.sort(key=lambda record: record.path)
+    paths = [record.path for record in records]
+    socket_paths = [record.socket_path for record in records]
+    if len(records) != 12 or len(set(paths)) != 12:
+        raise RuntimeError(
+            f"Expected twelve unique nozzle-local effect meshes, got {paths}"
+        )
+    if len(set(socket_paths)) != 12:
+        raise RuntimeError(
+            f"Nozzle-local effects must map one-to-one to sockets: {socket_paths}"
         )
     return records
