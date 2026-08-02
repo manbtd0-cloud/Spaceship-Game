@@ -40,6 +40,24 @@ static func desired_position(
         * Vector3(0.0, safe_height, final_rear)
     )
 
+static func clamp_rear_position(
+    target_transform: Transform3D,
+    candidate_position: Vector3,
+    hard_rear_limit: float
+) -> Vector3:
+    if not candidate_position.is_finite():
+        return target_transform.origin
+    var target_basis := target_transform.basis.orthonormalized()
+    var local_position := target_basis.inverse() * (
+        candidate_position - target_transform.origin
+    )
+    local_position.z = clampf(
+        local_position.z,
+        0.001,
+        maxf(hard_rear_limit, 0.001)
+    )
+    return target_transform.origin + target_basis * local_position
+
 static func desired_look_target(
     target_transform: Transform3D,
     world_velocity: Vector3,
