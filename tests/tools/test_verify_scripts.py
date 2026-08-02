@@ -89,6 +89,16 @@ class VerifyScriptTests(unittest.TestCase):
             source,
         )
 
+    def test_fighter_wrapper_rolls_back_partial_publication(self) -> None:
+        source = (REPO_ROOT / "tools" / "assets" / "export-small-fighter.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function Publish-ValidatedFiles", source)
+        self.assertIn("function Restore-PublicationBackups", source)
+        self.assertIn("function Remove-PublicationArtifacts", source)
+        self.assertIn(".publish-backup", source)
+        self.assertIn("Restore-PublicationBackups", source)
+
     def test_fighter_wrapper_writes_pending_manifest_without_utf8_bom(self) -> None:
         source = (REPO_ROOT / "tools" / "assets" / "export-small-fighter.ps1").read_text(
             encoding="utf-8"
