@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
-from typing import Any
 
 import bpy
 from mathutils import Matrix, Vector
@@ -12,10 +11,10 @@ from small_fighter_calibration import (
     HULL_CENTER_LOCAL,
     PLUME_GROUPS,
     UNIFORM_SCALE,
-    classify_effect_name,
     connected_components,
     group_spatial_component_indices,
 )
+from thruster_paths import classify_effect_name
 
 
 @dataclass(frozen=True)
@@ -214,9 +213,9 @@ def build_source_exact_thruster_effects(
 ) -> list[EffectGeometryRecord]:
     effect_root = _create_empty("ThrusterEffects", root, collection)
     group_nodes: dict[str, bpy.types.Object] = {
-        "Main": _create_empty("Main", effect_root, collection),
-        "Retro": _create_empty("Retro", effect_root, collection),
-        "Maneuver": _create_empty("Maneuver", effect_root, collection),
+        "Main": _create_empty("MainEffects", effect_root, collection),
+        "Retro": _create_empty("RetroEffects", effect_root, collection),
+        "Maneuver": _create_empty("ManeuverEffects", effect_root, collection),
     }
     material = _hidden_import_material()
     records: list[EffectGeometryRecord] = []
@@ -277,22 +276,3 @@ def build_source_exact_thruster_effects(
             f"Expected twelve unique source-exact effect meshes, got {paths}"
         )
     return records
-
-
-def effect_record_to_manifest(
-    record: EffectGeometryRecord,
-    blender_to_godot_vector: Any,
-) -> dict[str, Any]:
-    return {
-        "path": record.path,
-        "class": record.socket_class,
-        "source_object": record.source_object,
-        "source_component_indices": list(record.source_component_indices),
-        "vertex_count": record.vertex_count,
-        "face_count": record.face_count,
-        "bounds_min": blender_to_godot_vector(record.bounds_min_blender),
-        "bounds_max": blender_to_godot_vector(record.bounds_max_blender),
-        "geometry_sha256": record.geometry_sha256,
-        "identity_transform": True,
-        "source_exact_geometry": True,
-    }
