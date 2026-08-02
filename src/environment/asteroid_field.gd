@@ -19,6 +19,9 @@ func build(models: Dictionary) -> bool:
         var record: Dictionary = records[index]
         var family := StringName(record["family"])
         var model := models[family] as PackedScene
+        var angular_velocity: Vector3 = record["angular_velocity_degrees"]
+        var position: Vector3 = record["position"]
+        var rotation_degrees: Vector3 = record["rotation_degrees"]
         var body := ASTEROID_BODY_SCENE.instantiate() as AsteroidBody
         if body == null:
             push_error("AsteroidField could not instantiate AsteroidBody")
@@ -27,19 +30,15 @@ func build(models: Dictionary) -> bool:
 
         body.name = "Asteroid%02d_%s" % [index + 1, String(family)]
         add_child(body)
-        if not body.configure(
-            model,
-            family,
-            record["angular_velocity_degrees"] as Vector3
-        ):
+        if not body.configure(model, family, angular_velocity):
             push_error("AsteroidField could not configure family: %s" % family)
             remove_child(body)
             body.free()
             clear_field()
             return false
 
-        body.position = record["position"] as Vector3
-        body.rotation_degrees = record["rotation_degrees"] as Vector3
+        body.position = position
+        body.rotation_degrees = rotation_degrees
         var uniform_scale := float(record["scale"])
         body.scale = Vector3.ONE * uniform_scale
         _family_counts[family] = int(_family_counts.get(family, 0)) + 1
