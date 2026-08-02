@@ -58,9 +58,9 @@ func run() -> void:
     assert_true(is_equal_approx(PlayerInputMath.clamp_boost(-2.0), 0.0), "boost lower clamp")
     assert_true(is_equal_approx(PlayerInputMath.clamp_boost(2.0), 1.0), "boost upper clamp")
 
-func _action_has_key(action: StringName, physical_keycode: Key) -> bool:
+func _action_has_key(action: StringName, physical_keycode: int) -> bool:
     for event: InputEvent in InputMap.action_get_events(action):
         var key_event := event as InputEventKey
-        if key_event != null and key_event.physical_keycode == physical_keycode:
+        if key_event != null and int(key_event.physical_keycode) == physical_keycode:
             return true
     return false
