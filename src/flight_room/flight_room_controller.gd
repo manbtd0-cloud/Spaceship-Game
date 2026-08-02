@@ -39,10 +39,48 @@ func _ready() -> void:
         _reset_volume.body_entered.connect(_on_reset_volume_body_entered)
 
     _input_source.set_mouse_captured(true)
+    if not setup_asteroid_field():
+        push_warning(
+            "Canonical asteroid pack is unavailable; keeping distant reference placeholders"
+        )
 
 func _physics_process(_delta: float) -> void:
     if _body.global_position.length() > maxf(boundary_radius, 1.0):
         reset_player()
+
+func setup_asteroid_field(models: Dictionary = {}) -> bool:
+    var room := get_parent() as Node3D
+    if room == null:
+        return false
+    var course := room.get_node_or_null("Course") as Node3D
+    if course == null:
+        return false
+
+    var resolved_models := models
+    if resolved_models.is_empty():
+        resolved_models = AsteroidField.load_runtime_models()
+    if resolved_models.size() != AsteroidFieldLayout.FAMILY_IDS.size():
+        return false
+
+    var field := course.get_node_or_null("AsteroidField") as AsteroidField
+    var created_field := false
+    if field == null:
+        field = AsteroidField.new()
+        field.name = "AsteroidField"
+        course.add_child(field)
+        created_field = true
+
+    if not field.build(resolved_models):
+        if created_field:
+            course.remove_child(field)
+            field.free()
+        return false
+
+    var references := course.get_node_or_null("DistantReferenceShapes")
+    if references != null:
+        course.remove_child(references)
+        references.free()
+    return true
 
 func _on_reset_volume_body_entered(other: Node) -> void:
     if other == _body:
