@@ -17,6 +17,20 @@ const REQUIRED_SOCKET_PATHS: Array[String] = [
     "Maneuver/FrontLowerLeft",
     "Maneuver/FrontLowerRight",
 ]
+const REQUIRED_EFFECT_PATHS: Array[String] = [
+    "Main/MainLeftEffect",
+    "Main/MainRightEffect",
+    "Retro/RetroLeftEffect",
+    "Retro/RetroRightEffect",
+    "Maneuver/FrontUpperLeftEffect",
+    "Maneuver/FrontUpperRightEffect",
+    "Maneuver/RearUpperLeftEffect",
+    "Maneuver/RearUpperRightEffect",
+    "Maneuver/RearLowerLeftEffect",
+    "Maneuver/RearLowerRightEffect",
+    "Maneuver/FrontLowerLeftEffect",
+    "Maneuver/FrontLowerRightEffect",
+]
 
 func run() -> void:
     assert_true(
@@ -48,24 +62,14 @@ func run() -> void:
     )
     assert_true(
         fighter.find_children("EngineFire*", "", true, false).is_empty(),
-        "canonical fighter must not contain baked EngineFire geometry"
+        "canonical fighter must not expose source EngineFire object names"
     )
 
-    var thruster_roots := fighter.find_children(
-        "Thrusters",
-        "Node3D",
-        true,
-        false
-    )
-    assert_equal(
-        thruster_roots.size(),
-        1,
+    var thruster_root := _find_single_named_node(fighter, "Thrusters")
+    assert_true(
+        thruster_root != null,
         "canonical fighter must contain exactly one Thrusters hierarchy"
     )
-    var thruster_root: Node3D = null
-    if thruster_roots.size() == 1:
-        thruster_root = thruster_roots[0] as Node3D
-
     if thruster_root != null:
         for socket_path: String in REQUIRED_SOCKET_PATHS:
             var socket := thruster_root.get_node_or_null(socket_path) as Node3D
@@ -85,26 +89,69 @@ func run() -> void:
                     % socket_path
                 )
 
-    var bounds_state := {
-        "has_mesh": false,
-        "minimum": Vector3.ZERO,
-        "maximum": Vector3.ZERO,
-    }
-    _collect_mesh_bounds(fighter, Transform3D.IDENTITY, bounds_state)
-    assert_true(bool(bounds_state["has_mesh"]), "canonical fighter must contain a mesh")
+    var effect_root := _find_single_named_node(fighter, "ThrusterEffects")
+    assert_true(
+        effect_root != null,
+        "canonical fighter must contain exactly one ThrusterEffects hierarchy"
+    )
+    if effect_root != null:
+        for effect_path: String in REQUIRED_EFFECT_PATHS:
+            var effect := effect_root.get_node_or_null(effect_path) as MeshInstance3D
+            assert_true(
+                effect != null and effect.mesh != null,
+                "source-exact effect mesh missing: ThrusterEffects/%s" % effect_path
+            )
+            if effect != null:
+                assert_true(
+                    _transform_is_identity(effect.transform),
+                    "source-exact effect transform must be identity: ThrusterEffects/%s"
+                    % effect_path
+                )
 
-    if bool(bounds_state["has_mesh"]):
-        var minimum: Vector3 = bounds_state["minimum"]
-        var maximum: Vector3 = bounds_state["maximum"]
+    var hull := fighter.find_child(
+        "SmallSciFiFighterMesh",
+        true,
+        false
+    ) as MeshInstance3D
+    assert_true(hull != null and hull.mesh != null, "canonical fighter hull mesh required")
+    if hull != null and hull.mesh != null:
+        var hull_transform := _local_transform_to_ancestor(hull, fighter)
+        var local_bounds := hull.get_aabb()
+        var minimum := Vector3.ZERO
+        var maximum := Vector3.ZERO
+        var has_point := false
+        for endpoint_index: int in range(8):
+            var point := hull_transform * local_bounds.get_endpoint(endpoint_index)
+            if not has_point:
+                minimum = point
+                maximum = point
+                has_point = true
+            else:
+                minimum = Vector3(
+                    minf(minimum.x, point.x),
+                    minf(minimum.y, point.y),
+                    minf(minimum.z, point.z)
+                )
+                maximum = Vector3(
+                    maxf(maximum.x, point.x),
+                    maxf(maximum.y, point.y),
+                    maxf(maximum.z, point.z)
+                )
         var dimensions := maximum - minimum
         for axis: int in range(3):
             assert_true(
                 absf(dimensions[axis] - EXPECTED_DIMENSIONS[axis]) <= BOUNDS_TOLERANCE,
-                "canonical fighter dimension %d outside tolerance: %.6f vs %.6f"
+                "canonical hull dimension %d outside tolerance: %.6f vs %.6f"
                 % [axis, dimensions[axis], EXPECTED_DIMENSIONS[axis]]
             )
 
     fighter.free()
+
+func _find_single_named_node(root: Node, node_name: String) -> Node3D:
+    var candidates := root.find_children(node_name, "Node3D", true, false)
+    if candidates.size() != 1:
+        return null
+    return candidates[0] as Node3D
 
 func _transform_is_identity(value: Transform3D) -> bool:
     return (
@@ -114,44 +161,22 @@ func _transform_is_identity(value: Transform3D) -> bool:
         and value.basis.z.is_equal_approx(Vector3.BACK)
     )
 
-func _collect_mesh_bounds(
-    node: Node,
-    parent_transform: Transform3D,
-    state: Dictionary
-) -> void:
-    var current_transform := parent_transform
-    var node_3d := node as Node3D
-    if node_3d != null:
-        current_transform = parent_transform * node_3d.transform
+func _local_transform_to_ancestor(
+    node: Node3D,
+    ancestor: Node3D
+) -> Transform3D:
+    var chain: Array[Node3D] = []
+    var current: Node = node
+    while current != ancestor:
+        var current_3d := current as Node3D
+        if current_3d == null:
+            return Transform3D.IDENTITY
+        chain.push_front(current_3d)
+        current = current.get_parent()
+        if current == null:
+            return Transform3D.IDENTITY
 
-    var mesh_instance := node as MeshInstance3D
-    if mesh_instance != null and mesh_instance.mesh != null:
-        var local_bounds := mesh_instance.get_aabb()
-        for endpoint_index: int in range(8):
-            _include_point(
-                state,
-                current_transform * local_bounds.get_endpoint(endpoint_index)
-            )
-
-    for child: Node in node.get_children():
-        _collect_mesh_bounds(child, current_transform, state)
-
-func _include_point(state: Dictionary, point: Vector3) -> void:
-    if not bool(state["has_mesh"]):
-        state["has_mesh"] = true
-        state["minimum"] = point
-        state["maximum"] = point
-        return
-
-    var minimum: Vector3 = state["minimum"]
-    var maximum: Vector3 = state["maximum"]
-    state["minimum"] = Vector3(
-        minf(minimum.x, point.x),
-        minf(minimum.y, point.y),
-        minf(minimum.z, point.z)
-    )
-    state["maximum"] = Vector3(
-        maxf(maximum.x, point.x),
-        maxf(maximum.y, point.y),
-        maxf(maximum.z, point.z)
-    )
+    var result := Transform3D.IDENTITY
+    for item: Node3D in chain:
+        result *= item.transform
+    return result
