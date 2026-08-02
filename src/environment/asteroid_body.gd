@@ -48,10 +48,7 @@ func configure(
         return false
 
     _collision.shape = shape_copy
-    _collision.transform = (
-        global_transform.affine_inverse()
-        * source_collision.global_transform
-    )
+    _collision.transform = _local_transform_to_ancestor(source_collision, self)
     source_collision.disabled = true
 
     _family = family
@@ -102,3 +99,23 @@ func _find_collision_shape(node: Node) -> CollisionShape3D:
         if found != null:
             return found
     return null
+
+func _local_transform_to_ancestor(
+    node: Node3D,
+    ancestor: Node3D
+) -> Transform3D:
+    var chain: Array[Node3D] = []
+    var current: Node = node
+    while current != ancestor:
+        var current_3d := current as Node3D
+        if current_3d == null:
+            return Transform3D.IDENTITY
+        chain.push_front(current_3d)
+        current = current.get_parent()
+        if current == null:
+            return Transform3D.IDENTITY
+
+    var result := Transform3D.IDENTITY
+    for item: Node3D in chain:
+        result *= item.transform
+    return result
