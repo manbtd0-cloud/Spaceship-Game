@@ -23,6 +23,7 @@ from small_fighter_calibration import (  # noqa: E402
     SOURCE_SHA256,
     classify_socket_name,
     connected_components,
+    group_spatial_components,
     principal_axis,
 )
 
@@ -40,14 +41,14 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(COLLIDER_SIZE_GODOT, (14.0, 3.8, 12.2))
 
     def test_plume_groups_account_for_twelve_sockets(self) -> None:
-        self.assertEqual(PLUME_GROUPS["EngineFire"]["components"], 2)
+        self.assertEqual(PLUME_GROUPS["EngineFire"]["sockets"], 2)
         self.assertEqual(
-            sum(int(value["components"]) for value in PLUME_GROUPS.values()),
+            sum(int(value["sockets"]) for value in PLUME_GROUPS.values()),
             12,
         )
         class_counts = {name: 0 for name in SOCKET_COUNTS}
         for value in PLUME_GROUPS.values():
-            class_counts[str(value["class"])] += int(value["components"])
+            class_counts[str(value["class"])] += int(value["sockets"])
         self.assertEqual(class_counts, SOCKET_COUNTS)
 
     def test_connected_components_are_deterministic(self) -> None:
@@ -55,6 +56,32 @@ class CalibrationTests(unittest.TestCase):
             connected_components(7, [(0, 1), (1, 2), (4, 5), (5, 6)]),
             [[0, 1, 2], [4, 5, 6]],
         )
+
+    def test_layered_mesh_islands_merge_into_two_physical_plumes(self) -> None:
+        components = [
+            [(-3.00, -2.0, 0.0), (-3.00, 0.0, 0.0), (-3.00, 2.0, 0.0)],
+            [(-3.08, -2.0, 0.1), (-3.08, 0.0, 0.1), (-3.08, 2.0, 0.1)],
+            [(3.00, -2.0, 0.0), (3.00, 0.0, 0.0), (3.00, 2.0, 0.0)],
+            [(3.07, -2.0, -0.1), (3.07, 0.0, -0.1), (3.07, 2.0, -0.1)],
+        ]
+        grouped = group_spatial_components(components, expected_groups=2)
+        self.assertEqual(len(grouped), 2)
+        centroids_x = sorted(
+            sum(point[0] for point in group) / len(group)
+            for group in grouped
+        )
+        self.assertLess(centroids_x[0], -3.0)
+        self.assertGreater(centroids_x[1], 3.0)
+        self.assertEqual(sorted(len(group) for group in grouped), [6, 6])
+
+    def test_ambiguous_component_grouping_is_rejected(self) -> None:
+        components = [
+            [(0.0, -1.0, 0.0), (0.0, 1.0, 0.0)],
+            [(1.0, -1.0, 0.0), (1.0, 1.0, 0.0)],
+            [(2.0, -1.0, 0.0), (2.0, 1.0, 0.0)],
+        ]
+        with self.assertRaisesRegex(ValueError, "not spatially distinct"):
+            group_spatial_components(components, expected_groups=2)
 
     def test_principal_axis_follows_long_distribution(self) -> None:
         axis = principal_axis(
@@ -165,6 +192,7 @@ class CalibrationTests(unittest.TestCase):
             self.assertNotIn(forbidden, source)
         self.assertIn("SOURCE_FRAME_OBJECT", source)
         self.assertIn("source_frame_inverse @ source.matrix_world", source)
+        self.assertIn("group_spatial_components", source)
         self.assertIn("EngineFire", source)
         self.assertIn("export_extras=True", source)
 
