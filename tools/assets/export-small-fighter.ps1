@@ -67,8 +67,8 @@ function Resolve-PythonExecutable {
 $expectedSourceSha = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 $sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fi_fighter\Small Sci-Fi Fighter.blend"
-$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter.py"
-$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract.py"
+$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v3.py"
+$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v3.py"
 $outputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
 
@@ -101,7 +101,8 @@ Write-Host "Using Python: $pythonExecutable"
 Write-Host "Source: $sourcePath"
 Write-Host "Source SHA-256: $sourceShaBefore"
 Write-Host "Canonical GLB: $outputPath"
-Write-Host "Canonical manifest: $manifestPath"
+Write-Host "Schema-3 manifest: $manifestPath"
+Write-Host "Thruster visual strategy: source-exact EngineFire geometry"
 
 $blenderArguments = @(
     "--background",
@@ -119,7 +120,7 @@ $blenderArguments = @(
 
 & $blenderExecutable @blenderArguments
 if ($LASTEXITCODE -ne 0) {
-    throw "Blender canonical fighter export failed with exit code $LASTEXITCODE"
+    throw "Blender schema-3 fighter export failed with exit code $LASTEXITCODE"
 }
 
 $sourceShaAfter = (
@@ -147,11 +148,12 @@ foreach ($generatedPath in @($outputPath, $manifestPath)) {
     --manifest $manifestPath `
     --source-sha $sourceShaBefore
 if ($LASTEXITCODE -ne 0) {
-    throw "Canonical fighter contract validation failed with exit code $LASTEXITCODE"
+    throw "Schema-3 source-exact fighter validation failed with exit code $LASTEXITCODE"
 }
 
-Write-Host "Canonical fighter export completed without modifying the source."
+Write-Host "Schema-3 fighter export completed without modifying the source."
 Write-Host "Source SHA-256: $sourceShaAfter"
+Write-Host "Generated exact source exhaust geometry for twelve runtime effects."
 Write-Host "Generated:"
 Write-Host "  $outputPath"
 Write-Host "  $manifestPath"
