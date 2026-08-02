@@ -36,6 +36,19 @@ class VerifyScriptTests(unittest.TestCase):
         self.assertNotIn('"ThrusterEffects/Main/MainLeftEffect"', source)
         self.assertNotIn('"ThrusterEffects/Retro/RetroLeftEffect"', source)
 
+    def test_local_verifiers_validate_checked_in_thruster_matrix(self) -> None:
+        windows = (REPO_ROOT / "tools" / "verify" / "verify.ps1").read_text(
+            encoding="utf-8"
+        )
+        linux = (REPO_ROOT / "tools" / "verify" / "verify.sh").read_text(
+            encoding="utf-8"
+        )
+        for source in (windows, linux):
+            self.assertIn("fighter_thruster_action_contract.py", source)
+            self.assertIn("small_sci_fi_fighter_thruster_actions.json", source)
+            self.assertIn("--matrix", source)
+            self.assertIn("--manifest", source)
+
     def test_asset_wrappers_fail_on_blender_python_exceptions(self) -> None:
         for relative_path in (
             Path("tools/assets/export-small-fighter.ps1"),
