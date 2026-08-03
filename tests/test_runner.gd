@@ -26,6 +26,9 @@ const TEST_SCRIPTS: Array[String] = [
 ]
 
 func _initialize() -> void:
+    call_deferred(&"_run_tests")
+
+func _run_tests() -> void:
     var failure_count: int = 0
 
     for script_path: String in TEST_SCRIPTS:
