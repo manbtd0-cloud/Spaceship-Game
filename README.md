@@ -143,6 +143,24 @@ Escape        exit
 
 The scene cycles all twelve direct actions plus assisted translation and assisted rotation. It uses the production player scene, production visual controller, and production checked-in action matrix. The report displays each active effect path, force, torque, direct target, raw assist target, merged target, and current envelope.
 
+## Primary fire showcase
+
+Launch the development-only production firing showcase with:
+
+```powershell
+godot --path . res://scenes/debug/primary_fire_showcase.tscn
+```
+
+Controls:
+
+```text
+LMB / physical V  hold primary fire
+R                 clear projectiles and reset cadence/counters
+Escape            exit showcase
+```
+
+The showcase uses the production player scene, verified schema-5 left/right muzzle sockets, production seven-shots-per-second cadence, swept 900 m/s pulse projectiles, deterministic 32-projectile pool, source-body exclusion, and first-hit cleanup. The fighter remains stationary in a controlled neon firing lane so alternating muzzle fire and projectile behavior can be inspected directly.
+
 ## Four-source asteroid pack
 
 The required sources are:
@@ -186,7 +204,7 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 22 suites
+PASS: 27 suites
 ```
 
 Do not claim the milestone verified until the verifier validates schema 4 and the deterministic matrix, imports the project, runs every suite, and boots the main scene without parser, path, or runtime errors.
