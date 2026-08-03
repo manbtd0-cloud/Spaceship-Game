@@ -233,6 +233,14 @@ def _matrix_origin(matrix: Any) -> Point3:
     )
 
 
+def _matrix_basis_rows(matrix: Any) -> tuple[Point3, Point3, Point3]:
+    return (
+        (float(matrix[0][0]), float(matrix[0][1]), float(matrix[0][2])),
+        (float(matrix[1][0]), float(matrix[1][1]), float(matrix[1][2])),
+        (float(matrix[2][0]), float(matrix[2][1]), float(matrix[2][2])),
+    )
+
+
 def validate_glb_primary_muzzles(
     glb_path: Path,
     manifest_path: Path,
@@ -268,6 +276,43 @@ def validate_glb_primary_muzzles(
                 errors.append(
                     f"GLB primary muzzle origin mismatch: {path} "
                     f"distance={distance:.9f}"
+                )
+
+        expected_basis = _basis(record.get("basis"), f"{path}.basis", errors)
+        actual_basis = _matrix_basis_rows(entry[2])
+        if expected_basis is not None:
+            basis_error = max(
+                abs(actual_basis[row][column] - expected_basis[row][column])
+                for row in range(3)
+                for column in range(3)
+            )
+            if basis_error > GLB_MUZZLE_TOLERANCE_M:
+                errors.append(
+                    f"GLB primary muzzle basis mismatch: {path} "
+                    f"maximum_error={basis_error:.9f}"
+                )
+
+        expected_forward = _vector3(
+            record.get("forward"),
+            f"{path}.forward",
+            errors,
+        )
+        actual_forward_raw = (
+            -actual_basis[0][2],
+            -actual_basis[1][2],
+            -actual_basis[2][2],
+        )
+        actual_forward_length = _length(actual_forward_raw)
+        if expected_forward is not None and actual_forward_length > 1e-12:
+            actual_forward = tuple(
+                component / actual_forward_length
+                for component in actual_forward_raw
+            )
+            forward_error = _distance(expected_forward, actual_forward)
+            if forward_error > GLB_MUZZLE_TOLERANCE_M:
+                errors.append(
+                    f"GLB primary muzzle forward mismatch: {path} "
+                    f"distance={forward_error:.9f}"
                 )
     return errors
 
