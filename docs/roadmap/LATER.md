@@ -24,11 +24,25 @@ This file is the canonical list of features explicitly postponed during design o
 - `DEFERRED` Target lead indicator for moving enemies.
 - `DEFERRED` Optional mild aim assistance; fixed ship-forward fire remains the approved initial behavior.
 
+## Shields and Damage Visuals
+
+- `DEFERRED` Player-fighter shield impact visuals after the practice-drone shield component proves the shared effect contract.
+- `DEFERRED` Advanced shield deformation beyond the initial localized hexagonal impact ripple.
+
 ## Enemies and Combat
 
 - `DEFERRED` Moving enemy fighter with pursuit, attack, retreat, and dogfighting behavior.
 - `DEFERRED` Full enemy dogfighting AI after Camera C1 tactical views are available.
 
+## Environment
+
+- `DEFERRED` Refine asteroid clustering and resolve any visually awkward overlap after the combat loop is playable.
+
+## Tooling and Asset Polish
+
+- `DEFERRED` Investigate and clean up the non-blocking Blender tangent warning without reopening the accepted canonical fighter/thruster contract.
+
 ## Status History
 
 - 2026-08-03: Ledger created during Combat Kernel 1 design.
+- 2026-08-03: Added deferred player shield visuals, advanced shield deformation, asteroid clustering refinement, and Blender tangent-warning cleanup.
