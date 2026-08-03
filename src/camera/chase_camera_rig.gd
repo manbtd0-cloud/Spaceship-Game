@@ -66,6 +66,12 @@ var _current_hard_rear_limit: float = 19.0
 var _initialized := false
 
 func _ready() -> void:
+    initialize()
+
+func initialize() -> void:
+    if _initialized:
+        return
+
     _target = get_node_or_null(target_path) as Node3D
     _controller = get_node_or_null(controller_path) as ShipFlightController
     _camera = get_node_or_null(camera_path) as Camera3D
@@ -132,6 +138,9 @@ func get_selected_preset_name() -> StringName:
 
 func get_temporary_view() -> int:
     return _temporary_view
+
+func is_initialized() -> bool:
+    return _initialized
 
 func get_current_framing() -> Dictionary:
     return {
