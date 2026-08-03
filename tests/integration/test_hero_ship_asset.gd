@@ -31,6 +31,10 @@ const REQUIRED_EFFECT_PATHS: Array[String] = [
     "ManeuverEffects/FrontLowerLeftEffect",
     "ManeuverEffects/FrontLowerRightEffect",
 ]
+const REQUIRED_MUZZLE_PATHS: Array[String] = [
+    "Primary/LeftMuzzle",
+    "Primary/RightMuzzle",
+]
 
 func run() -> void:
     assert_true(
@@ -143,6 +147,58 @@ func run() -> void:
                     "effect mesh child scale must begin at one: ThrusterEffects/%s/%s"
                     % [effect_path, mesh_name]
                 )
+
+    var weapons_root := _find_single_named_node(fighter, "Weapons")
+    assert_true(
+        weapons_root != null,
+        "canonical fighter must contain exactly one Weapons hierarchy"
+    )
+    if weapons_root != null:
+        var primary_root := weapons_root.get_node_or_null("Primary") as Node3D
+        assert_true(
+            primary_root != null,
+            "canonical fighter must contain Weapons/Primary"
+        )
+        if primary_root != null:
+            assert_true(
+                primary_root.get_child_count() == REQUIRED_MUZZLE_PATHS.size(),
+                "Weapons/Primary must contain exactly two muzzle nodes"
+            )
+
+        for muzzle_path: String in REQUIRED_MUZZLE_PATHS:
+            var muzzle := weapons_root.get_node_or_null(muzzle_path) as Node3D
+            assert_true(
+                muzzle != null,
+                "required primary muzzle missing: Weapons/%s" % muzzle_path
+            )
+            if muzzle == null:
+                continue
+
+            assert_true(
+                muzzle.transform.origin.is_finite(),
+                "primary muzzle origin must be finite: Weapons/%s" % muzzle_path
+            )
+            assert_true(
+                muzzle.transform.basis.is_finite(),
+                "primary muzzle basis must be finite: Weapons/%s" % muzzle_path
+            )
+            assert_true(
+                muzzle.scale.is_equal_approx(Vector3.ONE),
+                "primary muzzle scale must be identity: Weapons/%s" % muzzle_path
+            )
+            assert_true(
+                muzzle.transform.basis.determinant() > 0.000001,
+                "primary muzzle basis must have positive determinant: Weapons/%s"
+                % muzzle_path
+            )
+
+            var fighter_relative := _local_transform_to_ancestor(muzzle, fighter)
+            var muzzle_forward := -fighter_relative.basis.z.normalized()
+            assert_true(
+                muzzle_forward.dot(Vector3.FORWARD) >= 0.999,
+                "primary muzzle must align with fighter-forward -Z: Weapons/%s"
+                % muzzle_path
+            )
 
     var hull := fighter.find_child(
         "SmallSciFiFighterMesh",
