@@ -52,14 +52,9 @@ static func compute(
     )
 
     if command.mode == FlightMode.Value.ASSISTED:
-        output.assist_force_local.x -= (
-            local_linear_velocity.x * tuning.assist_lateral_damping
-        )
-        output.assist_force_local.y -= (
-            local_linear_velocity.y * tuning.assist_vertical_damping
-        )
         output.assist_force_local += FlightSteeringMath.assisted_force(
             local_linear_velocity,
+            Vector3.FORWARD,
             clampf(-command.translation.z, 0.0, 1.0),
             body_mass,
             tuning.assist_steering_strength,
