@@ -18,6 +18,7 @@ const REQUIRED_ACTIONS: Array[StringName] = [
     &"roll_left",
     &"roll_right",
     &"boost",
+    &"fire_primary",
     &"toggle_flight_mode",
     &"toggle_mouse_capture",
     &"reset_flight_room",
@@ -75,6 +76,9 @@ func consume_capture_toggle() -> bool:
 
 func consume_reset_request() -> bool:
     return _just_pressed(&"reset_flight_room")
+
+func is_primary_fire_held() -> bool:
+    return _strength(&"fire_primary") > 0.0
 
 func set_mouse_captured(captured: bool) -> void:
     _captured = captured
