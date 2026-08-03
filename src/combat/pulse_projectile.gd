@@ -140,7 +140,11 @@ func _resolve_first_hit(rest_info: Dictionary, motion: Vector3) -> void:
         return
     _resolved_this_activation = true
 
-    var collider: Object = rest_info.get("collider", null)
+    var collider_id := int(rest_info.get("collider_id", 0))
+    var collider: Object = null
+    if collider_id != 0 and is_instance_id_valid(collider_id):
+        collider = instance_from_id(collider_id)
+
     var hit_point: Vector3 = rest_info.get("point", global_position)
     var fallback_normal := (
         -motion.normalized() if motion.length_squared() > 0.0 else Vector3.BACK
