@@ -2,6 +2,7 @@
   "schema_version": 1,
   "asset": "Small Sci-Fi Fighter",
   "runtime_generated": false,
+  "source_schema_version": 5,
   "source_contract": "canonical_socket_wrench_v1",
   "actions": [
     {
@@ -9,14 +10,38 @@
       "weights": {
         "Main/MainLeft": 1.0,
         "Main/MainRight": 1.0
-      }
+      },
+      "result_force": [
+        5.019e-05,
+        -0.01393147,
+        -1.09991175
+      ],
+      "result_torque": [
+        0.39508974,
+        0.00936527,
+        -0.00010059
+      ],
+      "alignment": 0.99991979,
+      "cross_axis_ratio": 0.01266607
     },
     {
       "action": "reverse",
       "weights": {
         "Retro/RetroLeft": 1.0,
         "Retro/RetroRight": 1.0
-      }
+      },
+      "result_force": [
+        1.6e-07,
+        -0.11337285,
+        0.6907579
+      ],
+      "result_torque": [
+        -0.20273386,
+        0.01397084,
+        0.00229304
+      ],
+      "alignment": 0.98679712,
+      "cross_axis_ratio": 0.16412819
     },
     {
       "action": "strafe_left",
@@ -27,7 +52,19 @@
         "Maneuver/RearLowerRight": 1.0,
         "Maneuver/RearUpperLeft": 0.8509,
         "Maneuver/RearUpperRight": 0.7348
-      }
+      },
+      "result_force": [
+        -0.07892912,
+        -1.76e-06,
+        -5.8e-07
+      ],
+      "result_torque": [
+        -1.505e-05,
+        -7e-07,
+        7.03e-06
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 2.352e-05
     },
     {
       "action": "strafe_right",
@@ -38,7 +75,19 @@
         "Maneuver/RearLowerRight": 0.795,
         "Maneuver/RearUpperLeft": 0.727,
         "Maneuver/RearUpperRight": 0.9425
-      }
+      },
+      "result_force": [
+        0.06878508,
+        -9.08e-06,
+        -7.8e-07
+      ],
+      "result_torque": [
+        -1.312e-05,
+        8.99e-06,
+        7.8e-06
+      ],
+      "alignment": 0.99999999,
+      "cross_axis_ratio": 0.0001325
     },
     {
       "action": "strafe_up",
@@ -49,7 +98,19 @@
         "Maneuver/RearLowerRight": 1.0,
         "Maneuver/RearUpperLeft": 0.8503,
         "Maneuver/RearUpperRight": 0.9297
-      }
+      },
+      "result_force": [
+        5.41e-06,
+        0.08779732,
+        2.1e-07
+      ],
+      "result_torque": [
+        8.57e-06,
+        4.071e-05,
+        3.484e-05
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 6.164e-05
     },
     {
       "action": "strafe_down",
@@ -60,7 +121,19 @@
         "Maneuver/FrontUpperRight": 0.9693,
         "Maneuver/RearUpperLeft": 0.1426,
         "Maneuver/RearUpperRight": 0.1592
-      }
+      },
+      "result_force": [
+        3.2e-06,
+        -0.39588053,
+        2.5e-07
+      ],
+      "result_torque": [
+        5.628e-05,
+        -8.92e-06,
+        5.2e-06
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 8.11e-06
     },
     {
       "action": "pitch_up",
@@ -71,7 +144,19 @@
         "Maneuver/RearLowerRight": 0.8408,
         "Maneuver/RearUpperLeft": 0.9324,
         "Maneuver/RearUpperRight": 1.0
-      }
+      },
+      "result_force": [
+        4.12e-06,
+        1.209e-05,
+        1.83e-06
+      ],
+      "result_torque": [
+        0.36625893,
+        2.518e-05,
+        1.122e-05
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 7.526e-05
     },
     {
       "action": "pitch_down",
@@ -82,7 +167,19 @@
         "Maneuver/FrontUpperRight": 1.0,
         "Maneuver/RearLowerLeft": 0.8215,
         "Maneuver/RearLowerRight": 0.9424
-      }
+      },
+      "result_force": [
+        3.04e-06,
+        1.488e-05,
+        1.3e-07
+      ],
+      "result_torque": [
+        -1.58693891,
+        1.782e-05,
+        -5.88e-06
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 1.182e-05
     },
     {
       "action": "yaw_left",
@@ -93,7 +190,19 @@
         "Maneuver/RearLowerRight": 0.8362,
         "Maneuver/RearUpperLeft": 1.0,
         "Maneuver/RearUpperRight": 0.7065
-      }
+      },
+      "result_force": [
+        9.85e-06,
+        1.172e-05,
+        6.2e-07
+      ],
+      "result_torque": [
+        9.95e-06,
+        0.34959672,
+        2.7e-06
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 2.949e-05
     },
     {
       "action": "yaw_right",
@@ -104,7 +213,19 @@
         "Maneuver/RearLowerRight": 0.979,
         "Maneuver/RearUpperLeft": 0.6378,
         "Maneuver/RearUpperRight": 1.0
-      }
+      },
+      "result_force": [
+        -8.79e-06,
+        4.24e-06,
+        9.3e-07
+      ],
+      "result_torque": [
+        3.468e-05,
+        -0.29858736,
+        -2.223e-05
+      ],
+      "alignment": 0.99999999,
+      "cross_axis_ratio": 0.00013796
     },
     {
       "action": "roll_left",
@@ -115,7 +236,19 @@
         "Maneuver/RearLowerRight": 1.0,
         "Maneuver/RearUpperLeft": 0.8933,
         "Maneuver/RearUpperRight": 0.0598
-      }
+      },
+      "result_force": [
+        5.5e-07,
+        -8.36e-06,
+        -3.6e-07
+      ],
+      "result_torque": [
+        5.67e-05,
+        -1.19e-05,
+        0.4055436
+      ],
+      "alignment": 0.99999999,
+      "cross_axis_ratio": 0.00014287
     },
     {
       "action": "roll_right",
@@ -126,7 +259,19 @@
         "Maneuver/RearLowerLeft": 1.0,
         "Maneuver/RearLowerRight": 0.0184,
         "Maneuver/RearUpperRight": 0.9334
-      }
+      },
+      "result_force": [
+        6.15e-06,
+        -1.039e-05,
+        -1.56e-06
+      ],
+      "result_torque": [
+        1.883e-05,
+        1.92e-06,
+        -0.44815434
+      ],
+      "alignment": 1.0,
+      "cross_axis_ratio": 4.224e-05
     }
   ]
 }
