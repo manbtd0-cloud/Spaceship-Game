@@ -100,7 +100,7 @@ func _read_camera_behavior(config: ConfigFile) -> CameraBehavior.Value:
         DEFAULT_CAMERA_BEHAVIOR
     )
     if typeof(raw) == TYPE_INT and CameraBehavior.is_valid(int(raw)):
-        return int(raw) as CameraBehavior.Value
+        return int(raw)
 
     push_warning(
         "Invalid camera.behavior in %s; using Tactical" % _path
@@ -114,7 +114,7 @@ func _read_camera_distance(config: ConfigFile) -> CameraDistance.Value:
         DEFAULT_CAMERA_DISTANCE
     )
     if typeof(raw) == TYPE_INT and CameraDistance.is_valid(int(raw)):
-        return int(raw) as CameraDistance.Value
+        return int(raw)
 
     push_warning(
         "Invalid camera.distance in %s; using Standard" % _path
@@ -128,7 +128,7 @@ func _read_flight_mode(config: ConfigFile) -> FlightMode.Value:
         DEFAULT_FLIGHT_MODE
     )
     if typeof(raw) == TYPE_INT and _is_valid_flight_mode(int(raw)):
-        return int(raw) as FlightMode.Value
+        return int(raw)
 
     push_warning(
         "Invalid flight.default_mode in %s; using Assisted" % _path
