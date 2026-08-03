@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -61,9 +62,12 @@ class PrimaryWeaponMuzzleTransformTests(unittest.TestCase):
             "canonical_origin_to_blender(record.canonical_origin)",
             source,
         )
-        self.assertNotIn(
-            "record_to_blender_transform(record)",
-            source,
+        self.assertIsNone(
+            re.search(
+                r"(?<![_A-Za-z0-9])record_to_blender_transform\(record\)",
+                source,
+            ),
+            "schema-5 exporter must not call the legacy forward-tracking helper",
         )
 
 
