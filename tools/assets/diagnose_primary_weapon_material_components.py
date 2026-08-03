@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
 from pathlib import Path
+import sys
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 import bpy
 from mathutils import Vector
