@@ -14,8 +14,6 @@ extends Resource
 @export var boost_speed_soft_start: float = 180.0
 @export var boost_speed_limit: float = 240.0
 
-@export var assist_lateral_damping: float = 12000.0
-@export var assist_vertical_damping: float = 12000.0
 @export var assist_angular_damping: float = 35000.0
 
 @export var boost_heat_per_second: float = 1.0 / 12.0
