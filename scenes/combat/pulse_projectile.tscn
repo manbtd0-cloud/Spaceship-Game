@@ -4,20 +4,20 @@
 
 [sub_resource type="StandardMaterial3D" id="Material_pulse"]
 shading_mode = 0
-transparency = 1
-albedo_color = Color(0.18, 0.72, 1, 0.95)
+transparency = 0
+albedo_color = Color(0.25, 0.82, 1, 1)
 emission_enabled = true
-emission = Color(0.12, 0.68, 1, 1)
-emission_energy_multiplier = 8.0
+emission = Color(0.18, 0.78, 1, 1)
+emission_energy_multiplier = 14.0
 
 [sub_resource type="SphereMesh" id="Sphere_pulse"]
 material = SubResource("Material_pulse")
-radius = 0.12
-height = 0.24
+radius = 0.16
+height = 0.32
 
 [sub_resource type="BoxMesh" id="Box_trail"]
 material = SubResource("Material_pulse")
-size = Vector3(0.06, 0.06, 0.55)
+size = Vector3(0.09, 0.09, 0.95)
 
 [node name="PulseProjectile" type="Node3D"]
 script = ExtResource("1_projectile")
@@ -26,5 +26,5 @@ script = ExtResource("1_projectile")
 mesh = SubResource("Sphere_pulse")
 
 [node name="TrailMesh" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0, 0.33)
+position = Vector3(0, 0, 0.48)
 mesh = SubResource("Box_trail")
