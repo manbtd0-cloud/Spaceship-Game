@@ -13,6 +13,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/integration/test_input_map.gd",
     "res://tests/integration/test_primary_fire_input.gd",
     "res://tests/integration/test_pulse_projectile.gd",
+    "res://tests/integration/test_primary_fire_showcase.gd",
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/unit/test_ship_flight_controller_state.gd",
     "res://tests/unit/test_thruster_action_matrix.gd",
