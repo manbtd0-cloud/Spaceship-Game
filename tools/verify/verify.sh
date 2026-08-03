@@ -10,7 +10,7 @@ required_files=(
     "assets/runtime/ships/player/small_sci_fi_fighter.glb"
     "assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
     "config/ships/small_sci_fi_fighter_thruster_actions.json"
-    "tools/assets/canonical_fighter_contract_v4.py"
+    "tools/assets/canonical_fighter_contract_v5.py"
     "tools/assets/fighter_thruster_action_contract.py"
 )
 
@@ -34,7 +34,7 @@ fi
 manifest_path="$REPO_ROOT/assets/runtime/ships/player/small_sci_fi_fighter.manifest.json"
 glb_path="$REPO_ROOT/assets/runtime/ships/player/small_sci_fi_fighter.glb"
 matrix_path="$REPO_ROOT/config/ships/small_sci_fi_fighter_thruster_actions.json"
-fighter_validator_path="$REPO_ROOT/tools/assets/canonical_fighter_contract_v4.py"
+fighter_validator_path="$REPO_ROOT/tools/assets/canonical_fighter_contract_v5.py"
 matrix_validator_path="$REPO_ROOT/tools/assets/fighter_thruster_action_contract.py"
 
 "$PYTHON_BIN" - "$manifest_path" <<'PY'
@@ -45,8 +45,8 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 manifest = json.loads(path.read_text(encoding="utf-8-sig"))
-if manifest.get("schema_version") != 4:
-    raise SystemExit("Hero fighter manifest schema_version must be 4")
+if manifest.get("schema_version") != 5:
+    raise SystemExit("Hero fighter manifest schema_version must be 5")
 if (
     manifest.get("thruster_visual_strategy")
     != "source_exact_nozzle_local_enginefire_geometry"
@@ -57,18 +57,19 @@ if (
 if manifest.get("procedural_exhaust_geometry") is not False:
     raise SystemExit("Hero fighter procedural_exhaust_geometry must be false")
 frame = manifest.get("canonical_frame")
-expected = {
+expected_frame = {
     "godot_right": "+X",
     "godot_forward": "-Z",
     "godot_up": "+Y",
     "root_identity": True,
 }
 if not isinstance(frame, dict) or any(
-    frame.get(key) != value for key, value in expected.items()
+    frame.get(key) != value for key, value in expected_frame.items()
 ):
     raise SystemExit(
         "Hero fighter canonical frame must be +X right, -Z forward, +Y up, identity root"
     )
+
 expected_socket_paths = {
     "Thrusters/Main/MainLeft",
     "Thrusters/Main/MainRight",
@@ -88,6 +89,7 @@ actual_socket_paths = {
 }
 if actual_socket_paths != expected_socket_paths:
     raise SystemExit("Hero fighter socket paths mismatch")
+
 expected_effect_paths = {
     "ThrusterEffects/MainEffects/MainLeftEffect",
     "ThrusterEffects/MainEffects/MainRightEffect",
@@ -124,6 +126,25 @@ for effect in effects:
     if not 0.0 <= reconstruction <= 0.0001:
         raise SystemExit(
             "Every fighter effect maximum_reconstruction_error_m must be within [0, 0.0001]"
+        )
+
+expected_muzzle_paths = {
+    "Weapons/Primary/LeftMuzzle",
+    "Weapons/Primary/RightMuzzle",
+}
+muzzles = manifest.get("primary_muzzles", [])
+actual_muzzle_paths = {str(muzzle.get("path", "")) for muzzle in muzzles}
+if actual_muzzle_paths != expected_muzzle_paths or len(muzzles) != 2:
+    raise SystemExit("Hero fighter primary muzzle paths mismatch")
+for muzzle in muzzles:
+    if muzzle.get("origin") is None or muzzle.get("basis") is None:
+        raise SystemExit("Every primary muzzle must include origin and basis")
+    if muzzle.get("forward") is None:
+        raise SystemExit("Every primary muzzle must include forward")
+    extraction = float(muzzle.get("extraction_error_m", -1.0))
+    if not 0.0 <= extraction <= 0.0001:
+        raise SystemExit(
+            "Every primary muzzle extraction_error_m must be within [0, 0.0001]"
         )
 PY
 
