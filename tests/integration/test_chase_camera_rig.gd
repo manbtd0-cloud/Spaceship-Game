@@ -39,6 +39,12 @@ func run() -> void:
         return
     tree.root.add_child(fixture)
 
+    rig.initialize()
+    assert_true(
+        rig.is_initialized(),
+        "camera rig must initialize before synchronous transition checks"
+    )
+
     assert_equal(
         rig.get_selected_preset(),
         ChaseCameraRig.Preset.STANDARD,
