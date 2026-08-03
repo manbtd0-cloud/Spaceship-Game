@@ -20,3 +20,11 @@ func run() -> void:
         source.contains("func _run_tests() -> void:"),
         "test runner must execute suites from a deferred callback"
     )
+    assert_true(
+        source.contains("Node.get_orphan_node_ids()"),
+        "test runner must detect orphan Nodes created by a suite"
+    )
+    assert_true(
+        source.contains("leaked orphan node"),
+        "test runner must report orphan Nodes as suite failures"
+    )
