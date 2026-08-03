@@ -50,6 +50,11 @@ def _normalize(value: Point3) -> Point3:
     return tuple(component / length for component in value)  # type: ignore[return-value]
 
 
+def choose_track_up_axis(forward: Point3) -> str:
+    normalized = _normalize(forward)
+    return "X" if abs(normalized[1]) > 0.98 else "Y"
+
+
 def _canonical_edge(left: int, right: int) -> Edge:
     if left == right:
         raise ValueError("boundary edges must connect distinct vertices")
@@ -263,12 +268,8 @@ def extract_primary_muzzles(
             Vector(candidate.centroid) - Vector(tuple(hull_center))
         ) * scale
         forward_blender = Vector(candidate.normal).normalized()
-        up_axis = (
-            "Z"
-            if abs(
-                forward_blender.dot(Vector((0.0, 0.0, 1.0)))
-            ) < 0.98
-            else "X"
+        up_axis = choose_track_up_axis(
+            tuple(float(value) for value in forward_blender)
         )
         basis_blender = (
             forward_blender
@@ -327,10 +328,8 @@ def record_to_blender_transform(record: MuzzleRecord) -> tuple[object, object]:
             record.canonical_forward[1],
         )
     ).normalized()
-    up_axis = (
-        "Z"
-        if abs(forward.dot(Vector((0.0, 0.0, 1.0)))) < 0.98
-        else "X"
+    up_axis = choose_track_up_axis(
+        tuple(float(value) for value in forward)
     )
     basis = forward.to_track_quat("-Z", up_axis).to_matrix().to_4x4()
     return origin, basis
