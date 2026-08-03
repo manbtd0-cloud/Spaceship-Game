@@ -84,10 +84,15 @@ Requirements:
 - no assisted angular damping;
 - translational force is produced only by explicit translational input;
 - torque is produced only by explicit rotational input;
-- pure rotation while coasting preserves world linear velocity and speed within strict numerical tolerance;
+- pure rotation while coasting preserves world linear velocity and speed;
 - changing ship orientation must not rotate the existing world velocity vector.
 
 The normal and boost soft speed envelopes continue to limit only force that would increase speed. They must not create passive drag or interfere with redirection and braking forces.
+
+The collision-free physics acceptance tolerance over two seconds of sustained rotation is:
+
+- speed drift no greater than `0.01 m/s`;
+- world-velocity direction drift no greater than `0.01 degrees`.
 
 ### Assisted Mode
 
@@ -132,7 +137,7 @@ Combines:
 - assisted angular damping;
 - assisted coordinated-bank torque.
 
-The previous unconditional local lateral and vertical damping must not remain in the total assist force. Existing tuning properties may be removed, deprecated, or retained unused only if migration safety requires it; the implementation plan must choose one consistent path and update tests and resources accordingly.
+The previous unconditional local lateral and vertical damping must be removed from the total assist force. The obsolete `assist_lateral_damping` and `assist_vertical_damping` fields must be removed from `FlightTuning`, the checked-in tuning resource, and tests. They must not remain as ignored or deprecated settings because that would misrepresent the active flight model.
 
 ### `ShipFlightController`
 
@@ -145,7 +150,7 @@ Continues to:
 - apply central force and torque to the rigid body;
 - expose split pilot and assist telemetry.
 
-It must also expose an explicit setter for flight mode so the pause menu can apply a selected mode without simulating the `F` toggle action.
+It must also expose an explicit setter for flight mode so the settings coordinator can apply a selected mode without simulating the `F` toggle action.
 
 ## Camera Model
 
@@ -156,6 +161,15 @@ Camera **behavior** and camera **distance** are separate settings.
 #### 1. Dynamic Chase
 
 This is the current camera and must remain available without being discarded.
+
+Locked baseline values:
+
+```text
+position sharpness       5.5
+rotation sharpness       7.0
+velocity look-ahead      0.08 s
+maximum prediction       8.0 m
+```
 
 Behavior:
 
@@ -170,18 +184,30 @@ No deliberate feel change is required beyond adapting it to the new shared behav
 
 #### 2. Tactical Chase
 
-This becomes the recommended default behavior.
+This becomes the default behavior.
+
+Locked baseline values:
+
+```text
+position sharpness       14.0
+rotation sharpness       22.0
+velocity look-ahead      0.015 s
+maximum prediction       2.0 m
+maximum positional error 1.5 m
+maximum rotational error 6 degrees
+```
 
 Behavior:
 
 - much faster rotational response than Dynamic Chase;
 - substantially reduced velocity prediction;
-- tightly bounded positional deviation from the ship-relative desired transform;
+- tightly bounded positional and rotational deviation from the ship-relative desired transform;
 - light smoothing to avoid visual vibration;
 - speed pullback and dynamic FOV remain available;
-- during hard turns, the camera must stay close enough to the ship orientation that the player can reliably predict the nose direction.
+- if smoothing would exceed either error bound, clamp or snap to the boundary;
+- during hard turns, the camera remains close enough to ship orientation that nose direction is predictable.
 
-Tactical Chase must feel responsive, not perfectly rigid.
+Tactical Chase must feel responsive, not perfectly rigid. The baseline values may be adjusted only if the manual acceptance run proves a concrete visual defect; any adjustment must update the checked-in tuning and tests together.
 
 #### 3. Locked Chase
 
@@ -196,7 +222,8 @@ Behavior:
 - no velocity prediction;
 - no turn lag;
 - selected Close, Standard, or Far distance still applies;
-- dynamic FOV may remain because it does not misrepresent direction.
+- dynamic FOV remains because it does not misrepresent direction;
+- switching to Locked or changing distance while Locked snaps on the same frame.
 
 Locked Chase exists both for player preference and for diagnosing trajectory-versus-orientation confusion.
 
@@ -208,7 +235,7 @@ The existing presets remain:
 - Standard
 - Far
 
-Distance is independent of behavior. For example, Tactical + Far and Locked + Close are valid combinations.
+Distance is independent of behavior. Tactical + Far and Locked + Close are valid combinations.
 
 The existing `C` action continues to cycle distance presets. The pause menu also allows direct selection.
 
@@ -241,15 +268,20 @@ PageUp     exact right view
 PageDown   exact left view
 ```
 
+The camera keeps the ship in frame by moving to the opposite side of the direction being viewed:
+
+- rear view: camera moves in front of the ship along local `-Z` and looks through the ship toward local `+Z`;
+- right view: camera moves to the ship's left along local `-X` and looks through the ship toward local `+X`;
+- left view: camera moves to the ship's right along local `+X` and looks through the ship toward local `-X`.
+
+The selected distance preset supplies the view offset, and the selected preset height remains applied.
+
 Requirements:
 
 - view activates only while the key is held;
 - releasing the key immediately returns to the selected chase behavior and distance;
 - views do not alter the selected behavior or distance;
 - views override Dynamic, Tactical, and Locked while active;
-- rear view looks exactly behind the ship;
-- right view looks exactly along ship-local +X;
-- left view looks exactly along ship-local -X;
 - temporary views use exact ship-relative transforms with no lag;
 - temporary views remain stable while the ship rotates;
 - only one temporary view may be active at a time;
@@ -276,17 +308,38 @@ A separate restrained marker represents the direction of true world-space linear
 
 Requirements:
 
+- hide when speed is below `2.0 m/s`;
 - project a point along normalized world velocity through the active `Camera3D`;
-- hide below a low-speed threshold to avoid unstable direction flicker;
 - when velocity is in front of the camera, place the marker at its projected screen position;
-- when velocity is behind the camera or projects outside the safe viewport, clamp it to a padded screen edge;
+- when velocity is behind the camera or projects outside the safe viewport, clamp it to a screen edge padded by `32 px`;
 - edge-clamped state includes a subtle directional chevron or rotation cue;
 - when velocity aligns with the nose, the marker settles close to the center reticle;
 - marker calculation is display-only and never feeds physics, steering, targeting, or camera logic;
 - marker remains available in all camera behaviors and temporary views;
 - pausing freezes its displayed position with the rest of the game.
 
-The projection and clamping math must be isolated into pure testable functions.
+The projection, behind-camera classification, and edge-clamping math must be isolated into pure testable functions.
+
+## Input Ownership
+
+Add physical-key actions for:
+
+```text
+toggle_pause       Escape
+look_rear          B
+look_right         PageUp
+look_left          PageDown
+```
+
+`Escape` is removed from `toggle_mouse_capture`. The flight room no longer has a separate free-cursor toggle; pause owns cursor release and recapture. Development-only debug scenes may continue handling Escape directly for exit.
+
+Existing controls remain unchanged, including:
+
+- `F` flight-mode toggle;
+- `C` distance-preset cycle;
+- `R` flight-room reset.
+
+Gameplay input must not process look, fire, flight-mode, reset, or camera-cycle actions while paused.
 
 ## Pause and Settings Foundation
 
@@ -309,7 +362,7 @@ On resume:
 - resume scene-tree processing;
 - prevent the closing key press from affecting flight input.
 
-Development-only debug scenes may retain their existing `Escape`-to-exit behavior unless they explicitly adopt the pause menu later.
+Development-only debug scenes retain their existing `Escape`-to-exit behavior unless explicitly changed by a later milestone.
 
 ### Minimal Pause Panel
 
@@ -326,25 +379,25 @@ Requirements:
 
 - centered readable panel over a dark translucent backdrop;
 - keyboard and mouse usable;
+- `Tab` or arrow keys move focus, `Enter` activates, and `Escape` resumes;
 - processing continues while the tree is paused;
 - current values are reflected when opened;
-- changing camera behavior or distance applies immediately so the paused selection is authoritative on resume;
-- changing flight mode applies before resume and persists;
-- Restart clears momentum and runtime flight state using the existing reset path rather than reimplementing reset logic;
+- changing camera behavior, distance, or flight mode updates the settings service immediately and is authoritative when gameplay resumes;
+- Restart unpauses safely and invokes the existing reset path rather than duplicating reset logic;
 - Quit exits the application;
 - no animation, audio, rebinding, tabs, or decorative complexity in this phase.
 
-### Typed Settings Service
+### `PlayerSettingsService` Autoload
 
-Create one small settings authority, preferably an autoloaded service, responsible for:
+Create one typed autoload named `PlayerSettingsService` responsible for:
 
-- loading settings at startup;
+- loading settings before the flight room applies defaults;
 - exposing typed current values;
 - validating values read from disk;
 - applying defaults for missing or invalid values;
 - saving only when a setting changes;
-- emitting a settings-changed signal or equivalent typed notification;
-- allowing tests to use an injected temporary path so they never overwrite real user settings.
+- emitting typed setting-change signals;
+- allowing tests to construct a non-autoload instance with an injected temporary path so tests never overwrite real user settings.
 
 Persist to:
 
@@ -368,7 +421,20 @@ camera.distance = Standard
 flight.default_mode = Assisted
 ```
 
-The service must not become a generic untyped dictionary exposed throughout gameplay. Consumers receive validated typed values.
+The service must not expose a generic mutable dictionary. Consumers use typed getters, setters, enums, and signals.
+
+### `FlightRoomSettingsCoordinator`
+
+Add one room-owned coordinator that:
+
+- resolves `PlayerSettingsService`, `ChaseCameraRig`, and `ShipFlightController`;
+- applies all loaded settings once during room startup;
+- subscribes once to typed setting-change signals;
+- applies runtime camera behavior, distance, and flight mode changes;
+- disconnects cleanly with the room;
+- exposes no independent copy of settings.
+
+The pause menu writes settings only through `PlayerSettingsService`; it does not directly mutate camera or flight internals.
 
 ## Scene Integration
 
@@ -377,7 +443,7 @@ The service must not become a generic untyped dictionary exposed throughout game
 The main flight room gains:
 
 - pause-menu scene;
-- settings application coordinator or direct typed connections;
+- `FlightRoomSettingsCoordinator`;
 - nose reticle and velocity marker in the existing HUD;
 - runtime application of saved flight mode;
 - runtime application of saved camera behavior and distance;
@@ -387,7 +453,7 @@ The existing player, camera rig, HUD, reset controller, projectile system, and f
 
 ### Bootstrap
 
-Settings must load before or during initial flight-room startup without adding a visible loading screen. Invalid or missing settings fall back to defaults and do not block entering the flight room.
+`PlayerSettingsService` loads without a visible loading screen. Invalid or missing settings fall back to defaults and do not block entering the flight room.
 
 ## Failure Handling
 
@@ -397,7 +463,8 @@ Settings must load before or during initial flight-room startup without adding a
 - Missing camera dependency: retain the current valid camera configuration and reject the invalid change.
 - Missing HUD camera reference: hide the velocity marker and emit a clear error; do not affect flight physics.
 - Repeated pause/resume: idempotent and free of accumulated signal connections.
-- Scene restart while paused: unpause safely before invoking the existing reset/restart route.
+- Scene restart while paused: unpause safely before invoking the existing reset route.
+- Settings coordinator failure: preserve documented defaults and keep flight playable.
 
 ## Testing Strategy
 
@@ -423,24 +490,24 @@ Create a collision-free rigid-body fixture with:
 - sustained pitch or yaw input;
 - no translational input.
 
-Advance real physics long enough to produce visible rotation and verify:
+Advance real physics for two seconds and verify:
 
 - orientation changes;
 - angular velocity changes;
-- world linear velocity direction remains within strict tolerance;
-- speed remains within strict tolerance;
+- speed drift is at most `0.01 m/s`;
+- world-velocity direction drift is at most `0.01 degrees`;
 - no hidden assist force is reported.
 
 ### Camera Tests
 
 Verify:
 
-- Dynamic behavior preserves existing calculations;
-- Tactical behavior converges faster and remains within its tighter deviation bounds;
+- Dynamic behavior preserves current baseline calculations;
+- Tactical uses the locked baseline parameters and respects its positional and rotational bounds;
 - Locked behavior matches exact ship-relative transform in one update;
 - behavior and distance selections are independent;
 - C cycles distance without changing behavior;
-- rear, right, and left views use exact local directions;
+- rear, right, and left views use the exact local positions and directions specified above;
 - release restores selected behavior and distance;
 - temporary-view priority is deterministic;
 - runtime behavior switches do not recreate the camera.
@@ -449,11 +516,11 @@ Verify:
 
 Verify:
 
-- velocity marker hides below threshold;
+- velocity marker hides below `2.0 m/s`;
 - aligned forward velocity projects near center;
-- lateral drift moves marker laterally;
-- behind-camera velocity clamps to screen edge;
-- all clamped coordinates remain within safe margins;
+- lateral drift moves the marker laterally;
+- behind-camera velocity clamps to the correct edge;
+- all clamped coordinates remain at least `32 px` inside viewport bounds;
 - nose reticle remains fixed at center;
 - marker math handles zero, non-finite, and near-camera values safely.
 
@@ -467,7 +534,8 @@ Verify:
 - unrelated valid fields survive another field's corruption;
 - injected test path prevents real settings mutation;
 - camera and flight consumers receive typed values;
-- changing a value persists exactly once.
+- changing a value persists exactly once;
+- coordinator subscriptions do not duplicate after room recreation.
 
 ### Pause Integration Tests
 
@@ -476,6 +544,7 @@ Verify:
 - Escape opens the menu and pauses the tree;
 - menu continues processing while paused;
 - player physics and firing do not advance while paused;
+- gameplay input is blocked while paused;
 - Resume restores gameplay and mouse capture;
 - menu selections apply and persist;
 - restart uses existing reset behavior;
@@ -512,10 +581,10 @@ The implementation is not complete until:
 
 ## Delivery Order
 
-Implementation should be planned and executed in this order:
+Implementation must be planned and executed in this order:
 
 1. physics regression tests and assist-force correction;
-2. typed settings service;
+2. typed settings service and room coordinator;
 3. camera behavior architecture and temporary views;
 4. velocity-vector HUD and nose reticle;
 5. pause menu and settings wiring;
