@@ -7,6 +7,9 @@ config/name="Shattered Orbit"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 run/main_scene="res://scenes/bootstrap/bootstrap.tscn"
 
+[autoload]
+PlayerSettingsService="*res://src/settings/player_settings_service.gd"
+
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
