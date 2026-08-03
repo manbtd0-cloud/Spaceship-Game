@@ -61,6 +61,7 @@ class CanonicalFighterV5Tests(unittest.TestCase):
         self,
         manifest: dict[str, object],
         include_right: bool = True,
+        rotate_left: bool = False,
     ) -> dict[str, object]:
         document = self._v4._glb_document(manifest)
         nodes = document["nodes"]
@@ -92,7 +93,12 @@ class CanonicalFighterV5Tests(unittest.TestCase):
 
         weapons = add("Weapons", root_index)
         primary = add("Primary", weapons)
-        add("LeftMuzzle", primary, [-2.0, 0.4, -5.4])
+        left = add("LeftMuzzle", primary, [-2.0, 0.4, -5.4])
+        if rotate_left:
+            half = math.sqrt(0.5)
+            left_node = nodes[left]
+            assert isinstance(left_node, dict)
+            left_node["rotation"] = [0.0, half, 0.0, half]
         if include_right:
             add("RightMuzzle", primary, [2.0, 0.4, -5.4])
         return document
@@ -101,6 +107,7 @@ class CanonicalFighterV5Tests(unittest.TestCase):
         self,
         manifest: dict[str, object],
         include_right: bool = True,
+        rotate_left: bool = False,
     ) -> list[str]:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -109,7 +116,7 @@ class CanonicalFighterV5Tests(unittest.TestCase):
             glb_path = root / "fighter.glb"
             v4_fixture._write_glb(
                 glb_path,
-                self._glb_document(manifest, include_right),
+                self._glb_document(manifest, include_right, rotate_left),
             )
             return validate_output(glb_path, manifest_path, SOURCE_SHA256)
 
@@ -197,6 +204,16 @@ class CanonicalFighterV5Tests(unittest.TestCase):
         errors = self._validate(self._valid_manifest(), include_right=False)
         self.assertTrue(
             any("GLB primary muzzle" in error for error in errors),
+            errors,
+        )
+
+    def test_glb_muzzle_basis_must_match_manifest(self) -> None:
+        errors = self._validate(self._valid_manifest(), rotate_left=True)
+        self.assertTrue(
+            any(
+                "GLB primary muzzle basis mismatch" in error
+                for error in errors
+            ),
             errors,
         )
 
