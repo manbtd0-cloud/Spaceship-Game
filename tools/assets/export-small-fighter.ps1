@@ -10,9 +10,9 @@ function Resolve-BlenderExecutable {
     param([string]$RequestedExecutable)
 
     if ($RequestedExecutable) {
-        $requestedCommand = Get-Command $RequestedExecutable -ErrorAction SilentlyContinue
-        if ($requestedCommand) {
-            return $requestedCommand.Source
+        $command = Get-Command $RequestedExecutable -ErrorAction SilentlyContinue
+        if ($command) {
+            return $command.Source
         }
         if (Test-Path -LiteralPath $RequestedExecutable -PathType Leaf) {
             return (Resolve-Path -LiteralPath $RequestedExecutable).Path
@@ -20,17 +20,18 @@ function Resolve-BlenderExecutable {
         throw "Blender executable not found: $RequestedExecutable"
     }
 
-    $pathCommand = Get-Command "blender" -ErrorAction SilentlyContinue
-    if ($pathCommand) {
-        return $pathCommand.Source
+    $command = Get-Command "blender" -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
     }
 
     $blenderRoot = "C:\Program Files\Blender Foundation"
     if (Test-Path -LiteralPath $blenderRoot -PathType Container) {
-        $installedVersions = Get-ChildItem -LiteralPath $blenderRoot -Directory |
-            Sort-Object -Property Name -Descending
-        foreach ($versionDirectory in $installedVersions) {
-            $candidate = Join-Path $versionDirectory.FullName "blender.exe"
+        foreach ($directory in @(
+            Get-ChildItem -LiteralPath $blenderRoot -Directory |
+                Sort-Object -Property Name -Descending
+        )) {
+            $candidate = Join-Path $directory.FullName "blender.exe"
             if (Test-Path -LiteralPath $candidate -PathType Leaf) {
                 return (Resolve-Path -LiteralPath $candidate).Path
             }
@@ -91,14 +92,38 @@ function Restore-PublicationBackups {
     }
 }
 
+function Assert-ExactPathSet {
+    param(
+        [string[]]$Expected,
+        [string[]]$Actual,
+        [string]$Label
+    )
+
+    $missing = @($Expected | Where-Object { $_ -notin $Actual })
+    $unexpected = @($Actual | Where-Object { $_ -notin $Expected })
+    $unique = @($Actual | Sort-Object -Unique)
+    if (
+        $missing.Count -gt 0 -or
+        $unexpected.Count -gt 0 -or
+        $unique.Count -ne $Expected.Count
+    ) {
+        throw (
+            "{0} paths mismatch. Missing: [{1}] Unexpected: [{2}]" -f
+            $Label,
+            ($missing -join ", "),
+            ($unexpected -join ", ")
+        )
+    }
+}
+
 $expectedSourceSha = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 $sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fighter\Small Sci-Fi Fighter.blend"
 if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
     $sourcePath = Join-Path $repoRoot "assets\source\ships\player_candidates\small_sci_fi_fighter\Small Sci-Fi Fighter.blend"
 }
-$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v4.py"
-$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v4.py"
+$scriptPath = Join-Path $repoRoot "tools\assets\export_small_sci_fi_fighter_v5.py"
+$validatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v5.py"
 $matrixGeneratorPath = Join-Path $repoRoot "tools\assets\generate_fighter_thruster_action_matrix.py"
 $matrixValidatorPath = Join-Path $repoRoot "tools\assets\fighter_thruster_action_contract.py"
 $outputPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
@@ -144,10 +169,11 @@ Write-Host "Using Python: $pythonExecutable"
 Write-Host "Source: $sourcePath"
 Write-Host "Source SHA-256: $sourceShaBefore"
 Write-Host "Pending GLB: $pendingOutputPath"
-Write-Host "Pending schema-4 manifest: $pendingManifestPath"
+Write-Host "Pending schema-5 manifest: $pendingManifestPath"
 Write-Host "Pending action matrix: $pendingMatrixPath"
 Write-Host "Live GLB after validation: $outputPath"
 Write-Host "Thruster visual strategy: source-exact nozzle-local EngineFire geometry"
+Write-Host "Primary muzzle strategy: source-derived forward boundary loops"
 
 $blenderArguments = @(
     "--background",
@@ -166,7 +192,7 @@ $blenderArguments = @(
 try {
     & $blenderExecutable @blenderArguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Blender schema-4 fighter export failed with exit code $LASTEXITCODE"
+        throw "Blender schema-5 fighter export failed with exit code $LASTEXITCODE"
     }
 
     $sourceShaAfter = (
@@ -189,7 +215,24 @@ After:  $sourceShaAfter
         }
     }
 
-    $pendingManifest = Get-Content -LiteralPath $pendingManifestPath -Raw | ConvertFrom-Json
+    $pendingManifest = Get-Content -LiteralPath $pendingManifestPath -Raw |
+        ConvertFrom-Json
+    if ($pendingManifest.schema_version -ne 5) {
+        throw "Pending fighter manifest schema_version must be 5"
+    }
+    $expectedMuzzlePaths = @(
+        "Weapons/Primary/LeftMuzzle",
+        "Weapons/Primary/RightMuzzle"
+    )
+    $actualMuzzlePaths = @(
+        $pendingManifest.primary_muzzles |
+            ForEach-Object { [string]$_.path }
+    )
+    Assert-ExactPathSet `
+        -Expected $expectedMuzzlePaths `
+        -Actual $actualMuzzlePaths `
+        -Label "Primary muzzle"
+
     $pendingManifest.output_path = $outputPath.Replace("\", "/")
     $manifestJson = $pendingManifest | ConvertTo-Json -Depth 100
     $utf8WithoutBom = [System.Text.UTF8Encoding]::new($false)
@@ -204,7 +247,7 @@ After:  $sourceShaAfter
         --manifest $pendingManifestPath `
         --source-sha $sourceShaBefore
     if ($LASTEXITCODE -ne 0) {
-        throw "Schema-4 nozzle-local fighter validation failed with exit code $LASTEXITCODE"
+        throw "Schema-5 fighter validation failed with exit code $LASTEXITCODE"
     }
 
     & $pythonExecutable $matrixGeneratorPath `
@@ -273,9 +316,9 @@ finally {
     Remove-PublicationArtifacts -Paths @($pendingPaths + $backupPaths)
 }
 
-Write-Host "Schema-4 fighter export completed without modifying the source."
+Write-Host "Schema-5 fighter export completed without modifying the source."
 Write-Host "Source SHA-256: $sourceShaBefore"
-Write-Host "Generated nozzle-local source exhaust geometry for twelve runtime effects."
+Write-Host "Generated twelve source-exact thruster effects and two source-derived primary muzzles."
 Write-Host "Published validated assets:"
 Write-Host "  $outputPath"
 Write-Host "  $manifestPath"
