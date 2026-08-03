@@ -47,6 +47,25 @@ class PrimaryWeaponMuzzleTransformTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "finite"):
             canonical_origin_to_blender((0.0, float("nan"), 0.0))
 
+    def test_schema_five_exporter_uses_canonical_basis_not_forward_tracking(
+        self,
+    ) -> None:
+        source = (
+            ASSET_TOOLS / "export_small_sci_fi_fighter_v5.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "canonical_basis_to_blender_rows(record.canonical_basis_rows)",
+            source,
+        )
+        self.assertIn(
+            "canonical_origin_to_blender(record.canonical_origin)",
+            source,
+        )
+        self.assertNotIn(
+            "record_to_blender_transform(record)",
+            source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
