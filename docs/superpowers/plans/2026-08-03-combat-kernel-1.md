@@ -171,6 +171,8 @@ Weapons/Primary/RightMuzzle
 PlayerInputSource.is_primary_fire_held() -> bool
 PrimaryFireCadence.advance(held: bool, delta: float) -> Array[int]
 PrimaryFireController.set_projectile_pool(pool: PulseProjectilePool)
+PrimaryFireController.set_firing_enabled(enabled: bool)
+PrimaryFireController.is_firing_enabled() -> bool
 PrimaryFireController.reset_runtime_state()
 PulseProjectilePool.fire(
     world_transform: Transform3D,
@@ -179,6 +181,8 @@ PulseProjectilePool.fire(
 ) -> PulseProjectile
 PulseProjectilePool.clear_all()
 DamageState.apply_damage(packet: DamagePacket) -> DamageResult
+DamageState.set_damage_enabled(enabled: bool)
+DamageState.is_damage_enabled() -> bool
 DamageState.advance(delta: float)
 DamageState.reset_full()
 CollisionContactTracker.process_contacts(state: PhysicsDirectBodyState3D)
@@ -188,10 +192,24 @@ ShieldVisualController.clear_all()
 HullImpactEffectController.show_hit(point: Vector3, normal: Vector3)
 HullImpactEffectController.clear_all()
 CombatPipper.flash_confirmed_hit()
+CombatPipper.clear_transient_state()
+FlightHud.clear_transient_state()
 FlightRoomController.reset_arena()
 ```
 
 Renaming one of these interfaces during execution requires updating every later phase plan before implementation continues.
+
+## Authoritative Clarifications
+
+These rules override any shorter wording in a phase document:
+
+1. In Phase 1, orient every boundary-loop normal toward source-frame fighter forward `Vector((0, 1, 0))` **before** calling `select_primary_muzzle_pair`; mesh winding must not decide whether a valid mirrored pair is accepted.
+2. `DamageState` exposes `set_damage_enabled(enabled: bool)` and `is_damage_enabled()`. Disabled damage intake returns an unchanged zero-application result. `reset_full()` restores full values, clears destruction/timers, and re-enables damage.
+3. `PrimaryFireController` exposes `set_firing_enabled(enabled: bool)` and `is_firing_enabled()`. Disabling feeds `false` into cadence immediately. `reset_runtime_state()` resets cadence but does not silently re-enable firing.
+4. `CollisionDamageModel.compute` has signature `compute(relative_normal_speed, effective_mass, tuning, bypass_minimum_mass := false)`. Mass below `25.0 kg` returns zero unless `bypass_minimum_mass` is true; the tracker passes true only for colliders in group `damaging_collision`.
+5. `CombatPipper.clear_transient_state()` and `FlightHud.clear_transient_state()` are required reset interfaces.
+6. The practice drone's checked-in arena transform is exactly `position = Vector3(0, 0, -140)` with identity rotation and scale.
+7. Arena reset explicitly re-enables both `ShipFlightController` and `PrimaryFireController` after all state/effect cleanup is complete.
 
 ## Commit Sequence
 
