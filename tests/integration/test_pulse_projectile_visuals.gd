@@ -1,6 +1,7 @@
 extends "res://tests/support/test_case.gd"
 
 const PROJECTILE_SCENE_PATH := "res://scenes/combat/pulse_projectile.tscn"
+const VISUAL_FLOAT_TOLERANCE := 0.0001
 
 func run() -> void:
     var packed := load(PROJECTILE_SCENE_PATH) as PackedScene
@@ -22,8 +23,14 @@ func run() -> void:
         var sphere := bolt.mesh as SphereMesh
         assert_true(sphere != null, "pulse bolt must remain a sphere mesh")
         if sphere != null:
-            assert_true(sphere.radius >= 0.16, "pulse bolt radius must remain readable")
-            assert_true(sphere.height >= 0.32, "pulse bolt height must remain readable")
+            assert_true(
+                sphere.radius + VISUAL_FLOAT_TOLERANCE >= 0.16,
+                "pulse bolt radius must remain readable"
+            )
+            assert_true(
+                sphere.height + VISUAL_FLOAT_TOLERANCE >= 0.32,
+                "pulse bolt height must remain readable"
+            )
 
             var material := sphere.material as StandardMaterial3D
             assert_true(material != null, "pulse bolt must use StandardMaterial3D")
@@ -34,7 +41,7 @@ func run() -> void:
                 )
                 assert_true(material.emission_enabled, "pulse bolt emission must remain enabled")
                 assert_true(
-                    material.emission_energy_multiplier >= 14.0,
+                    material.emission_energy_multiplier + VISUAL_FLOAT_TOLERANCE >= 14.0,
                     "pulse bolt emission must remain bright enough for combat readability"
                 )
 
@@ -42,11 +49,20 @@ func run() -> void:
         var box := trail.mesh as BoxMesh
         assert_true(box != null, "pulse trail must remain a box mesh")
         if box != null:
-            assert_true(box.size.x >= 0.09, "pulse trail must remain thick enough")
-            assert_true(box.size.y >= 0.09, "pulse trail must remain thick enough")
-            assert_true(box.size.z >= 0.95, "pulse trail must remain long enough")
+            assert_true(
+                box.size.x + VISUAL_FLOAT_TOLERANCE >= 0.09,
+                "pulse trail must remain thick enough"
+            )
+            assert_true(
+                box.size.y + VISUAL_FLOAT_TOLERANCE >= 0.09,
+                "pulse trail must remain thick enough"
+            )
+            assert_true(
+                box.size.z + VISUAL_FLOAT_TOLERANCE >= 0.95,
+                "pulse trail must remain long enough"
+            )
         assert_true(
-            trail.position.z >= 0.48,
+            trail.position.z + VISUAL_FLOAT_TOLERANCE >= 0.48,
             "pulse trail must remain positioned behind the bolt"
         )
 
