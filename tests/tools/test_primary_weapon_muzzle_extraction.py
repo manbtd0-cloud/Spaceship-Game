@@ -13,8 +13,10 @@ if str(ASSET_TOOLS) not in sys.path:
 from primary_weapon_muzzle_extraction import (  # noqa: E402
     build_candidate_from_loop,
     choose_track_up_axis,
+    derive_forward_tip,
     trace_boundary_loops,
 )
+from primary_weapon_muzzle_geometry import BarrelComponentEvidence  # noqa: E402
 
 
 def ring(
@@ -81,6 +83,44 @@ class PrimaryWeaponMuzzleExtractionTests(unittest.TestCase):
             forward_axis=(0.0, 1.0, 0.0),
         )
         self.assertGreater(candidate.normal[1], 0.99)
+
+    def test_derives_tip_from_exact_forwardmost_source_vertices(self) -> None:
+        component = BarrelComponentEvidence(
+            source_object="Cube",
+            source_material="Barrel",
+            source_component=0,
+            source_vertex_indices=(10, 11, 12, 13, 14),
+            centroid=(2.7, 9.0, 0.5),
+            bounds_min=(2.3, 2.8, 0.1),
+            bounds_max=(3.2, 11.736176, 1.0),
+        )
+        points = [
+            (2.6, 11.0, 0.4),
+            (2.7, 11.736176, 0.5),
+            (2.8, 11.736176, 0.7),
+            (2.9, 11.3, 0.6),
+            (2.5, 10.0, 0.3),
+        ]
+        tip = derive_forward_tip(component, points)
+        self.assertEqual(tip.source_vertex_indices, (11, 12))
+        self.assertAlmostEqual(tip.centroid[0], 2.75)
+        self.assertAlmostEqual(tip.centroid[1], 11.736176)
+        self.assertAlmostEqual(tip.centroid[2], 0.6)
+        self.assertEqual(tip.forward, (0.0, 1.0, 0.0))
+        self.assertLessEqual(tip.extraction_error_source, 0.000001)
+
+    def test_tip_extraction_rejects_mismatched_source_evidence(self) -> None:
+        component = BarrelComponentEvidence(
+            source_object="Cube",
+            source_material="Barrel",
+            source_component=0,
+            source_vertex_indices=(1, 2),
+            centroid=(2.0, 10.0, 0.5),
+            bounds_min=(1.5, 5.0, 0.0),
+            bounds_max=(2.5, 11.0, 1.0),
+        )
+        with self.assertRaisesRegex(ValueError, "must match"):
+            derive_forward_tip(component, [(2.0, 11.0, 0.5)])
 
     def test_track_up_axis_never_conflicts_with_local_negative_z(self) -> None:
         self.assertEqual(choose_track_up_axis((0.0, 1.0, 0.0)), "X")
