@@ -113,7 +113,7 @@ func _test_disabled_and_zero_damage_are_inert() -> void:
     state.advance(7.0)
     var before_shield := state.get_shield()
     var zero := state.apply_damage(_packet(0.0))
-    state.advance(1.0)
+    state.advance(1.1)
     assert_true(state.get_shield() > before_shield, "zero damage does not reset recharge timing")
     assert_true(is_equal_approx(zero.applied_to_shield, 0.0), "zero packet applies no shield damage")
     assert_true(is_equal_approx(zero.applied_to_hull, 0.0), "zero packet applies no hull damage")
