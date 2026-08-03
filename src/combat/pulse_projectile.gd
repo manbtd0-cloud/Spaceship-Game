@@ -120,10 +120,19 @@ func _sweep_motion(motion: Vector3) -> bool:
         global_position += motion
         return false
 
+    var unsafe_fraction := clampf(
+        float(fractions[1]),
+        safe_fraction,
+        1.0
+    )
+    var impact_transform := global_transform
+    impact_transform.origin += motion * unsafe_fraction
+    query.transform = impact_transform
+    query.motion = Vector3.ZERO
+    var rest_info := space_state.get_rest_info(query)
+
     global_position += motion * safe_fraction
-    query.transform = global_transform
-    query.motion = motion * maxf(1.0 - safe_fraction, 0.000001)
-    _resolve_first_hit(space_state.get_rest_info(query), motion)
+    _resolve_first_hit(rest_info, motion)
     return true
 
 func _resolve_first_hit(rest_info: Dictionary, motion: Vector3) -> void:
