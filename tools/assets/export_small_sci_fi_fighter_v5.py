@@ -14,11 +14,12 @@ from mathutils import Matrix, Vector
 
 import export_small_sci_fi_fighter as base
 import export_small_sci_fi_fighter_v4 as schema4
-from primary_weapon_muzzle_extraction import (
-    extract_primary_muzzles,
-    record_to_blender_transform,
-)
+from primary_weapon_muzzle_extraction import extract_primary_muzzles
 from primary_weapon_muzzle_geometry import MuzzleRecord
+from primary_weapon_muzzle_transform import (
+    canonical_basis_to_blender_rows,
+    canonical_origin_to_blender,
+)
 from small_fighter_calibration import (
     COLLIDER_SIZE_GODOT,
     HULL_CENTER_LOCAL,
@@ -33,11 +34,21 @@ from source_exact_thruster_geometry import (
 )
 
 
+def _record_to_blender_transform(record: MuzzleRecord) -> tuple[Vector, Matrix]:
+    origin = Vector(canonical_origin_to_blender(record.canonical_origin))
+    basis = Matrix(
+        canonical_basis_to_blender_rows(record.canonical_basis_rows)
+    ).to_4x4()
+    return origin, basis
+
+
 def _muzzle_record_to_manifest(record: MuzzleRecord) -> dict[str, Any]:
     return {
         "path": record.path,
         "side": record.side,
         "source_object": record.source_object,
+        "source_material": record.source_material,
+        "source_component": record.source_component,
         "source_vertex_indices": list(record.source_vertex_indices),
         "origin": list(record.canonical_origin),
         "basis": [list(row) for row in record.canonical_basis_rows],
@@ -63,7 +74,7 @@ def create_primary_muzzle_hierarchy(
 
     for record in records:
         leaf = record.path.rsplit("/", 1)[-1]
-        origin, basis = record_to_blender_transform(record)
+        origin, basis = _record_to_blender_transform(record)
         node = base.create_empty(leaf, primary, collection)
         node.location = origin
         node.rotation_mode = "QUATERNION"
@@ -72,6 +83,8 @@ def create_primary_muzzle_hierarchy(
         node["weapon_socket"] = "primary"
         node["side"] = record.side
         node["source_object"] = record.source_object
+        node["source_material"] = record.source_material
+        node["source_component"] = record.source_component
         node["source_vertex_indices"] = list(record.source_vertex_indices)
         nodes[record.path] = node
 
@@ -239,6 +252,8 @@ def main() -> None:
     for record in muzzle_records:
         print(
             f"Primary muzzle: {record.path} source={record.source_object} "
+            f"material={record.source_material} "
+            f"component={record.source_component} "
             f"vertices={len(record.source_vertex_indices)}"
         )
     print(
