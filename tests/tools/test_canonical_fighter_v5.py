@@ -3,9 +3,8 @@ from __future__ import annotations
 import copy
 import json
 import math
-import struct
-import tempfile
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,85 +13,69 @@ ASSET_TOOLS = REPO_ROOT / "tools" / "assets"
 if str(ASSET_TOOLS) not in sys.path:
     sys.path.insert(0, str(ASSET_TOOLS))
 
-from canonical_fighter_contract_v5 import (  # noqa: E402
-    EXPECTED_EFFECT_PATHS,
-    EXPECTED_PRIMARY_MUZZLES,
-    EXPECTED_SOCKET_PATHS,
-    validate_output,
-)
-
-SOURCE_SHA = "1b41311543974b94ead9bb90eee053bac831b0d62512cbbe190ffb374c20a478"
-
-
-def _write_glb(path: Path, document: dict[str, object]) -> None:
-    payload = json.dumps(document, separators=(",", ":")).encode("utf-8")
-    payload += b" " * ((4 - len(payload) % 4) % 4)
-    total_length = 12 + 8 + len(payload)
-    path.write_bytes(
-        struct.pack("<4sII", b"glTF", 2, total_length)
-        + struct.pack("<I4s", len(payload), b"JSON")
-        + payload
-    )
+from canonical_fighter_contract_v5 import validate_output  # noqa: E402
+from small_fighter_calibration import SOURCE_SHA256  # noqa: E402
+from tests.tools import test_canonical_fighter_v4 as v4_fixture  # noqa: E402
 
 
 class CanonicalFighterV5Tests(unittest.TestCase):
-    def _valid_manifest(self) -> dict[str, object]:
-        return {
-            "schema_version": 5,
-            "source_sha256": SOURCE_SHA,
-            "sockets": [
-                {"path": path} for path in sorted(EXPECTED_SOCKET_PATHS)
-            ],
-            "thruster_effects": [
-                {"path": path} for path in sorted(EXPECTED_EFFECT_PATHS)
-            ],
-            "primary_muzzles": [
-                {
-                    "path": "Weapons/Primary/LeftMuzzle",
-                    "side": "left",
-                    "source_object": "Hull",
-                    "source_vertex_indices": [1, 2, 3, 4, 5, 6, 7, 8],
-                    "origin": [-2.0, 0.4, -5.4],
-                    "basis": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                    "forward": [0.0, 0.0, -1.0],
-                    "extraction_error_m": 0.00001,
-                },
-                {
-                    "path": "Weapons/Primary/RightMuzzle",
-                    "side": "right",
-                    "source_object": "Hull",
-                    "source_vertex_indices": [
-                        9,
-                        10,
-                        11,
-                        12,
-                        13,
-                        14,
-                        15,
-                        16,
-                    ],
-                    "origin": [2.0, 0.4, -5.4],
-                    "basis": [
-                        [1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0],
-                    ],
-                    "forward": [0.0, 0.0, -1.0],
-                    "extraction_error_m": 0.00001,
-                },
-            ],
-        }
+    def setUp(self) -> None:
+        self._v4 = v4_fixture.CanonicalFighterV4Tests(methodName="runTest")
 
-    def _glb_document(self, include_right: bool = True) -> dict[str, object]:
-        nodes: list[dict[str, object]] = []
+    def _valid_manifest(self) -> dict[str, object]:
+        manifest = self._v4._valid_manifest()
+        manifest["schema_version"] = 5
+        manifest["primary_muzzles"] = [
+            {
+                "path": "Weapons/Primary/LeftMuzzle",
+                "side": "left",
+                "source_object": "SmallSciFiFighterMesh",
+                "source_vertex_indices": [1, 2, 3, 4, 5, 6, 7, 8],
+                "origin": [-2.0, 0.4, -5.4],
+                "basis": [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                "forward": [0.0, 0.0, -1.0],
+                "extraction_error_m": 0.00001,
+            },
+            {
+                "path": "Weapons/Primary/RightMuzzle",
+                "side": "right",
+                "source_object": "SmallSciFiFighterMesh",
+                "source_vertex_indices": [9, 10, 11, 12, 13, 14, 15, 16],
+                "origin": [2.0, 0.4, -5.4],
+                "basis": [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                "forward": [0.0, 0.0, -1.0],
+                "extraction_error_m": 0.00001,
+            },
+        ]
+        return manifest
+
+    def _glb_document(
+        self,
+        manifest: dict[str, object],
+        include_right: bool = True,
+    ) -> dict[str, object]:
+        document = self._v4._glb_document(manifest)
+        nodes = document["nodes"]
+        scenes = document["scenes"]
+        assert isinstance(nodes, list)
+        assert isinstance(scenes, list)
+        scene = scenes[0]
+        assert isinstance(scene, dict)
+        roots = scene["nodes"]
+        assert isinstance(roots, list)
+        root_index = int(roots[0])
 
         def add(
             name: str,
-            parent: int | None = None,
+            parent: int,
             translation: list[float] | None = None,
         ) -> int:
             index = len(nodes)
@@ -100,24 +83,19 @@ class CanonicalFighterV5Tests(unittest.TestCase):
             if translation is not None:
                 node["translation"] = translation
             nodes.append(node)
-            if parent is not None:
-                children = nodes[parent].setdefault("children", [])
-                assert isinstance(children, list)
-                children.append(index)
+            parent_node = nodes[parent]
+            assert isinstance(parent_node, dict)
+            children = parent_node.setdefault("children", [])
+            assert isinstance(children, list)
+            children.append(index)
             return index
 
-        root = add("SmallSciFiFighter")
-        weapons = add("Weapons", root)
+        weapons = add("Weapons", root_index)
         primary = add("Primary", weapons)
         add("LeftMuzzle", primary, [-2.0, 0.4, -5.4])
         if include_right:
             add("RightMuzzle", primary, [2.0, 0.4, -5.4])
-        return {
-            "asset": {"version": "2.0"},
-            "scene": 0,
-            "scenes": [{"nodes": [root]}],
-            "nodes": nodes,
-        }
+        return document
 
     def _validate(
         self,
@@ -129,8 +107,11 @@ class CanonicalFighterV5Tests(unittest.TestCase):
             manifest_path = root / "fighter.manifest.json"
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             glb_path = root / "fighter.glb"
-            _write_glb(glb_path, self._glb_document(include_right))
-            return validate_output(glb_path, manifest_path, SOURCE_SHA)
+            v4_fixture._write_glb(
+                glb_path,
+                self._glb_document(manifest, include_right),
+            )
+            return validate_output(glb_path, manifest_path, SOURCE_SHA256)
 
     def test_valid_schema_five_output_passes_and_delegates_base_checks(
         self,
@@ -138,12 +119,8 @@ class CanonicalFighterV5Tests(unittest.TestCase):
         self.assertEqual(self._validate(self._valid_manifest()), [])
         invalid = self._valid_manifest()
         invalid["sockets"] = []
-        self.assertTrue(
-            any(
-                "socket paths mismatch" in error
-                for error in self._validate(invalid)
-            )
-        )
+        errors = self._validate(invalid)
+        self.assertTrue(any("socket paths mismatch" in error for error in errors))
 
     def test_schema_four_and_two_are_rejected(self) -> None:
         for version in (4, 2):
@@ -179,33 +156,36 @@ class CanonicalFighterV5Tests(unittest.TestCase):
                 errors,
             )
 
-    def test_centerline_nonfinite_wrong_side_and_backward_are_rejected(
-        self,
-    ) -> None:
+    def test_invalid_muzzle_geometry_is_rejected(self) -> None:
         mutations = [
-            ("origin", [0.0, 0.4, -5.4]),
-            ("origin", [math.nan, 0.4, -5.4]),
-            ("side", "right"),
-            ("forward", [0.0, 0.0, 1.0]),
+            (0, "origin", [0.0, 0.4, -5.4]),
+            (0, "origin", [math.nan, 0.4, -5.4]),
+            (0, "side", "right"),
+            (0, "forward", [0.0, 0.0, 1.0]),
+            (1, "origin", [2.0, 1.0, -5.4]),
         ]
-        for field, value in mutations:
+        for index, field, value in mutations:
             manifest = self._valid_manifest()
             items = manifest["primary_muzzles"]
-            assert isinstance(items, list) and isinstance(items[0], dict)
-            items[0][field] = value
+            assert isinstance(items, list)
+            record = items[index]
+            assert isinstance(record, dict)
+            record[field] = value
             errors = self._validate(manifest)
-            self.assertTrue(errors, (field, errors))
+            self.assertTrue(errors, (index, field, errors))
 
     def test_negative_determinant_and_excess_error_are_rejected(self) -> None:
         manifest = self._valid_manifest()
         items = manifest["primary_muzzles"]
-        assert isinstance(items, list) and isinstance(items[0], dict)
-        items[0]["basis"] = [
+        assert isinstance(items, list)
+        first = items[0]
+        assert isinstance(first, dict)
+        first["basis"] = [
             [-1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0],
         ]
-        items[0]["extraction_error_m"] = 0.0002
+        first["extraction_error_m"] = 0.0002
         errors = self._validate(manifest)
         self.assertTrue(any("determinant" in error for error in errors), errors)
         self.assertTrue(
