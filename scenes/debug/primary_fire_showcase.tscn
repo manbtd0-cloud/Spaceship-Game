@@ -1,0 +1,161 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://src/debug/primary_fire_showcase_controller.gd" id="1_showcase"]
+[ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="3_camera"]
+[ext_resource type="Script" path="res://src/combat/primary_fire_controller.gd" id="4_fire"]
+[ext_resource type="Script" path="res://src/combat/pulse_projectile_pool.gd" id="5_pool"]
+
+[sub_resource type="Environment" id="Environment_showcase"]
+background_mode = 1
+background_color = Color(0.002, 0.005, 0.018, 1)
+background_energy_multiplier = 0.65
+ambient_light_source = 3
+ambient_light_color = Color(0.04, 0.09, 0.2, 1)
+ambient_light_energy = 0.5
+reflected_light_source = 2
+
+[sub_resource type="StandardMaterial3D" id="Material_lane"]
+shading_mode = 0
+transparency = 1
+albedo_color = Color(0.05, 0.55, 0.95, 0.32)
+emission_enabled = true
+emission = Color(0.02, 0.5, 1, 1)
+emission_energy_multiplier = 3.5
+
+[sub_resource type="TorusMesh" id="Mesh_depth_ring"]
+material = SubResource("Material_lane")
+inner_radius = 13.6
+outer_radius = 14.0
+rings = 32
+ring_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+albedo_color = Color(0.025, 0.04, 0.075, 1)
+metallic = 0.7
+roughness = 0.42
+emission_enabled = true
+emission = Color(0.015, 0.08, 0.18, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxMesh" id="Mesh_wall"]
+material = SubResource("Material_wall")
+size = Vector3(70, 42, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_wall"]
+size = Vector3(70, 42, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_title"]
+font_size = 24
+font_color = Color(0.78, 0.92, 1, 1)
+outline_size = 8
+outline_color = Color(0.005, 0.012, 0.03, 0.85)
+
+[sub_resource type="LabelSettings" id="LabelSettings_telemetry"]
+font_size = 20
+font_color = Color(0.25, 0.82, 1, 1)
+outline_size = 7
+outline_color = Color(0.005, 0.012, 0.03, 0.9)
+
+[node name="PrimaryFireShowcase" type="Node3D"]
+script = ExtResource("1_showcase")
+player_body_path = NodePath("PlayerInterceptor")
+input_source_path = NodePath("PlayerInterceptor/PlayerInputSource")
+fire_controller_path = NodePath("PlayerInterceptor/PrimaryFireController")
+projectile_pool_path = NodePath("PulseProjectilePool")
+instructions_label_path = NodePath("ShowcaseHud/SafeArea/Instructions")
+telemetry_label_path = NodePath("ShowcaseHud/SafeArea/Telemetry")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_showcase")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-24, -32, 0)
+light_color = Color(0.48, 0.7, 1, 1)
+light_energy = 1.6
+shadow_enabled = true
+
+[node name="RimLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(32, 150, 0)
+light_color = Color(0.12, 0.42, 1, 1)
+light_energy = 0.75
+
+[node name="PlayerInterceptor" parent="." instance=ExtResource("2_player")]
+freeze = true
+
+[node name="PrimaryFireController" type="Node" parent="PlayerInterceptor"]
+script = ExtResource("4_fire")
+body_path = NodePath("..")
+input_source_path = NodePath("../PlayerInputSource")
+model_path = NodePath("../VisualRoot/SmallSciFiFighter")
+
+[node name="ChaseCameraRig" parent="." instance=ExtResource("3_camera")]
+
+[node name="PulseProjectilePool" type="Node3D" parent="."]
+script = ExtResource("5_pool")
+
+[node name="FiringLane" type="Node3D" parent="."]
+
+[node name="DepthRings" type="Node3D" parent="FiringLane"]
+
+[node name="Ring01" type="MeshInstance3D" parent="FiringLane/DepthRings"]
+position = Vector3(0, 0, -45)
+rotation_degrees = Vector3(90, 0, 0)
+mesh = SubResource("Mesh_depth_ring")
+
+[node name="Ring02" type="MeshInstance3D" parent="FiringLane/DepthRings"]
+position = Vector3(0, 0, -90)
+rotation_degrees = Vector3(90, 0, 0)
+mesh = SubResource("Mesh_depth_ring")
+
+[node name="Ring03" type="MeshInstance3D" parent="FiringLane/DepthRings"]
+position = Vector3(0, 0, -135)
+rotation_degrees = Vector3(90, 0, 0)
+mesh = SubResource("Mesh_depth_ring")
+
+[node name="Ring04" type="MeshInstance3D" parent="FiringLane/DepthRings"]
+position = Vector3(0, 0, -180)
+rotation_degrees = Vector3(90, 0, 0)
+mesh = SubResource("Mesh_depth_ring")
+
+[node name="ImpactWall" type="StaticBody3D" parent="FiringLane"]
+position = Vector3(0, 0, -240)
+collision_layer = 1
+collision_mask = 1
+
+[node name="Mesh" type="MeshInstance3D" parent="FiringLane/ImpactWall"]
+mesh = SubResource("Mesh_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="FiringLane/ImpactWall"]
+shape = SubResource("Shape_wall")
+
+[node name="ShowcaseHud" type="CanvasLayer" parent="."]
+
+[node name="SafeArea" type="Control" parent="ShowcaseHud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Instructions" type="Label" parent="ShowcaseHud/SafeArea"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = 630.0
+offset_bottom = 132.0
+mouse_filter = 2
+text = "PRIMARY FIRE SHOWCASE\nHold LMB or physical V to fire\nR clears lane and cadence   Esc exits"
+label_settings = SubResource("LabelSettings_title")
+
+[node name="Telemetry" type="Label" parent="ShowcaseHud/SafeArea"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 156.0
+offset_right = 390.0
+offset_bottom = 292.0
+mouse_filter = 2
+text = "SHOTS  0000\nACTIVE  00 / 32\nIMPACTS  0000\nLAST MUZZLE  NONE"
+label_settings = SubResource("LabelSettings_telemetry")
