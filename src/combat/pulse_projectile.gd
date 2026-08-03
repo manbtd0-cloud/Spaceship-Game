@@ -132,11 +132,11 @@ func _resolve_first_hit(rest_info: Dictionary, motion: Vector3) -> void:
     _resolved_this_activation = true
 
     var collider: Object = rest_info.get("collider", null)
-    var hit_point := rest_info.get("point", global_position) as Vector3
+    var hit_point: Vector3 = rest_info.get("point", global_position)
     var fallback_normal := (
         -motion.normalized() if motion.length_squared() > 0.0 else Vector3.BACK
     )
-    var hit_normal := rest_info.get("normal", fallback_normal) as Vector3
+    var hit_normal: Vector3 = rest_info.get("normal", fallback_normal)
     if hit_normal.is_zero_approx() or not hit_normal.is_finite():
         hit_normal = fallback_normal
     else:
