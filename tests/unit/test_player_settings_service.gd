@@ -1,12 +1,20 @@
 extends "res://tests/support/test_case.gd"
 
+class QuietPlayerSettingsStore:
+    extends PlayerSettingsStore
+
+    var warnings: Array[String] = []
+
+    func _report_warning(message: String) -> void:
+        warnings.append(message)
+
 func run() -> void:
     var path := "user://test_player_settings_%d.cfg" % Time.get_ticks_usec()
     var absolute_path := ProjectSettings.globalize_path(path)
     if FileAccess.file_exists(path):
         DirAccess.remove_absolute(absolute_path)
 
-    var store := PlayerSettingsStore.new()
+    var store := QuietPlayerSettingsStore.new()
     var saved_events: Array[int] = []
     var behavior_events: Array[int] = []
     store.settings_saved.connect(func() -> void: saved_events.append(1))
@@ -35,6 +43,7 @@ func run() -> void:
         not FileAccess.file_exists(path),
         "loading a missing file must not write defaults immediately"
     )
+    assert_equal(store.warnings.size(), 0, "missing file must not warn")
 
     assert_true(
         store.set_camera_behavior(CameraBehavior.Value.LOCKED),
@@ -56,19 +65,21 @@ func run() -> void:
         not store.set_camera_behavior(999),
         "invalid camera behavior must be rejected"
     )
+    assert_equal(store.warnings.size(), 1, "invalid setter must report once")
     assert_equal(
         store.get_camera_behavior(),
         CameraBehavior.Value.LOCKED,
         "invalid setter input must preserve the current value"
     )
 
-    var reloaded := PlayerSettingsStore.new()
+    var reloaded := QuietPlayerSettingsStore.new()
     reloaded.load_from_path(path)
     assert_equal(
         reloaded.get_camera_behavior(),
         CameraBehavior.Value.LOCKED,
         "valid value must round-trip"
     )
+    assert_equal(reloaded.warnings.size(), 0, "valid reload must not warn")
 
     var corrupt := ConfigFile.new()
     corrupt.set_value("camera", "behavior", 999)
@@ -84,7 +95,7 @@ func run() -> void:
     )
     assert_equal(corrupt.save(path), OK, "corrupt fixture must save")
 
-    var repaired := PlayerSettingsStore.new()
+    var repaired := QuietPlayerSettingsStore.new()
     repaired.load_from_path(path)
     assert_equal(
         repaired.get_camera_behavior(),
@@ -100,6 +111,11 @@ func run() -> void:
         repaired.get_default_flight_mode(),
         FlightMode.Value.MANUAL,
         "valid flight mode survives another field's corruption"
+    )
+    assert_equal(
+        repaired.warnings.size(),
+        1,
+        "one malformed field must report exactly one warning"
     )
 
     if FileAccess.file_exists(path):
