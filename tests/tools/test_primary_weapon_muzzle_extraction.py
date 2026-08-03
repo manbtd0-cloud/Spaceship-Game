@@ -12,6 +12,7 @@ if str(ASSET_TOOLS) not in sys.path:
 
 from primary_weapon_muzzle_extraction import (  # noqa: E402
     build_candidate_from_loop,
+    choose_track_up_axis,
     trace_boundary_loops,
 )
 
@@ -80,6 +81,10 @@ class PrimaryWeaponMuzzleExtractionTests(unittest.TestCase):
             forward_axis=(0.0, 1.0, 0.0),
         )
         self.assertGreater(candidate.normal[1], 0.99)
+
+    def test_track_up_axis_never_conflicts_with_local_negative_z(self) -> None:
+        self.assertEqual(choose_track_up_axis((0.0, 1.0, 0.0)), "X")
+        self.assertEqual(choose_track_up_axis((0.0, 0.0, 1.0)), "Y")
 
 
 if __name__ == "__main__":
