@@ -2,7 +2,7 @@ extends "res://tests/support/test_case.gd"
 
 const SCENE_PATH := "res://scenes/debug/thruster_calibration.tscn"
 const SCRIPT_PATH := "res://src/debug/thruster_calibration.gd"
-const EXPECTED_CASES := PackedStringArray([
+const EXPECTED_CASES: Array[String] = [
     "forward",
     "reverse",
     "strafe_left",
@@ -17,7 +17,7 @@ const EXPECTED_CASES := PackedStringArray([
     "roll_right",
     "assist_translation",
     "assist_rotation",
-])
+]
 
 func run() -> void:
     var packed := load(SCENE_PATH) as PackedScene
@@ -44,7 +44,7 @@ func run() -> void:
     )
     assert_equal(
         calibration.get_case_names(),
-        EXPECTED_CASES,
+        PackedStringArray(EXPECTED_CASES),
         "calibration scene must expose twelve pilot and two assisted cases"
     )
     assert_equal(
