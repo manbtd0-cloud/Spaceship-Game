@@ -26,17 +26,22 @@ This file is the canonical list of features explicitly postponed during design o
 
 ## Shields and Damage Visuals
 
-- `DEFERRED` Player-fighter shield impact visuals after the practice-drone shield component proves the shared effect contract.
+- `ACTIVE` Initial player and practice-drone shield impact visuals are governed by [`docs/superpowers/specs/2026-08-03-combat-kernel-1-design.md`](../superpowers/specs/2026-08-03-combat-kernel-1-design.md).
 - `DEFERRED` Advanced shield deformation beyond the initial localized hexagonal impact ripple.
+- `DEFERRED` Persistent hull scorch decals.
+- `DEFERRED` Polished destruction animation, debris, wreckage, and cinematic destruction presentation.
 
 ## Enemies and Combat
 
 - `DEFERRED` Moving enemy fighter with pursuit, attack, retreat, and dogfighting behavior.
 - `DEFERRED` Full enemy dogfighting AI after Camera C1 tactical views are available.
+- `DEFERRED` Enemy weapons.
+- `DEFERRED` Production combat audio and final audio mixing.
 
 ## Environment
 
 - `DEFERRED` Refine asteroid clustering and resolve any visually awkward overlap after the combat loop is playable.
+- `DEFERRED` Asteroid health, cracking, fragmentation, and destruction.
 
 ## Tooling and Asset Polish
 
@@ -46,3 +51,4 @@ This file is the canonical list of features explicitly postponed during design o
 
 - 2026-08-03: Ledger created during Combat Kernel 1 design.
 - 2026-08-03: Added deferred player shield visuals, advanced shield deformation, asteroid clustering refinement, and Blender tangent-warning cleanup.
+- 2026-08-03: Combat Kernel 1 design superseded the player-shield deferral; marked initial player/drone shield visuals active and recorded the remaining destruction, audio, and asteroid-destruction deferrals.
