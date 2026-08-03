@@ -33,7 +33,7 @@ func load_from_path(path: String = DEFAULT_PATH) -> void:
         _loaded = true
         return
     if result != OK:
-        push_warning(
+        _report_warning(
             "Player settings could not load from %s; using defaults (error %d)"
             % [_path, result]
         )
@@ -59,7 +59,7 @@ func get_default_flight_mode() -> FlightMode.Value:
 
 func set_camera_behavior(value: CameraBehavior.Value) -> bool:
     if not CameraBehavior.is_valid(value):
-        push_warning("Rejected invalid camera behavior: %s" % value)
+        _report_warning("Rejected invalid camera behavior: %s" % value)
         return false
     if _camera_behavior == value:
         return false
@@ -71,7 +71,7 @@ func set_camera_behavior(value: CameraBehavior.Value) -> bool:
 
 func set_camera_distance(value: CameraDistance.Value) -> bool:
     if not CameraDistance.is_valid(value):
-        push_warning("Rejected invalid camera distance: %s" % value)
+        _report_warning("Rejected invalid camera distance: %s" % value)
         return false
     if _camera_distance == value:
         return false
@@ -83,7 +83,7 @@ func set_camera_distance(value: CameraDistance.Value) -> bool:
 
 func set_default_flight_mode(value: FlightMode.Value) -> bool:
     if not _is_valid_flight_mode(value):
-        push_warning("Rejected invalid default flight mode: %s" % value)
+        _report_warning("Rejected invalid default flight mode: %s" % value)
         return false
     if _default_flight_mode == value:
         return false
@@ -102,7 +102,7 @@ func _read_camera_behavior(config: ConfigFile) -> CameraBehavior.Value:
     if typeof(raw) == TYPE_INT and CameraBehavior.is_valid(int(raw)):
         return int(raw)
 
-    push_warning(
+    _report_warning(
         "Invalid camera.behavior in %s; using Tactical" % _path
     )
     return DEFAULT_CAMERA_BEHAVIOR
@@ -116,7 +116,7 @@ func _read_camera_distance(config: ConfigFile) -> CameraDistance.Value:
     if typeof(raw) == TYPE_INT and CameraDistance.is_valid(int(raw)):
         return int(raw)
 
-    push_warning(
+    _report_warning(
         "Invalid camera.distance in %s; using Standard" % _path
     )
     return DEFAULT_CAMERA_DISTANCE
@@ -130,7 +130,7 @@ func _read_flight_mode(config: ConfigFile) -> FlightMode.Value:
     if typeof(raw) == TYPE_INT and _is_valid_flight_mode(int(raw)):
         return int(raw)
 
-    push_warning(
+    _report_warning(
         "Invalid flight.default_mode in %s; using Assisted" % _path
     )
     return DEFAULT_FLIGHT_MODE
@@ -149,7 +149,7 @@ func _save() -> bool:
 
     var result := config.save(_path)
     if result != OK:
-        push_warning(
+        _report_warning(
             "Player settings could not save to %s (error %d)"
             % [_path, result]
         )
@@ -157,3 +157,6 @@ func _save() -> bool:
 
     settings_saved.emit()
     return true
+
+func _report_warning(message: String) -> void:
+    push_warning(message)
