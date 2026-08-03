@@ -4,6 +4,7 @@ func run() -> void:
     var velocity := Vector3(20.0, 0.0, -20.0)
     var force := FlightSteeringMath.assisted_force(
         velocity,
+        Vector3.FORWARD,
         1.0,
         8500.0,
         1.25,
@@ -12,7 +13,7 @@ func run() -> void:
     )
     assert_true(force.x < 0.0, "steering must bend rightward drift toward the nose")
     assert_true(
-        absf(force.dot(velocity.normalized())) < 0.01,
+        absf(force.dot(velocity.normalized())) <= 0.001,
         "steering force must remain perpendicular to velocity"
     )
     assert_true(
@@ -22,6 +23,7 @@ func run() -> void:
     assert_equal(
         FlightSteeringMath.assisted_force(
             velocity,
+            Vector3.FORWARD,
             0.0,
             8500.0,
             1.25,
@@ -34,6 +36,7 @@ func run() -> void:
     assert_equal(
         FlightSteeringMath.assisted_force(
             Vector3(1.0, 0.0, 0.0),
+            Vector3.FORWARD,
             1.0,
             8500.0,
             1.25,
@@ -43,10 +46,21 @@ func run() -> void:
         Vector3.ZERO,
         "steering stays inactive below minimum speed"
     )
+    assert_equal(
+        FlightSteeringMath.assisted_force(
+            velocity,
+            Vector3.ZERO,
+            1.0,
+            8500.0,
+            1.25,
+            8.0,
+            18.0
+        ),
+        Vector3.ZERO,
+        "invalid desired direction must not create force"
+    )
 
     var tuning := FlightTuning.new()
-    tuning.assist_lateral_damping = 12000.0
-    tuning.assist_vertical_damping = 12000.0
     var coasting := FlightCommand.new()
     coasting.mode = FlightMode.Value.ASSISTED
     coasting.translation = Vector3.ZERO
