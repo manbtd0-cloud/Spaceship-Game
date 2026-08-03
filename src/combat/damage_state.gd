@@ -35,7 +35,7 @@ func apply_damage(packet: DamagePacket) -> DamageResult:
     var result := _result_for_packet(safe_packet)
 
     if safe_packet.amount <= 0.0 or not _damage_enabled or _destroyed:
-        result.ignored = not _damage_enabled or _destroyed
+        result.ignored = true
         return result
 
     var shield_before := _shield
