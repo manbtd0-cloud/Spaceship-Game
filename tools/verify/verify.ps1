@@ -99,7 +99,7 @@ $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 $glbPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.glb"
 $manifestPath = Join-Path $repoRoot "assets\runtime\ships\player\small_sci_fi_fighter.manifest.json"
 $matrixPath = Join-Path $repoRoot "config\ships\small_sci_fi_fighter_thruster_actions.json"
-$fighterValidatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v4.py"
+$fighterValidatorPath = Join-Path $repoRoot "tools\assets\canonical_fighter_contract_v5.py"
 $matrixValidatorPath = Join-Path $repoRoot "tools\assets\fighter_thruster_action_contract.py"
 
 foreach ($requiredPath in @(
@@ -118,8 +118,8 @@ foreach ($requiredPath in @(
 }
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if ($manifest.schema_version -ne 4) {
-    throw "Hero fighter manifest schema_version must be 4"
+if ($manifest.schema_version -ne 5) {
+    throw "Hero fighter manifest schema_version must be 5"
 }
 if (
     $manifest.thruster_visual_strategy -ne
@@ -156,8 +156,13 @@ $expectedSocketPaths = @(
     "Thrusters/Maneuver/FrontLowerLeft",
     "Thrusters/Maneuver/FrontLowerRight"
 )
-$actualSocketPaths = @($manifest.sockets | ForEach-Object { [string]$_.path })
-Assert-ExactPathSet -Expected $expectedSocketPaths -Actual $actualSocketPaths -Label "Hero fighter socket"
+$actualSocketPaths = @(
+    $manifest.sockets | ForEach-Object { [string]$_.path }
+)
+Assert-ExactPathSet `
+    -Expected $expectedSocketPaths `
+    -Actual $actualSocketPaths `
+    -Label "Hero fighter socket"
 
 $expectedEffectPaths = @(
     "ThrusterEffects/MainEffects/MainLeftEffect",
@@ -173,8 +178,13 @@ $expectedEffectPaths = @(
     "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
     "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect"
 )
-$actualEffectPaths = @($manifest.thruster_effects | ForEach-Object { [string]$_.path })
-Assert-ExactPathSet -Expected $expectedEffectPaths -Actual $actualEffectPaths -Label "Hero fighter effect"
+$actualEffectPaths = @(
+    $manifest.thruster_effects | ForEach-Object { [string]$_.path }
+)
+Assert-ExactPathSet `
+    -Expected $expectedEffectPaths `
+    -Actual $actualEffectPaths `
+    -Label "Hero fighter effect"
 
 $actualEffectSocketPaths = @(
     $manifest.thruster_effects | ForEach-Object { [string]$_.socket_path }
@@ -183,6 +193,18 @@ Assert-ExactPathSet `
     -Expected $expectedSocketPaths `
     -Actual $actualEffectSocketPaths `
     -Label "Hero fighter effect socket"
+
+$expectedMuzzlePaths = @(
+    "Weapons/Primary/LeftMuzzle",
+    "Weapons/Primary/RightMuzzle"
+)
+$actualMuzzlePaths = @(
+    $manifest.primary_muzzles | ForEach-Object { [string]$_.path }
+)
+Assert-ExactPathSet `
+    -Expected $expectedMuzzlePaths `
+    -Actual $actualMuzzlePaths `
+    -Label "Hero fighter primary muzzle"
 
 foreach ($effect in $manifest.thruster_effects) {
     if (-not $effect.source_exact_geometry) {
@@ -208,14 +230,29 @@ foreach ($effect in $manifest.thruster_effects) {
     }
 }
 
+foreach ($muzzle in $manifest.primary_muzzles) {
+    if ($null -eq $muzzle.origin -or $null -eq $muzzle.basis) {
+        throw "Every primary muzzle must include origin and basis"
+    }
+    if ($null -eq $muzzle.forward) {
+        throw "Every primary muzzle must include forward"
+    }
+    if (
+        [double]$muzzle.extraction_error_m -gt 0.0001 -or
+        [double]$muzzle.extraction_error_m -lt 0.0
+    ) {
+        throw "Every primary muzzle extraction_error_m must be within [0, 0.0001]"
+    }
+}
+
 $pythonExecutable = Resolve-PythonExecutable
-Write-Host "==> Validate schema-four fighter asset contract"
+Write-Host "==> Validate schema-five fighter asset contract"
 & $pythonExecutable $fighterValidatorPath `
     --glb $glbPath `
     --manifest $manifestPath `
     --source-sha $expectedSourceSha
 if ($LASTEXITCODE -ne 0) {
-    throw "Schema-four fighter validation failed with exit code $LASTEXITCODE"
+    throw "Schema-five fighter validation failed with exit code $LASTEXITCODE"
 }
 
 Write-Host "==> Validate deterministic fighter thruster matrix"
@@ -232,15 +269,24 @@ Write-Host "Project root: $repoRoot"
 
 Push-Location $repoRoot
 try {
-    Invoke-GodotStep -Executable $godotExecutable -Description "Import project" -GodotArguments @(
-        "--headless", "--path", ".", "--editor", "--quit"
-    )
-    Invoke-GodotStep -Executable $godotExecutable -Description "Run test suites" -GodotArguments @(
-        "--headless", "--path", ".", "--script", "res://tests/test_runner.gd"
-    )
-    Invoke-GodotStep -Executable $godotExecutable -Description "Boot main scene briefly" -GodotArguments @(
-        "--headless", "--path", ".", "--quit-after", "2"
-    )
+    Invoke-GodotStep `
+        -Executable $godotExecutable `
+        -Description "Import project" `
+        -GodotArguments @("--headless", "--path", ".", "--editor", "--quit")
+    Invoke-GodotStep `
+        -Executable $godotExecutable `
+        -Description "Run test suites" `
+        -GodotArguments @(
+            "--headless",
+            "--path",
+            ".",
+            "--script",
+            "res://tests/test_runner.gd"
+        )
+    Invoke-GodotStep `
+        -Executable $godotExecutable `
+        -Description "Boot main scene briefly" `
+        -GodotArguments @("--headless", "--path", ".", "--quit-after", "2")
 }
 finally {
     Pop-Location
