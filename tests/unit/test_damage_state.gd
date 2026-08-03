@@ -1,5 +1,7 @@
 extends "res://tests/support/test_case.gd"
 
+var _owned_states: Array[DamageState] = []
+
 func run() -> void:
     _test_shield_absorption_and_hull_overflow()
     _test_break_and_destroy_signals_emit_once()
@@ -10,6 +12,7 @@ func run() -> void:
     _test_destroyed_state_does_not_recover()
     _test_disabled_and_zero_damage_are_inert()
     _test_reset_restores_full_enabled_state()
+    _free_owned_states()
 
 func _test_shield_absorption_and_hull_overflow() -> void:
     var state := _make_state(true)
@@ -156,7 +159,14 @@ func _make_state(repair_enabled: bool) -> DamageState:
     var state := DamageState.new()
     state.tuning = tuning
     state.reset_full()
+    _owned_states.append(state)
     return state
+
+func _free_owned_states() -> void:
+    for state: DamageState in _owned_states:
+        if is_instance_valid(state):
+            state.free()
+    _owned_states.clear()
 
 func _packet(amount: float) -> DamagePacket:
     return DamagePacket.create(
