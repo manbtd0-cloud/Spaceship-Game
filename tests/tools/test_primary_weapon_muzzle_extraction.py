@@ -86,6 +86,16 @@ class PrimaryWeaponMuzzleExtractionTests(unittest.TestCase):
         self.assertEqual(choose_track_up_axis((0.0, 1.0, 0.0)), "X")
         self.assertEqual(choose_track_up_axis((0.0, 0.0, 1.0)), "Y")
 
+    def test_material_diagnostic_bootstraps_sibling_imports(self) -> None:
+        path = ASSET_TOOLS / "diagnose_primary_weapon_material_components.py"
+        source = path.read_text(encoding="utf-8")
+        self.assertIn("SCRIPT_DIR = Path(__file__).resolve().parent", source)
+        self.assertIn("sys.path.insert(0, str(SCRIPT_DIR))", source)
+        self.assertLess(
+            source.index("sys.path.insert(0, str(SCRIPT_DIR))"),
+            source.index("import export_small_sci_fi_fighter as base"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
