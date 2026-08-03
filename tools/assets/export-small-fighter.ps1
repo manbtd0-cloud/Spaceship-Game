@@ -173,7 +173,7 @@ Write-Host "Pending schema-5 manifest: $pendingManifestPath"
 Write-Host "Pending action matrix: $pendingMatrixPath"
 Write-Host "Live GLB after validation: $outputPath"
 Write-Host "Thruster visual strategy: source-exact nozzle-local EngineFire geometry"
-Write-Host "Primary muzzle strategy: source-derived forward boundary loops"
+Write-Host "Primary muzzle strategy: source-derived forward-most mirrored Barrel components"
 
 $blenderArguments = @(
     "--background",
