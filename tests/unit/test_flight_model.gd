@@ -13,8 +13,6 @@ func run() -> void:
     tuning.normal_speed_limit = 160.0
     tuning.boost_speed_soft_start = 180.0
     tuning.boost_speed_limit = 240.0
-    tuning.assist_lateral_damping = 4.0
-    tuning.assist_vertical_damping = 4.0
     tuning.assist_angular_damping = 3.0
     tuning.assist_steering_strength = 1.25
     tuning.assist_min_steering_speed = 8.0
@@ -27,12 +25,12 @@ func run() -> void:
     var assisted_output := FlightModel.compute(
         assisted,
         tuning,
-        Vector3(10.0, -2.0, 30.0),
+        Vector3(10.0, -2.0, -30.0),
         Vector3(0.0, 2.0, 0.0)
     )
     assert_true(assisted_output.force_local.z < 0.0, "forward input must produce forward force")
-    assert_true(assisted_output.force_local.x < 0.0, "assisted mode must oppose lateral drift")
-    assert_true(assisted_output.force_local.y > 0.0, "assisted mode must oppose vertical drift")
+    assert_true(assisted_output.force_local.x < 0.0, "assisted mode must steer lateral drift toward nose")
+    assert_true(assisted_output.force_local.y > 0.0, "assisted mode must steer vertical drift toward nose")
     assert_true(assisted_output.torque_local.y < 0.0, "assisted mode must oppose angular drift")
 
     var manual := FlightCommand.new()
@@ -107,8 +105,6 @@ func run() -> void:
     )
     assert_true(braking_output.force_local.z > 0.0, "braking remains available above limit")
 
-    tuning.assist_lateral_damping = 0.0
-    tuning.assist_vertical_damping = 0.0
     var steering_command := FlightCommand.new()
     steering_command.mode = FlightMode.Value.ASSISTED
     steering_command.translation = Vector3.FORWARD
@@ -120,6 +116,14 @@ func run() -> void:
         8500.0
     )
     assert_true(steering_output.force_local.x < 0.0, "assisted model bends drift toward nose")
+    assert_true(
+        absf(
+            steering_output.assist_force_local.dot(
+                Vector3(20.0, 0.0, -20.0).normalized()
+            )
+        ) <= 0.001,
+        "assisted steering must not add or remove speed along velocity"
+    )
 
     steering_command.mode = FlightMode.Value.MANUAL
     var inertial_output := FlightModel.compute(
@@ -134,8 +138,6 @@ func run() -> void:
         "manual model receives no nose-steering force"
     )
 
-    tuning.assist_lateral_damping = 4.0
-    tuning.assist_vertical_damping = 4.0
     var coasting_assisted := FlightCommand.new()
     coasting_assisted.mode = FlightMode.Value.ASSISTED
     var split := FlightModel.compute(
@@ -155,13 +157,14 @@ func run() -> void:
         Vector3.ZERO,
         "coasting must produce zero pilot torque"
     )
-    assert_true(
-        split.assist_force_local.length() > 0.0,
-        "assisted drift correction must be isolated"
+    assert_equal(
+        split.assist_force_local,
+        Vector3.ZERO,
+        "assisted coasting must produce zero translational assist force"
     )
     assert_true(
         split.assist_torque_local.length() > 0.0,
-        "assisted angular damping must be isolated"
+        "assisted angular damping must remain isolated"
     )
     assert_equal(
         split.force_local,
@@ -171,7 +174,7 @@ func run() -> void:
     assert_equal(
         split.torque_local,
         split.pilot_torque_local + split.assist_torque_local,
-        "total torque must equal split contributions"
+        "total torque must preserve split contributions"
     )
 
     var yaw_only := FlightCommand.new()
