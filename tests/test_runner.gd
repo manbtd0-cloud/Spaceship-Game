@@ -36,6 +36,7 @@ func _run_tests() -> void:
     var failure_count: int = 0
 
     for script_path: String in TEST_SCRIPTS:
+        var orphan_ids_before := _orphan_id_set()
         var suite_script: Script = load(script_path)
         if suite_script == null:
             failure_count += 1
@@ -49,6 +50,12 @@ func _run_tests() -> void:
             failure_count += 1
             printerr("%s: %s" % [script_path, failure])
 
+        suite = null
+        failure_count += _report_and_free_new_orphans(
+            script_path,
+            orphan_ids_before
+        )
+
     if failure_count == 0:
         print("PASS: %d suites" % TEST_SCRIPTS.size())
         quit(0)
@@ -56,3 +63,35 @@ func _run_tests() -> void:
 
     printerr("FAIL: %d assertions or suites" % failure_count)
     quit(1)
+
+func _orphan_id_set() -> Dictionary:
+    var result: Dictionary = {}
+    for orphan_id: int in Node.get_orphan_node_ids():
+        result[orphan_id] = true
+    return result
+
+func _report_and_free_new_orphans(
+    script_path: String,
+    orphan_ids_before: Dictionary
+) -> int:
+    var leak_count := 0
+    for orphan_id: int in Node.get_orphan_node_ids():
+        if orphan_ids_before.has(orphan_id):
+            continue
+
+        leak_count += 1
+        var orphan := instance_from_id(orphan_id) as Node
+        var description := "id=%d" % orphan_id
+        if orphan != null:
+            description = "%s (%s, id=%d)" % [
+                orphan.name,
+                orphan.get_class(),
+                orphan_id,
+            ]
+        printerr(
+            "%s: leaked orphan node %s"
+            % [script_path, description]
+        )
+        if orphan != null:
+            orphan.free()
+    return leak_count
