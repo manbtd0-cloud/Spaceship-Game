@@ -6,6 +6,8 @@ signal damage_confirmed(result: DamageResult)
 
 const LEFT_MUZZLE := NodePath("Weapons/Primary/LeftMuzzle")
 const RIGHT_MUZZLE := NodePath("Weapons/Primary/RightMuzzle")
+const LEFT_MUZZLE_FROM_WEAPONS := NodePath("Primary/LeftMuzzle")
+const RIGHT_MUZZLE_FROM_WEAPONS := NodePath("Primary/RightMuzzle")
 const PROJECTILE_SPEED := 900.0
 
 @export var body_path: NodePath
@@ -55,8 +57,19 @@ func initialize() -> void:
         _disable_primary("PrimaryFireController could not resolve model at %s" % model_path)
         return
 
-    _left_muzzle = _model.get_node_or_null(LEFT_MUZZLE) as Node3D
-    _right_muzzle = _model.get_node_or_null(RIGHT_MUZZLE) as Node3D
+    var weapons_root := _find_unique_weapons_root()
+    if weapons_root == null:
+        _disable_primary(
+            "Canonical fighter must expose exactly one Weapons hierarchy under model"
+        )
+        return
+
+    _left_muzzle = weapons_root.get_node_or_null(
+        LEFT_MUZZLE_FROM_WEAPONS
+    ) as Node3D
+    _right_muzzle = weapons_root.get_node_or_null(
+        RIGHT_MUZZLE_FROM_WEAPONS
+    ) as Node3D
     if _left_muzzle == null or _right_muzzle == null:
         _disable_primary(
             "Canonical fighter primary muzzles missing under model: %s, %s"
@@ -126,6 +139,19 @@ func _fire_side(side: int) -> void:
     if projectile == null:
         return
     shot_fired.emit(side, muzzle.global_transform)
+
+func _find_unique_weapons_root() -> Node3D:
+    if _model == null:
+        return null
+    var candidates := _model.find_children(
+        "Weapons",
+        "Node3D",
+        true,
+        false
+    )
+    if candidates.size() != 1:
+        return null
+    return candidates[0] as Node3D
 
 func _on_projectile_resolved(
     _projectile: PulseProjectile,
