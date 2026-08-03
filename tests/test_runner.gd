@@ -10,6 +10,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_player_input_math.gd",
     "res://tests/unit/test_primary_fire_cadence.gd",
     "res://tests/unit/test_damage_state.gd",
+    "res://tests/unit/test_player_settings_service.gd",
     "res://tests/integration/test_input_map.gd",
     "res://tests/integration/test_primary_fire_input.gd",
     "res://tests/integration/test_pulse_projectile.gd",
