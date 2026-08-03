@@ -43,3 +43,22 @@ func run() -> void:
         Vector3.ZERO,
         "steering stays inactive below minimum speed"
     )
+
+    var tuning := FlightTuning.new()
+    tuning.assist_lateral_damping = 12000.0
+    tuning.assist_vertical_damping = 12000.0
+    var coasting := FlightCommand.new()
+    coasting.mode = FlightMode.Value.ASSISTED
+    coasting.translation = Vector3.ZERO
+    var coasting_output := FlightModel.compute(
+        coasting,
+        tuning,
+        Vector3(35.0, -12.0, -90.0),
+        Vector3.ZERO,
+        8500.0
+    )
+    assert_equal(
+        coasting_output.assist_force_local,
+        Vector3.ZERO,
+        "assisted coasting must not bleed speed through local-axis damping"
+    )
