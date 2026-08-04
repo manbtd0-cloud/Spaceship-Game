@@ -20,7 +20,6 @@ const REQUIRED_ACTIONS: Array[StringName] = [
     &"boost",
     &"fire_primary",
     &"toggle_flight_mode",
-    &"toggle_mouse_capture",
     &"reset_flight_room",
 ]
 
@@ -70,9 +69,6 @@ func sample_command(current_mode: FlightMode.Value) -> FlightCommand:
 
 func consume_mode_toggle() -> bool:
     return _just_pressed(&"toggle_flight_mode")
-
-func consume_capture_toggle() -> bool:
-    return _just_pressed(&"toggle_mouse_capture")
 
 func consume_reset_request() -> bool:
     return _just_pressed(&"reset_flight_room")
