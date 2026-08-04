@@ -163,6 +163,39 @@ func run() -> void:
                     hud.get_node_or_null(label_path) is Label,
                     "missing HUD label: %s" % label_path
                 )
+            assert_equal(
+                hud.camera_path,
+                NodePath("../ChaseCameraRig/Camera3D"),
+                "HUD must resolve the existing chase camera"
+            )
+            assert_equal(
+                hud.nose_reticle_path,
+                NodePath("NoseReticle"),
+                "HUD must expose the fixed nose-reticle path"
+            )
+            assert_equal(
+                hud.velocity_marker_path,
+                NodePath("VelocityMarker"),
+                "HUD must expose the true-velocity marker path"
+            )
+            assert_true(
+                hud.get_node_or_null("NoseReticle") is Control,
+                "fixed nose reticle required"
+            )
+            assert_true(
+                hud.get_node_or_null("VelocityMarker") is Control,
+                "true velocity marker required"
+            )
+            for segment_path: String in [
+                "NoseReticle/Top",
+                "NoseReticle/Bottom",
+                "NoseReticle/Left",
+                "NoseReticle/Right"
+            ]:
+                assert_true(
+                    hud.get_node_or_null(segment_path) is ColorRect,
+                    "missing nose-reticle segment: %s" % segment_path
+                )
             hud.free()
 
     player.free()
