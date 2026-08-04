@@ -38,6 +38,53 @@ func run() -> void:
         "returned command snapshots must not mutate controller state"
     )
 
+    var changed_modes: Array[int] = []
+    controller.flight_mode_changed.connect(
+        func(value: FlightMode.Value) -> void:
+            changed_modes.append(value)
+    )
+    assert_true(
+        controller.set_flight_mode(FlightMode.Value.MANUAL),
+        "valid mode change must be accepted"
+    )
+    assert_equal(
+        controller.get_flight_mode(),
+        FlightMode.Value.MANUAL,
+        "manual internal mode must become player-facing Inertial mode"
+    )
+    assert_equal(changed_modes.size(), 1, "real mode change emits exactly once")
+    assert_equal(
+        changed_modes[0],
+        FlightMode.Value.MANUAL,
+        "mode signal must carry the applied value"
+    )
+    assert_true(
+        not controller.set_flight_mode(FlightMode.Value.MANUAL),
+        "setting the active mode must be a no-op"
+    )
+    assert_equal(changed_modes.size(), 1, "mode no-op must not emit")
+    assert_true(
+        not controller.set_flight_mode(999),
+        "invalid mode must be rejected"
+    )
+    assert_equal(
+        controller.get_flight_mode(),
+        FlightMode.Value.MANUAL,
+        "invalid mode must preserve current state"
+    )
+    assert_equal(changed_modes.size(), 1, "invalid mode must not emit")
+
+    assert_equal(
+        FlightHud.mode_text_for(FlightMode.Value.ASSISTED),
+        "MODE   ASSISTED",
+        "assisted HUD copy must remain explicit"
+    )
+    assert_equal(
+        FlightHud.mode_text_for(FlightMode.Value.MANUAL),
+        "MODE   INERTIAL",
+        "manual internal mode must be labeled Inertial to the player"
+    )
+
     controller.reset_runtime_state()
 
     assert_true(
