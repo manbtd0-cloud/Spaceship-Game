@@ -175,8 +175,8 @@ $expectedEffectPaths = @(
     "ThrusterEffects/ManeuverEffects/RearUpperRightEffect",
     "ThrusterEffects/ManeuverEffects/RearLowerLeftEffect",
     "ThrusterEffects/ManeuverEffects/RearLowerRightEffect",
-    "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
-    "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect"
+    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
+    "ThrusterEffects/Maneuver/FrontLowerRightEffect"
 )
 $actualEffectPaths = @(
     $manifest.thruster_effects | ForEach-Object { [string]$_.path }
@@ -282,6 +282,16 @@ try {
             ".",
             "--script",
             "res://tests/test_runner.gd"
+        )
+    Invoke-GodotStep `
+        -Executable $godotExecutable `
+        -Description "Verify inertial rigid-body velocity preservation" `
+        -GodotArguments @(
+            "--headless",
+            "--path",
+            ".",
+            "--script",
+            "res://tests/integration/inertial_velocity_scene_test.gd"
         )
     Invoke-GodotStep `
         -Executable $godotExecutable `
