@@ -8,17 +8,21 @@ The playable flight room provides:
 
 - six-axis local-space thrust;
 - assisted nose-led maneuvering and coordinated banking;
-- fully inertial manual flight;
+- fully inertial flight with exact world-velocity preservation under pure rotation;
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained translational boost with thermal lockout;
-- a ship-relative chase camera with bounded Close, Standard, and Far presets;
+- Dynamic, Tactical, and Locked chase-camera behaviors;
+- independent Close, Standard, and Far camera distances;
+- exact hold views for rear, right, and left observation;
+- a fixed nose reticle and a true world-velocity marker with safe-edge clamping;
+- a process-always pause menu with persistent camera and flight settings;
 - the canonical Small Sci-Fi Fighter at identity transform;
 - twelve source-exact nozzle-local thruster effects;
 - deterministic mappings for twelve pilot actions;
 - separate direct-pilot and dim assisted-correction visuals;
 - nozzle-anchored rise and fall envelopes;
 - four imported asteroid families and a deterministic collidable field;
-- a high-speed navigation course, telemetry HUD, collisions, and safe reset handling.
+- a high-speed navigation course, telemetry HUD, collisions, and pause-safe reset handling.
 
 The temporary model adapter, rear-only glow anchors, procedural exhaust cones, and free-form runtime thruster allocator have been removed.
 
@@ -49,10 +53,25 @@ godot --path .
 | `Up` | Nose down |
 | `Left` / `Right` | Roll left / right |
 | `Shift` | Sustained translational boost |
-| `F` | Toggle assisted / manual flight |
-| `C` | Cycle Standard / Far / Close chase-camera presets |
-| `Escape` | Release / recapture mouse |
+| `F` | Toggle Assisted / Inertial flight |
+| `C` | Cycle Standard / Far / Close camera distance |
+| `B` | Hold exact rear view |
+| `PageUp` | Hold exact right view |
+| `PageDown` | Hold exact left view |
+| `Escape` | Pause / resume and open configuration |
 | `R` | Reset to spawn, clear momentum, and reset boost heat |
+
+The pause menu writes only through the typed `PlayerSettingsService`. It persists:
+
+```text
+camera.behavior
+camera.distance
+flight.default_mode
+```
+
+Settings are stored in `user://settings.cfg`. The room-owned settings coordinator applies saved values to the existing camera rig and ship controller without duplicating gameplay state.
+
+The nose reticle represents the ship's current facing direction. The velocity marker represents the actual world-space travel direction, remains hidden below `2.0 m/s`, and clamps inside a `32 px` safe margin when the vector is offscreen or behind the camera.
 
 ## Canonical fighter and thrusters
 
@@ -64,7 +83,7 @@ assets/runtime/ships/player/small_sci_fi_fighter.manifest.json
 config/ships/small_sci_fi_fighter_thruster_actions.json
 ```
 
-The schema-4 contract establishes:
+The schema-5 contract establishes:
 
 ```text
 Godot right/forward/up: +X / -Z / +Y
@@ -81,7 +100,7 @@ Runtime matrix generation: forbidden
 
 ### Why plume growth stays attached
 
-The preserved Blender source contains exhaust meshes authored against the real vents. The schema-4 exporter:
+The preserved Blender source contains exhaust meshes authored against the real vents. The schema-5 exporter:
 
 1. identifies twelve physical plume groups from the eleven `EngineFire*` objects;
 2. preserves the exact evaluated source vertices, faces, and component indices;
@@ -204,10 +223,10 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 27 suites
+PASS: 34 suites
 ```
 
-Do not claim the milestone verified until the verifier validates schema 4 and the deterministic matrix, imports the project, runs every suite, and boots the main scene without parser, path, or runtime errors.
+Do not claim the milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
 
 ## Asset policy
 

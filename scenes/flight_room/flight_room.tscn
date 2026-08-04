@@ -1,9 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="2_camera"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flight_hud.tscn" id="3_hud"]
 [ext_resource type="Script" path="res://src/flight_room/flight_room_controller.gd" id="4_controller"]
+[ext_resource type="Script" path="res://src/flight_room/flight_room_settings_coordinator.gd" id="5_settings"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -319,3 +321,11 @@ player_controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
 input_source_path = NodePath("../PlayerInterceptor/PlayerInputSource")
 reset_volume_path = NodePath("../ResetVolume")
 boundary_radius = 6000.0
+
+[node name="FlightRoomSettingsCoordinator" type="Node" parent="."]
+script = ExtResource("5_settings")
+settings_service_path = NodePath("/root/PlayerSettingsService")
+camera_rig_path = NodePath("../ChaseCameraRig")
+flight_controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
+
+[node name="PauseMenu" parent="." instance=ExtResource("6_pause")]

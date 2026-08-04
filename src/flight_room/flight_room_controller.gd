@@ -87,6 +87,8 @@ func _on_reset_volume_body_entered(other: Node) -> void:
         reset_player()
 
 func reset_player() -> void:
+    if get_tree() != null and get_tree().paused:
+        get_tree().paused = false
     _body.freeze = true
     _body.global_transform = _spawn_transform
     _body.linear_velocity = Vector3.ZERO

@@ -1,0 +1,101 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/pause_menu.gd" id="1_pause"]
+
+[node name="PauseMenu" type="CanvasLayer"]
+process_mode = 3
+visible = false
+layer = 100
+script = ExtResource("1_pause")
+settings_service_path = NodePath("/root/PlayerSettingsService")
+input_source_path = NodePath("../PlayerInterceptor/PlayerInputSource")
+room_controller_path = NodePath("../FlightRoomController")
+resume_button_path = NodePath("Backdrop/Center/Panel/Margin/Layout/ResumeButton")
+camera_behavior_option_path = NodePath("Backdrop/Center/Panel/Margin/Layout/CameraBehaviorOption")
+camera_distance_option_path = NodePath("Backdrop/Center/Panel/Margin/Layout/CameraDistanceOption")
+flight_mode_option_path = NodePath("Backdrop/Center/Panel/Margin/Layout/FlightModeOption")
+restart_button_path = NodePath("Backdrop/Center/Panel/Margin/Layout/RestartButton")
+quit_button_path = NodePath("Backdrop/Center/Panel/Margin/Layout/QuitButton")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.005, 0.012, 0.03, 0.82)
+
+[node name="Center" type="CenterContainer" parent="Backdrop"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Backdrop/Center"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Backdrop/Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="Layout" type="VBoxContainer" parent="Backdrop/Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 28
+text = "FLIGHT PAUSED"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.72, 0.84, 1)
+theme_override_font_sizes/font_size = 13
+text = "Ship configuration"
+horizontal_alignment = 1
+
+[node name="BehaviorLabel" type="Label" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Camera behavior"
+
+[node name="CameraBehaviorOption" type="OptionButton" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+focus_neighbor_top = NodePath("../../../../../Center/Panel/Margin/Layout/ResumeButton")
+
+[node name="DistanceLabel" type="Label" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Camera distance"
+
+[node name="CameraDistanceOption" type="OptionButton" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+
+[node name="ModeLabel" type="Label" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Default flight mode"
+
+[node name="FlightModeOption" type="OptionButton" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+
+[node name="Separator" type="HSeparator" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+
+[node name="ResumeButton" type="Button" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Restart Flight Room"
+
+[node name="QuitButton" type="Button" parent="Backdrop/Center/Panel/Margin/Layout"]
+layout_mode = 2
+text = "Quit"
