@@ -43,9 +43,6 @@ func _ready() -> void:
         set_physics_process(false)
 
 func _physics_process(delta: float) -> void:
-    if _input_source.consume_capture_toggle():
-        _input_source.set_mouse_captured(not _input_source.is_mouse_captured())
-
     if _input_source.consume_mode_toggle():
         set_flight_mode(ShipFlightState.toggled_mode(_flight_mode))
 
