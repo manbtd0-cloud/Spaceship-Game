@@ -88,10 +88,6 @@ toggle_flight_mode={
 "deadzone": 0.15,
 "events": [Object(InputEventKey,"physical_keycode":70)]
 }
-toggle_mouse_capture={
-"deadzone": 0.15,
-"events": [Object(InputEventKey,"physical_keycode":4194305)]
-}
 reset_flight_room={
 "deadzone": 0.15,
 "events": [Object(InputEventKey,"physical_keycode":82)]
@@ -99,4 +95,20 @@ reset_flight_room={
 camera_cycle={
 "deadzone": 0.15,
 "events": [Object(InputEventKey,"physical_keycode":67)]
+}
+toggle_pause={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194305)]
+}
+look_rear={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":66)]
+}
+look_right={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194323)]
+}
+look_left={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":4194324)]
 }
