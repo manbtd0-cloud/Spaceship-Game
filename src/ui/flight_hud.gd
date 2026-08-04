@@ -56,13 +56,16 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
     _refresh_labels()
 
+static func mode_text_for(mode: FlightMode.Value) -> String:
+    return (
+        "MODE   ASSISTED"
+        if mode == FlightMode.Value.ASSISTED
+        else "MODE   INERTIAL"
+    )
+
 func _refresh_labels() -> void:
     _speed_label.text = "SPEED  %04d m/s" % roundi(_controller.get_speed_mps())
-    _mode_label.text = (
-        "MODE   ASSISTED"
-        if _controller.get_flight_mode() == FlightMode.Value.ASSISTED
-        else "MODE   MANUAL"
-    )
+    _mode_label.text = mode_text_for(_controller.get_flight_mode())
 
     var heat_percent := roundi(_controller.get_boost_heat() * 100.0)
     if _controller.is_boost_locked_out():
