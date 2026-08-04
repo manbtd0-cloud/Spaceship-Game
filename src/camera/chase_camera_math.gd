@@ -1,6 +1,11 @@
 class_name ChaseCameraMath
 extends RefCounted
 
+const TEMPORARY_VIEW_NONE := 0
+const TEMPORARY_VIEW_REAR := 1
+const TEMPORARY_VIEW_LEFT := 2
+const TEMPORARY_VIEW_RIGHT := 3
+
 static func exponential_weight(sharpness: float, delta: float) -> float:
     return 1.0 - exp(-maxf(sharpness, 0.0) * maxf(delta, 0.0))
 
@@ -90,6 +95,41 @@ static func clamp_rotation_error(
             candidate_rotation,
             clampf(maximum_error / angular_error, 0.0, 1.0)
         )
+    ).orthonormalized()
+
+static func temporary_view_transform(
+    target_transform: Transform3D,
+    view: int,
+    rear_offset: float,
+    height: float
+) -> Transform3D:
+    if not target_transform.origin.is_finite():
+        return Transform3D.IDENTITY
+
+    var target_basis := target_transform.basis.orthonormalized()
+    var safe_rear := maxf(rear_offset, 0.0)
+    var safe_height := maxf(height, 0.0)
+    var local_origin: Vector3
+
+    match view:
+        TEMPORARY_VIEW_REAR:
+            local_origin = Vector3(0.0, safe_height, -safe_rear)
+        TEMPORARY_VIEW_RIGHT:
+            local_origin = Vector3(-safe_rear, safe_height, 0.0)
+        TEMPORARY_VIEW_LEFT:
+            local_origin = Vector3(safe_rear, safe_height, 0.0)
+        _:
+            return target_transform
+
+    var local_look_target := Vector3(0.0, safe_height, 0.0)
+    var world_origin := target_transform.origin + target_basis * local_origin
+    var world_look_target := (
+        target_transform.origin
+        + target_basis * local_look_target
+    )
+    return Transform3D(Basis.IDENTITY, world_origin).looking_at(
+        world_look_target,
+        target_basis.y.normalized()
     ).orthonormalized()
 
 static func desired_look_target(
