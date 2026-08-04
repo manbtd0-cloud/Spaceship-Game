@@ -27,6 +27,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/integration/test_camera_behavior_modes.gd",
     "res://tests/integration/test_temporary_camera_views.gd",
     "res://tests/integration/test_chase_camera_rig.gd",
+    "res://tests/integration/test_flight_room_settings_coordinator.gd",
     "res://tests/integration/test_flight_room_scene.gd",
     "res://tests/integration/test_hero_ship_asset.gd",
     "res://tests/integration/test_ship_thruster_visual_controller.gd",
