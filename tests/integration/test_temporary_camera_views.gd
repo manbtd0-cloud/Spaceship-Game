@@ -1,32 +1,12 @@
 extends "res://tests/support/test_case.gd"
 
-const MATH_SCRIPT_PATH := "res://src/camera/chase_camera_math.gd"
-
-var _math_script: Script
-
 func run() -> void:
-    _math_script = load(MATH_SCRIPT_PATH) as Script
-    assert_true(_math_script != null, "camera math script must load")
-    if _math_script == null:
-        return
-
-    var has_transform_helper := _script_has_method(
-        _math_script,
-        &"temporary_view_transform"
-    )
-    assert_true(
-        has_transform_helper,
-        "camera math must expose temporary_view_transform"
-    )
-    if not has_transform_helper:
-        return
-
     _test_exact_view_transforms()
     _test_rotated_ship_relative_transform()
     _test_runtime_priority_and_release()
 
 func _test_exact_view_transforms() -> void:
-    var rear := _temporary_view_transform(
+    var rear := ChaseCameraMath.temporary_view_transform(
         Transform3D.IDENTITY,
         ChaseCameraRig.TemporaryView.REAR,
         14.0,
@@ -41,7 +21,7 @@ func _test_exact_view_transforms() -> void:
         "rear view must look along ship-local +Z"
     )
 
-    var right := _temporary_view_transform(
+    var right := ChaseCameraMath.temporary_view_transform(
         Transform3D.IDENTITY,
         ChaseCameraRig.TemporaryView.RIGHT,
         14.0,
@@ -56,7 +36,7 @@ func _test_exact_view_transforms() -> void:
         "right view must look along ship-local +X"
     )
 
-    var left := _temporary_view_transform(
+    var left := ChaseCameraMath.temporary_view_transform(
         Transform3D.IDENTITY,
         ChaseCameraRig.TemporaryView.LEFT,
         14.0,
@@ -76,7 +56,7 @@ func _test_rotated_ship_relative_transform() -> void:
         Basis(Vector3.UP, deg_to_rad(90.0)),
         Vector3(10.0, 2.0, -5.0)
     )
-    var right := _temporary_view_transform(
+    var right := ChaseCameraMath.temporary_view_transform(
         target,
         ChaseCameraRig.TemporaryView.RIGHT,
         14.0,
@@ -156,7 +136,7 @@ func _test_runtime_priority_and_release() -> void:
     )
     assert_true(
         rig.global_transform.is_equal_approx(
-            _temporary_view_transform(
+            ChaseCameraMath.temporary_view_transform(
                 target.global_transform,
                 ChaseCameraRig.TemporaryView.REAR,
                 14.0,
@@ -175,7 +155,7 @@ func _test_runtime_priority_and_release() -> void:
     )
     assert_true(
         rig.global_transform.is_equal_approx(
-            _temporary_view_transform(
+            ChaseCameraMath.temporary_view_transform(
                 target.global_transform,
                 ChaseCameraRig.TemporaryView.RIGHT,
                 14.0,
@@ -194,7 +174,7 @@ func _test_runtime_priority_and_release() -> void:
     )
     assert_true(
         rig.global_transform.is_equal_approx(
-            _temporary_view_transform(
+            ChaseCameraMath.temporary_view_transform(
                 target.global_transform,
                 ChaseCameraRig.TemporaryView.LEFT,
                 14.0,
@@ -251,33 +231,6 @@ func _test_runtime_priority_and_release() -> void:
     )
 
     _cleanup_fixture(fixture)
-
-func _temporary_view_transform(
-    target_transform: Transform3D,
-    view: int,
-    distance: float,
-    height: float
-) -> Transform3D:
-    var value: Variant = _math_script.call(
-        &"temporary_view_transform",
-        target_transform,
-        view,
-        distance,
-        height
-    )
-    assert_true(
-        typeof(value) == TYPE_TRANSFORM3D,
-        "temporary_view_transform must return Transform3D"
-    )
-    if typeof(value) != TYPE_TRANSFORM3D:
-        return Transform3D.IDENTITY
-    return value
-
-func _script_has_method(script: Script, method_name: StringName) -> bool:
-    for method: Dictionary in script.get_script_method_list():
-        if StringName(method.get("name", "")) == method_name:
-            return true
-    return false
 
 func _cleanup_fixture(fixture: Node3D) -> void:
     Input.action_release(&"look_rear")
