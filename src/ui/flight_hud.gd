@@ -84,14 +84,15 @@ func _refresh_labels() -> void:
         _controller.get_active_speed_limit()
     )
     _capture_label.text = (
-        "MOUSE  CAPTURED - ESC TO RELEASE"
+        "MOUSE  CAPTURED   ESC PAUSE"
         if _input_source.is_mouse_captured()
-        else "MOUSE  RELEASED - ESC TO CAPTURE"
+        else "MOUSE  RELEASED"
     )
     _controls_label.text = (
         "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   "
         + "MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   "
-        + "LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   R RESET"
+        + "LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   C CAMERA   "
+        + "B REAR   PGUP RIGHT   PGDN LEFT   R RESET"
     )
 
 func _disable_with_error(message: String) -> void:
