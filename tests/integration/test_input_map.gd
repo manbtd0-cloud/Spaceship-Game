@@ -72,6 +72,21 @@ func run() -> void:
         "Escape must not remain a mouse-capture toggle"
     )
 
+    assert_true(
+        &"toggle_mouse_capture" not in PlayerInputSource.REQUIRED_ACTIONS,
+        "ship input must stop owning the obsolete mouse-capture action"
+    )
+    assert_true(
+        &"toggle_pause" not in PlayerInputSource.REQUIRED_ACTIONS,
+        "pause input must be owned by the pause controller"
+    )
+    assert_true(
+        &"look_rear" not in PlayerInputSource.REQUIRED_ACTIONS
+        and &"look_right" not in PlayerInputSource.REQUIRED_ACTIONS
+        and &"look_left" not in PlayerInputSource.REQUIRED_ACTIONS,
+        "temporary camera actions must be owned by the camera rig"
+    )
+
     var c_owners := 0
     var v_owners := 0
     var escape_owners := 0
