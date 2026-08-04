@@ -47,8 +47,7 @@ func _physics_process(delta: float) -> void:
         _input_source.set_mouse_captured(not _input_source.is_mouse_captured())
 
     if _input_source.consume_mode_toggle():
-        _flight_mode = ShipFlightState.toggled_mode(_flight_mode)
-        flight_mode_changed.emit(_flight_mode)
+        set_flight_mode(ShipFlightState.toggled_mode(_flight_mode))
 
     if _input_source.consume_reset_request():
         reset_requested.emit()
@@ -112,6 +111,21 @@ func _physics_process(delta: float) -> void:
     _last_torque_local = output.torque_local
     _body.apply_central_force(basis * output.force_local)
     _body.apply_torque(basis * output.torque_local)
+
+func set_flight_mode(value: FlightMode.Value) -> bool:
+    if (
+        value != FlightMode.Value.ASSISTED
+        and value != FlightMode.Value.MANUAL
+    ):
+        return false
+    if _flight_mode == value:
+        return false
+
+    _flight_mode = value
+    _auto_bank_offset = 0.0
+    _auto_bank_rate = 0.0
+    flight_mode_changed.emit(_flight_mode)
+    return true
 
 func get_flight_mode() -> FlightMode.Value:
     return _flight_mode
