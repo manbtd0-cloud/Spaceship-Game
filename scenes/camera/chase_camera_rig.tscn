@@ -9,11 +9,7 @@ target_path = NodePath("../PlayerInterceptor/CameraTarget")
 controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
 camera_path = NodePath("Camera3D")
 tuning = ExtResource("2_tuning")
-position_sharpness = 5.5
-rotation_sharpness = 7.0
 preset_transition_sharpness = 9.0
-velocity_look_ahead = 0.08
-max_prediction_distance = 8.0
 base_fov = 68.0
 
 [node name="Camera3D" type="Camera3D" parent="."]
