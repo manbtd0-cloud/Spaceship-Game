@@ -58,6 +58,40 @@ static func clamp_rear_position(
     )
     return target_transform.origin + target_basis * local_position
 
+static func clamp_position_error(
+    candidate_position: Vector3,
+    desired_position: Vector3,
+    maximum_error: float
+) -> Vector3:
+    if not desired_position.is_finite():
+        return Vector3.ZERO
+    if not candidate_position.is_finite():
+        return desired_position
+    var offset := candidate_position - desired_position
+    return desired_position + offset.limit_length(maxf(maximum_error, 0.0))
+
+static func clamp_rotation_error(
+    candidate_basis: Basis,
+    desired_basis: Basis,
+    maximum_error_degrees: float
+) -> Basis:
+    var safe_candidate := candidate_basis.orthonormalized()
+    var safe_desired := desired_basis.orthonormalized()
+    var candidate_rotation := safe_candidate.get_rotation_quaternion()
+    var desired_rotation := safe_desired.get_rotation_quaternion()
+    var angular_error := desired_rotation.angle_to(candidate_rotation)
+    var maximum_error := deg_to_rad(maxf(maximum_error_degrees, 0.0))
+    if angular_error <= maximum_error + 0.000001:
+        return safe_candidate
+    if angular_error <= 0.000001 or maximum_error <= 0.0:
+        return safe_desired
+    return Basis(
+        desired_rotation.slerp(
+            candidate_rotation,
+            clampf(maximum_error / angular_error, 0.0, 1.0)
+        )
+    ).orthonormalized()
+
 static func desired_look_target(
     target_transform: Transform3D,
     world_velocity: Vector3,
