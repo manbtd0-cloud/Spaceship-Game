@@ -175,8 +175,8 @@ $expectedEffectPaths = @(
     "ThrusterEffects/ManeuverEffects/RearUpperRightEffect",
     "ThrusterEffects/ManeuverEffects/RearLowerLeftEffect",
     "ThrusterEffects/ManeuverEffects/RearLowerRightEffect",
-    "ThrusterEffects/Maneuver/FrontLowerLeftEffect",
-    "ThrusterEffects/Maneuver/FrontLowerRightEffect"
+    "ThrusterEffects/ManeuverEffects/FrontLowerLeftEffect",
+    "ThrusterEffects/ManeuverEffects/FrontLowerRightEffect"
 )
 $actualEffectPaths = @(
     $manifest.thruster_effects | ForEach-Object { [string]$_.path }
