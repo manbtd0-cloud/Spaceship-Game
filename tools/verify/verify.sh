@@ -166,4 +166,5 @@ fi
 cd "$REPO_ROOT"
 "$GODOT_BIN" --headless --path . --editor --quit
 "$GODOT_BIN" --headless --path . --script res://tests/test_runner.gd
+"$GODOT_BIN" --headless --path . --script res://tests/integration/inertial_velocity_scene_test.gd
 "$GODOT_BIN" --headless --path . --quit-after 2
