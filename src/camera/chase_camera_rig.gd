@@ -140,7 +140,11 @@ func select_behavior(value: CameraBehavior.Value) -> bool:
     if _selected_behavior == value:
         return false
     _selected_behavior = value
-    if _initialized and value == CameraBehavior.Value.LOCKED:
+    if (
+        _initialized
+        and _temporary_view == TemporaryView.NONE
+        and value == CameraBehavior.Value.LOCKED
+    ):
         _snap_to_desired_state()
     return true
 
@@ -155,7 +159,11 @@ func select_distance(value: CameraDistance.Value) -> bool:
     if _selected_distance == value:
         return false
     _selected_distance = value
-    if _initialized and _selected_behavior == CameraBehavior.Value.LOCKED:
+    if (
+        _initialized
+        and _temporary_view == TemporaryView.NONE
+        and _selected_behavior == CameraBehavior.Value.LOCKED
+    ):
         _snap_to_desired_state()
     return true
 
@@ -167,7 +175,11 @@ func get_selected_distance() -> CameraDistance.Value:
 func select_preset(value: int) -> void:
     if _preset_for(value) == null:
         _selected_distance = CameraDistance.Value.STANDARD
-        if _initialized and _selected_behavior == CameraBehavior.Value.LOCKED:
+        if (
+            _initialized
+            and _temporary_view == TemporaryView.NONE
+            and _selected_behavior == CameraBehavior.Value.LOCKED
+        ):
             _snap_to_desired_state()
         return
     select_distance(value as CameraDistance.Value)
@@ -199,6 +211,18 @@ func step_camera(delta: float) -> void:
     if not _initialized:
         return
 
+    var requested_temporary_view := _sample_temporary_view()
+    if requested_temporary_view != TemporaryView.NONE:
+        _temporary_view = requested_temporary_view
+        _apply_temporary_view(requested_temporary_view)
+        _update_fov(delta)
+        return
+
+    if _temporary_view != TemporaryView.NONE:
+        _temporary_view = TemporaryView.NONE
+        _snap_to_desired_state()
+        return
+
     _advance_distance_framing(delta)
 
     var world_velocity := _controller.get_world_velocity()
@@ -223,6 +247,27 @@ func step_camera(delta: float) -> void:
             _step_tactical(desired_position, desired_basis, delta)
 
     _update_fov(delta)
+
+func _sample_temporary_view() -> int:
+    if _action_pressed(&"look_rear"):
+        return TemporaryView.REAR
+    if _action_pressed(&"look_right"):
+        return TemporaryView.RIGHT
+    if _action_pressed(&"look_left"):
+        return TemporaryView.LEFT
+    return TemporaryView.NONE
+
+func _action_pressed(action: StringName) -> bool:
+    return InputMap.has_action(action) and Input.is_action_pressed(action)
+
+func _apply_temporary_view(view: int) -> void:
+    var preset := _selected_valid_preset()
+    global_transform = ChaseCameraMath.temporary_view_transform(
+        _target.global_transform,
+        view,
+        preset.rear_offset,
+        preset.height
+    )
 
 func _advance_distance_framing(delta: float) -> void:
     if get_selected_behavior() == CameraBehavior.Value.LOCKED:
