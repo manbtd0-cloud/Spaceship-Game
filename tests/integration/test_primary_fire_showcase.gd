@@ -25,8 +25,9 @@ func run() -> void:
         "production chase camera required"
     )
     assert_true(
-        showcase.get_node_or_null("PulseProjectilePool") is PulseProjectilePool,
-        "production projectile pool required"
+        showcase.get_node_or_null("PlayerInterceptor/PulseProjectilePool")
+        is PulseProjectilePool,
+        "production player projectile pool required"
     )
     assert_true(
         showcase.get_node_or_null("PlayerInterceptor/PrimaryFireController")
@@ -67,6 +68,11 @@ func run() -> void:
         NodePath("../VisualRoot/SmallSciFiFighter"),
         "fire model path must target canonical fighter"
     )
+    assert_equal(
+        fire.projectile_pool_path,
+        NodePath("../PulseProjectilePool"),
+        "fire controller must target the production player pool"
+    )
 
     var tree := Engine.get_main_loop() as SceneTree
     assert_true(tree != null, "test runner SceneTree required")
@@ -81,7 +87,9 @@ func run() -> void:
     var input_source := showcase.get_node(
         "PlayerInterceptor/PlayerInputSource"
     ) as PlayerInputSource
-    var pool := showcase.get_node("PulseProjectilePool") as PulseProjectilePool
+    var pool := showcase.get_node(
+        "PlayerInterceptor/PulseProjectilePool"
+    ) as PulseProjectilePool
 
     assert_true(body.freeze, "showcase fighter must remain stationary")
     assert_true(
