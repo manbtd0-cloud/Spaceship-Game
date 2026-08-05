@@ -7,22 +7,24 @@ A single-player, third-person space-flight vertical slice built with Godot 4.7.1
 The playable flight room provides:
 
 - six-axis local-space thrust;
-- assisted nose-led maneuvering and coordinated banking;
+- the established Assisted nose-led maneuvering and coordinated banking;
+- a bounded AI Assisted mode that interprets turn intent and redirects real velocity through physical force;
 - fully inertial flight with exact world-velocity preservation under pure rotation;
+- hold-to-use Smart Stabilize that arrests rotation before progressively braking drift;
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained translational boost with thermal lockout;
 - Dynamic, Tactical, and Locked chase-camera behaviors;
 - independent Close, Standard, and Far camera distances;
 - exact hold views for rear, right, and left observation;
 - a fixed nose reticle and a true world-velocity marker with safe-edge clamping;
-- a process-always pause menu with persistent camera and flight settings;
+- a process-always pause menu with persistent camera and three-mode flight settings;
 - the canonical Small Sci-Fi Fighter at identity transform;
 - twelve source-exact nozzle-local thruster effects;
 - deterministic mappings for twelve pilot actions;
 - separate direct-pilot and dim assisted-correction visuals;
 - nozzle-anchored rise and fall envelopes;
 - four imported asteroid families and a deterministic collidable field;
-- a high-speed navigation course, telemetry HUD, collisions, and pause-safe reset handling.
+- a high-speed navigation course, telemetry HUD, collisions, primary fire, and pause-safe reset handling.
 
 The temporary model adapter, rear-only glow anchors, procedural exhaust cones, and free-form runtime thruster allocator have been removed.
 
@@ -53,13 +55,23 @@ godot --path .
 | `Up` | Nose down |
 | `Left` / `Right` | Roll left / right |
 | `Shift` | Sustained translational boost |
-| `F` | Toggle Assisted / Inertial flight |
+| `F` | Cycle Assisted / AI Assisted / Inertial flight |
+| `X` | Hold Smart Stabilize |
+| `LMB` / `V` | Hold primary fire |
 | `C` | Cycle Standard / Far / Close camera distance |
 | `B` | Hold exact rear view |
 | `PageUp` | Hold exact right view |
 | `PageDown` | Hold exact left view |
 | `Escape` | Pause / resume and open configuration |
 | `R` | Reset to spawn, clear momentum, and reset boost heat |
+
+The three modes keep distinct behavior:
+
+- **Assisted** retains the established nose-led steering, damping, and coordinated bank.
+- **AI Assisted** keeps the same rigid-body pipeline while applying bounded real force and torque to settle unwanted rotation and bend the true velocity vector during commanded turns.
+- **Inertial** keeps true momentum and receives no automatic force or torque.
+
+Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands, applies bounded counter-torque immediately, and progressively increases world-relative braking as angular motion settles. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
 
 The pause menu writes only through the typed `PlayerSettingsService`. It persists:
 
@@ -69,7 +81,7 @@ camera.distance
 flight.default_mode
 ```
 
-Settings are stored in `user://settings.cfg`. The room-owned settings coordinator applies saved values to the existing camera rig and ship controller without duplicating gameplay state.
+Settings are stored in `user://settings.cfg`. The room-owned settings coordinator applies saved values to the existing camera rig and ship controller without duplicating gameplay state. Existing settings values remain compatible: Assisted is `0`, Inertial is `1`, and AI Assisted is appended as `2`.
 
 The nose reticle represents the ship's current facing direction. The velocity marker represents the actual world-space travel direction, remains hidden below `2.0 m/s`, and clamps inside a `32 px` safe margin when the vector is offscreen or behind the camera.
 
@@ -122,7 +134,7 @@ input released → direct thrusters decay to invisible
 ship still coasting → no direct exhaust
 ```
 
-Assisted damping, stabilization, and automatic banking use the same checked-in action matrix, but their visual target is capped exactly once at 35 percent. Direct output always dominates when both channels request the same thruster.
+Assisted damping, AI correction, Smart Stabilize, and automatic banking use the same checked-in action matrix, but their visual target is capped exactly once at 35 percent. Direct output always dominates when both channels request the same thruster.
 
 The action matrix explicitly requires both main thrusters for forward acceleration and both retro thrusters for reverse acceleration. It is generated and validated offline, then checked into the repository; gameplay never solves or reshuffles mappings dynamically.
 
@@ -223,7 +235,7 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 34 suites
+PASS: 37 suites
 ```
 
 Do not claim the milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.

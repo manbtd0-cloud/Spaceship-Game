@@ -72,6 +72,18 @@ func run() -> void:
         "invalid setter input must preserve the current value"
     )
 
+    assert_true(
+        store.set_default_flight_mode(FlightMode.Value.AI_ASSISTED),
+        "AI Assisted setting accepted"
+    )
+    var ai_reload := QuietPlayerSettingsStore.new()
+    ai_reload.load_from_path(path)
+    assert_equal(
+        ai_reload.get_default_flight_mode(),
+        FlightMode.Value.AI_ASSISTED,
+        "AI Assisted persists"
+    )
+
     var reloaded := QuietPlayerSettingsStore.new()
     reloaded.load_from_path(path)
     assert_equal(
@@ -80,6 +92,28 @@ func run() -> void:
         "valid value must round-trip"
     )
     assert_equal(reloaded.warnings.size(), 0, "valid reload must not warn")
+
+    var old_assisted := ConfigFile.new()
+    old_assisted.set_value("flight", "default_mode", 0)
+    assert_equal(old_assisted.save(path), OK, "old Assisted fixture saves")
+    var assisted_reload := QuietPlayerSettingsStore.new()
+    assisted_reload.load_from_path(path)
+    assert_equal(
+        assisted_reload.get_default_flight_mode(),
+        FlightMode.Value.ASSISTED,
+        "old value 0 remains Assisted"
+    )
+
+    var old_inertial := ConfigFile.new()
+    old_inertial.set_value("flight", "default_mode", 1)
+    assert_equal(old_inertial.save(path), OK, "old Inertial fixture saves")
+    var inertial_reload := QuietPlayerSettingsStore.new()
+    inertial_reload.load_from_path(path)
+    assert_equal(
+        inertial_reload.get_default_flight_mode(),
+        FlightMode.Value.MANUAL,
+        "old value 1 remains Inertial"
+    )
 
     var corrupt := ConfigFile.new()
     corrupt.set_value("camera", "behavior", 999)
@@ -121,5 +155,8 @@ func run() -> void:
     if FileAccess.file_exists(path):
         DirAccess.remove_absolute(absolute_path)
     store.free()
+    ai_reload.free()
     reloaded.free()
+    assisted_reload.free()
+    inertial_reload.free()
     repaired.free()

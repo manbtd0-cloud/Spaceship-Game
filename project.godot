@@ -92,6 +92,10 @@ reset_flight_room={
 "deadzone": 0.15,
 "events": [Object(InputEventKey,"physical_keycode":82)]
 }
+smart_stabilize={
+"deadzone": 0.15,
+"events": [Object(InputEventKey,"physical_keycode":88)]
+}
 camera_cycle={
 "deadzone": 0.15,
 "events": [Object(InputEventKey,"physical_keycode":67)]

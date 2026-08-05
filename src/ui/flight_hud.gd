@@ -78,15 +78,21 @@ func _process(_delta: float) -> void:
     _refresh_velocity_marker()
 
 static func mode_text_for(mode: FlightMode.Value) -> String:
-    return (
-        "MODE   ASSISTED"
-        if mode == FlightMode.Value.ASSISTED
-        else "MODE   INERTIAL"
-    )
+    match mode:
+        FlightMode.Value.ASSISTED:
+            return "MODE   ASSISTED"
+        FlightMode.Value.AI_ASSISTED:
+            return "MODE   AI ASSISTED"
+        FlightMode.Value.MANUAL:
+            return "MODE   INERTIAL"
+        _:
+            return "MODE   ASSISTED"
 
 func _refresh_labels() -> void:
     _speed_label.text = "SPEED  %04d m/s" % roundi(_controller.get_speed_mps())
     _mode_label.text = mode_text_for(_controller.get_flight_mode())
+    if _controller.is_smart_stabilizing():
+        _mode_label.text += "   |   STABILIZING"
 
     var heat_percent := roundi(_controller.get_boost_heat() * 100.0)
     if _controller.is_boost_locked_out():
@@ -112,8 +118,8 @@ func _refresh_labels() -> void:
     _controls_label.text = (
         "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   "
         + "MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   "
-        + "LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   C CAMERA   "
-        + "B REAR   PGUP RIGHT   PGDN LEFT   R RESET"
+        + "LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   X STABILIZE   "
+        + "C CAMERA   B REAR   PGUP RIGHT   PGDN LEFT   R RESET"
     )
 
 func _refresh_velocity_marker() -> void:

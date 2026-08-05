@@ -136,10 +136,7 @@ func _read_flight_mode(config: ConfigFile) -> FlightMode.Value:
     return DEFAULT_FLIGHT_MODE
 
 func _is_valid_flight_mode(value: int) -> bool:
-    return (
-        value == FlightMode.Value.ASSISTED
-        or value == FlightMode.Value.MANUAL
-    )
+    return FlightMode.is_valid(value)
 
 func _save() -> bool:
     var config := ConfigFile.new()

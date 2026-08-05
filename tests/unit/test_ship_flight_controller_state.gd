@@ -27,6 +27,10 @@ func run() -> void:
         controller.get_last_assist_torque_local().is_equal_approx(Vector3.ZERO),
         "assist torque starts at zero"
     )
+    assert_true(
+        not controller.is_smart_stabilizing(),
+        "Smart Stabilize starts inactive"
+    )
 
     var first_snapshot := controller.get_last_command()
     assert_true(first_snapshot != null, "controller must expose a command snapshot")
@@ -44,25 +48,41 @@ func run() -> void:
             changed_modes.append(value)
     )
     assert_true(
+        controller.set_flight_mode(FlightMode.Value.AI_ASSISTED),
+        "AI Assisted mode change must be accepted"
+    )
+    assert_equal(
+        controller.get_flight_mode(),
+        FlightMode.Value.AI_ASSISTED,
+        "AI Assisted becomes active"
+    )
+    assert_equal(changed_modes.size(), 1, "real mode change emits exactly once")
+    assert_equal(
+        changed_modes[0],
+        FlightMode.Value.AI_ASSISTED,
+        "mode signal must carry AI Assisted"
+    )
+    assert_true(
+        not controller.set_flight_mode(FlightMode.Value.AI_ASSISTED),
+        "setting the active mode must be a no-op"
+    )
+    assert_equal(changed_modes.size(), 1, "mode no-op must not emit")
+
+    assert_true(
         controller.set_flight_mode(FlightMode.Value.MANUAL),
-        "valid mode change must be accepted"
+        "Inertial mode change must be accepted"
     )
     assert_equal(
         controller.get_flight_mode(),
         FlightMode.Value.MANUAL,
         "manual internal mode must become player-facing Inertial mode"
     )
-    assert_equal(changed_modes.size(), 1, "real mode change emits exactly once")
+    assert_equal(changed_modes.size(), 2, "second real mode change emits once")
     assert_equal(
-        changed_modes[0],
+        changed_modes[1],
         FlightMode.Value.MANUAL,
-        "mode signal must carry the applied value"
+        "second signal must carry Inertial internal value"
     )
-    assert_true(
-        not controller.set_flight_mode(FlightMode.Value.MANUAL),
-        "setting the active mode must be a no-op"
-    )
-    assert_equal(changed_modes.size(), 1, "mode no-op must not emit")
     assert_true(
         not controller.set_flight_mode(999),
         "invalid mode must be rejected"
@@ -72,12 +92,17 @@ func run() -> void:
         FlightMode.Value.MANUAL,
         "invalid mode must preserve current state"
     )
-    assert_equal(changed_modes.size(), 1, "invalid mode must not emit")
+    assert_equal(changed_modes.size(), 2, "invalid mode must not emit")
 
     assert_equal(
         FlightHud.mode_text_for(FlightMode.Value.ASSISTED),
         "MODE   ASSISTED",
         "assisted HUD copy must remain explicit"
+    )
+    assert_equal(
+        FlightHud.mode_text_for(FlightMode.Value.AI_ASSISTED),
+        "MODE   AI ASSISTED",
+        "AI Assisted HUD copy must remain explicit"
     )
     assert_equal(
         FlightHud.mode_text_for(FlightMode.Value.MANUAL),
@@ -111,10 +136,19 @@ func run() -> void:
         controller.get_last_assist_torque_local().is_equal_approx(Vector3.ZERO),
         "assist torque resets to zero"
     )
+    assert_true(
+        not controller.is_smart_stabilizing(),
+        "reset clears Smart Stabilize state"
+    )
     assert_equal(
         controller.get_last_command().translation,
         Vector3.ZERO,
         "command snapshot resets to zero input"
+    )
+    assert_equal(
+        controller.get_flight_mode(),
+        FlightMode.Value.MANUAL,
+        "runtime reset retains selected flight mode"
     )
 
     controller.free()

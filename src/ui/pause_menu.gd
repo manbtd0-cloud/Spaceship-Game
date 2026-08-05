@@ -183,6 +183,7 @@ func _populate_options() -> void:
 
     _flight_mode_option.clear()
     _flight_mode_option.add_item("Assisted", FlightMode.Value.ASSISTED)
+    _flight_mode_option.add_item("AI Assisted", FlightMode.Value.AI_ASSISTED)
     _flight_mode_option.add_item("Inertial", FlightMode.Value.MANUAL)
 
 func _build_callables() -> void:

@@ -24,6 +24,21 @@ extends Resource
 @export var assist_min_steering_speed: float = 8.0
 @export var assist_max_steering_acceleration: float = 18.0
 
+@export var ai_angular_damping: float = 42000.0
+@export_range(0.0, 1.0) var ai_rotation_command_protection: float = 0.90
+@export var ai_trajectory_alignment_gain: float = 1.60
+@export var ai_min_alignment_speed: float = 6.0
+@export var ai_max_steering_acceleration: float = 20.0
+@export_range(0.0, 1.0) var ai_translation_command_protection: float = 0.90
+@export var ai_max_braking_acceleration: float = 10.0
+
+@export var stabilize_angular_damping: float = 70000.0
+@export var stabilize_max_linear_deceleration: float = 22.0
+@export var stabilize_linear_rest_threshold: float = 0.25
+@export var stabilize_full_braking_below_degrees: float = 5.0
+@export var stabilize_no_braking_above_degrees: float = 15.0
+@export var stabilize_angular_rest_threshold_degrees: float = 0.5
+
 @export var auto_bank_max_degrees: float = 22.0
 @export var auto_bank_response: float = 5.0
 

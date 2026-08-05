@@ -3,6 +3,8 @@ extends SceneTree
 const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_test_harness.gd",
     "res://tests/unit/test_flight_model.gd",
+    "res://tests/unit/test_ai_flight_intent_solver.gd",
+    "res://tests/unit/test_smart_stabilize_solver.gd",
     "res://tests/unit/test_flight_speed_envelope.gd",
     "res://tests/unit/test_boost_thermal_state.gd",
     "res://tests/unit/test_flight_steering_math.gd",
@@ -19,6 +21,7 @@ const TEST_SCRIPTS: Array[String] = [
     "res://tests/integration/test_primary_fire_showcase.gd",
     "res://tests/unit/test_ship_flight_state.gd",
     "res://tests/unit/test_ship_flight_controller_state.gd",
+    "res://tests/integration/test_ai_assisted_flight_controller.gd",
     "res://tests/unit/test_thruster_action_matrix.gd",
     "res://tests/unit/test_thruster_visual_math.gd",
     "res://tests/unit/test_asteroid_field_layout.gd",

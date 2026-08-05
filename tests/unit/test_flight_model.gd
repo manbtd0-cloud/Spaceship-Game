@@ -203,3 +203,33 @@ func run() -> void:
         Vector3(0.0, 10.0, -7.5),
         "total torque must preserve pilot plus auto-bank physics"
     )
+
+    var ai_command := FlightCommand.new()
+    ai_command.mode = FlightMode.Value.AI_ASSISTED
+    ai_command.translation = Vector3.FORWARD
+    ai_command.rotation.y = 0.5
+    var ai_base_output := FlightModel.compute(
+        ai_command,
+        tuning,
+        Vector3(20.0, -4.0, -80.0),
+        Vector3(0.2, -0.3, 0.1),
+        8500.0
+    )
+    assert_true(
+        ai_base_output.pilot_force_local.z < 0.0,
+        "AI mode retains ordinary pilot thrust in the base model"
+    )
+    assert_true(
+        ai_base_output.pilot_torque_local.y > 0.0,
+        "AI mode retains ordinary pilot rotation in the base model"
+    )
+    assert_equal(
+        ai_base_output.assist_force_local,
+        Vector3.ZERO,
+        "AI assistance must be composed only by the controller"
+    )
+    assert_equal(
+        ai_base_output.assist_torque_local,
+        Vector3.ZERO,
+        "AI torque assistance must be composed only by the controller"
+    )

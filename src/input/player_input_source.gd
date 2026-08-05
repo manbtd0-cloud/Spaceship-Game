@@ -21,6 +21,7 @@ const REQUIRED_ACTIONS: Array[StringName] = [
     &"fire_primary",
     &"toggle_flight_mode",
     &"reset_flight_room",
+    &"smart_stabilize",
 ]
 
 var _mouse_delta := Vector2.ZERO
@@ -75,6 +76,9 @@ func consume_reset_request() -> bool:
 
 func is_primary_fire_held() -> bool:
     return _strength(&"fire_primary") > 0.0
+
+func is_smart_stabilize_held() -> bool:
+    return _strength(&"smart_stabilize") > 0.0
 
 func set_mouse_captured(captured: bool) -> void:
     _captured = captured

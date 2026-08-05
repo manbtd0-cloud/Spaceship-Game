@@ -177,13 +177,18 @@ func _test_initial_application_live_updates_and_cleanup() -> void:
     )
 
     assert_true(
-        settings.set_default_flight_mode(FlightMode.Value.MANUAL),
-        "flight setting change must be accepted"
+        settings.set_default_flight_mode(FlightMode.Value.AI_ASSISTED),
+        "AI Assisted setting change must be accepted"
     )
     assert_equal(
         controller.get_flight_mode(),
-        FlightMode.Value.MANUAL,
-        "Inertial setting must update the live controller"
+        FlightMode.Value.AI_ASSISTED,
+        "AI Assisted setting must update the live controller"
+    )
+    assert_equal(
+        settings.default_flight_mode_changed.get_connections().size(),
+        1,
+        "AI update must not duplicate coordinator connections"
     )
 
     fixture.remove_child(coordinator)

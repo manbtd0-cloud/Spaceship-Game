@@ -104,6 +104,14 @@ func _test_pause_menu_runtime_contract() -> void:
         "Backdrop/Center/Panel/Margin/Layout/FlightModeOption"
     ) as OptionButton
 
+    assert_equal(mode_option.item_count, 3, "exactly three modes")
+    assert_equal(mode_option.get_item_text(0), "Assisted")
+    assert_equal(mode_option.get_item_id(0), FlightMode.Value.ASSISTED)
+    assert_equal(mode_option.get_item_text(1), "AI Assisted")
+    assert_equal(mode_option.get_item_id(1), FlightMode.Value.AI_ASSISTED)
+    assert_equal(mode_option.get_item_text(2), "Inertial")
+    assert_equal(mode_option.get_item_id(2), FlightMode.Value.MANUAL)
+
     assert_equal(
         resume_button.pressed.get_connections().size(),
         1,
@@ -152,8 +160,8 @@ func _test_pause_menu_runtime_contract() -> void:
         "Far distance option must exist"
     )
     assert_true(
-        _emit_option_id(mode_option, FlightMode.Value.MANUAL),
-        "Inertial flight option must exist"
+        _emit_option_id(mode_option, FlightMode.Value.AI_ASSISTED),
+        "AI Assisted flight option must exist"
     )
     assert_equal(
         settings.get_camera_behavior(),
@@ -167,9 +175,18 @@ func _test_pause_menu_runtime_contract() -> void:
     )
     assert_equal(
         settings.get_default_flight_mode(),
-        FlightMode.Value.MANUAL,
-        "pause menu must write flight mode through settings"
+        FlightMode.Value.AI_ASSISTED,
+        "pause menu must write AI flight mode through settings"
     )
+
+    var reloaded_settings := PlayerSettingsStore.new()
+    reloaded_settings.load_from_path(settings_path)
+    assert_equal(
+        reloaded_settings.get_default_flight_mode(),
+        FlightMode.Value.AI_ASSISTED,
+        "AI Assisted pause selection must persist"
+    )
+    reloaded_settings.free()
 
     assert_true(pause_menu.resume_game(), "resume must close an open menu")
     assert_true(not tree.paused, "resume must unpause gameplay")
