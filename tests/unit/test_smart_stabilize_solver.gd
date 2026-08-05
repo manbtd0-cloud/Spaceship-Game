@@ -37,9 +37,18 @@ func run() -> void:
         <= 8500.0 * tuning.stabilize_max_linear_deceleration + 0.01,
         "linear force bounded"
     )
-    assert_true(absf(settled.torque_local.x) <= tuning.pitch_torque + 0.01)
-    assert_true(absf(settled.torque_local.y) <= tuning.yaw_torque + 0.01)
-    assert_true(absf(settled.torque_local.z) <= tuning.roll_torque + 0.01)
+    assert_true(
+        absf(settled.torque_local.x) <= tuning.pitch_torque + 0.01,
+        "pitch counter-torque remains bounded"
+    )
+    assert_true(
+        absf(settled.torque_local.y) <= tuning.yaw_torque + 0.01,
+        "yaw counter-torque remains bounded"
+    )
+    assert_true(
+        absf(settled.torque_local.z) <= tuning.roll_torque + 0.01,
+        "roll counter-torque remains bounded"
+    )
 
     var rest := SmartStabilizeSolver.compute(
         Vector3(0.1, 0.0, 0.0),
