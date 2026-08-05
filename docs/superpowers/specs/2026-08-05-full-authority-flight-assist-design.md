@@ -31,6 +31,8 @@ For combined translation, the automatic command is normalized exactly like `Play
 
 Combined pitch, yaw, and roll may each reach their existing independent torque limits because current player rotation input can command those axes simultaneously.
 
+In AI Assisted, **pilot command plus AI correction together** must remain inside the same legal player-equivalent envelope. AI force or torque cannot stack a second full-strength request on top of full player output. Smart Stabilize suppresses pilot movement output while held, so its own request alone is capped to the same envelope.
+
 ## 3. Shared authority calculation
 
 Extract the direct force/torque construction into a pure typed helper used by both `FlightModel` and the automatic solvers.
@@ -132,14 +134,32 @@ At very low speed, no automatic translation is needed unless the player provides
 
 ### 5.2 Full legal correction
 
-Convert `velocity_error` into a normalized local translation command.
+Convert `velocity_error` into a normalized local correction command.
 
 - Large mismatch: request full legal player-equivalent translation authority.
 - Small mismatch: taper proportionally to avoid hunting around the reticle.
 - Correct X, Y, and Z together.
 - Continue correction after the pilot releases pitch/yaw until the velocity marker is centered.
-- Preserve explicit strafe and vertical intent by combining the pilot's current translation target with the alignment target before final normalization rather than generating a force that fights the pilot.
-- Preserve explicit reverse intent; AI Assisted must not force forward alignment while the player is intentionally commanding reverse.
+- Preserve explicit strafe, vertical, forward, and reverse intent.
+
+AI translation is composed in **command space**, not by blindly adding another force:
+
+1. Start with the pilot's normalized translation command.
+2. Remove or reduce AI correction on axes where the pilot is explicitly commanding a conflicting direction.
+3. Add the remaining AI correction command.
+4. Normalize/clamp the combined command to length `1.0`.
+5. Convert the combined command once through `FlightAuthority`.
+6. Store telemetry as:
+
+```text
+pilot_force = force produced by pilot command alone
+final_force = force produced by combined legal command
+assist_force = final_force - pilot_force
+```
+
+This preserves pilot authority while guaranteeing that final pilot-plus-AI output never exceeds the ship's player-equivalent translation envelope.
+
+For rotation, combine pilot rotation and AI counter-rotation per axis, clamp each final command to `[-1, 1]`, then convert through `FlightAuthority`. An explicitly commanded rotational axis must not be counter-commanded by AI.
 
 Initial response values:
 
@@ -167,7 +187,7 @@ Pilot rotational input remains authoritative:
 - an explicitly commanded axis is not counter-commanded;
 - uncommanded axes remain strongly stabilized;
 - after input release, full counter-torque is applied until the rate enters the capture band;
-- all torque remains within current pitch/yaw/roll limits.
+- final pilot-plus-AI torque remains within current pitch/yaw/roll limits.
 
 Use the same angular capture/rest thresholds as Smart Stabilize unless testing identifies a concrete oscillation problem.
 
@@ -181,17 +201,17 @@ The physics flow remains:
 PlayerInputSource
   -> FlightCommand
   -> boost thermal state / effective boost
-  -> FlightModel pilot output
-  -> AI Assisted or Smart Stabilize automatic command
-  -> FlightAuthority legal force/torque
-  -> FlightOutput assistance channels
+  -> FlightAuthority pilot command
+  -> AI command-space composition or Smart Stabilize replacement command
+  -> FlightAuthority final legal force/torque
+  -> FlightOutput pilot/assist/final telemetry
   -> apply_central_force / apply_torque
 ```
 
 Priority:
 
-1. Smart Stabilize held: suppress ordinary pilot force/torque telemetry and use full-authority stabilization.
-2. Otherwise AI Assisted selected: retain pilot output and add legal full-authority alignment/stabilization output.
+1. Smart Stabilize held: suppress ordinary pilot movement telemetry and use full-authority stabilization, capped to the same legal player envelope.
+2. Otherwise AI Assisted selected: combine pilot and AI commands before one final authority calculation; never stack beyond legal output.
 3. Otherwise preserve existing Assisted or Inertial behavior exactly.
 
 No second body, controller, allocator, transform write, velocity assignment, or per-frame input access is added.
@@ -203,7 +223,7 @@ The checked-in schema-5 action matrix remains authoritative.
 Visual limits must reflect physical authority without exceeding direct player output:
 
 - legacy Assisted corrections retain the existing `0.35` visual cap;
-- AI Assisted automatic output may reach `1.0` when it requests full legal authority;
+- AI Assisted automatic output may reach `1.0` when final legal output requires full authority;
 - Smart Stabilize automatic output may reach `1.0` when it requests full legal authority;
 - no automatic visual target may exceed `1.0`;
 - direct pilot output retains precedence when direct and automatic requests overlap;
@@ -261,7 +281,9 @@ Add or strengthen tests for:
 - large marker displacement requests full legal authority;
 - small displacement tapers smoothly;
 - X/Y/Z correction is supported;
-- explicit strafe, vertical, and reverse input are not fought;
+- explicit strafe, vertical, forward, and reverse input are not fought;
+- pilot-plus-AI combined translation remains inside normalized direct-control authority;
+- pilot-plus-AI combined torque remains inside per-axis direct-control authority;
 - angular stabilization reaches legal full authority on uncommanded axes;
 - commanded rotation remains authoritative;
 - AI visuals may reach `1.0` but never exceed direct output.
@@ -283,9 +305,10 @@ Add or strengthen tests for:
 5. Repeat combined linear and angular motion; all required legal counter-thrusters operate together.
 6. Hold boost and `X`; stabilization may use the same boosted translation authority, never more.
 7. In AI Assisted, create a large velocity-marker offset; the ship strongly drives the marker toward the nose even after releasing turn input.
-8. Near alignment, correction tapers without visible oscillation.
-9. Explicit strafe, vertical, reverse, primary fire, camera, pause, reset, and mode switching remain usable.
-10. Inertial and legacy Assisted remain unchanged when `X` is not held.
+8. Hold a full pilot translation or rotation command in AI Assisted; final output remains within the same maximum authority available to direct player control.
+9. Near alignment, correction tapers without visible oscillation.
+10. Explicit strafe, vertical, reverse, primary fire, camera, pause, reset, and mode switching remain usable.
+11. Inertial and legacy Assisted remain unchanged when `X` is not held.
 
 ## 11. Out of scope
 
