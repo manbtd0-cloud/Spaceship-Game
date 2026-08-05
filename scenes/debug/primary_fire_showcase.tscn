@@ -1,10 +1,8 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/debug/primary_fire_showcase_controller.gd" id="1_showcase"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="3_camera"]
-[ext_resource type="Script" path="res://src/combat/primary_fire_controller.gd" id="4_fire"]
-[ext_resource type="Script" path="res://src/combat/pulse_projectile_pool.gd" id="5_pool"]
 
 [sub_resource type="Environment" id="Environment_showcase"]
 background_mode = 1
@@ -62,7 +60,7 @@ script = ExtResource("1_showcase")
 player_body_path = NodePath("PlayerInterceptor")
 input_source_path = NodePath("PlayerInterceptor/PlayerInputSource")
 fire_controller_path = NodePath("PlayerInterceptor/PrimaryFireController")
-projectile_pool_path = NodePath("PulseProjectilePool")
+projectile_pool_path = NodePath("PlayerInterceptor/PulseProjectilePool")
 instructions_label_path = NodePath("ShowcaseHud/SafeArea/Instructions")
 telemetry_label_path = NodePath("ShowcaseHud/SafeArea/Telemetry")
 
@@ -83,16 +81,7 @@ light_energy = 0.75
 [node name="PlayerInterceptor" parent="." instance=ExtResource("2_player")]
 freeze = true
 
-[node name="PrimaryFireController" type="Node" parent="PlayerInterceptor"]
-script = ExtResource("4_fire")
-body_path = NodePath("..")
-input_source_path = NodePath("../PlayerInputSource")
-model_path = NodePath("../VisualRoot/SmallSciFiFighter")
-
 [node name="ChaseCameraRig" parent="." instance=ExtResource("3_camera")]
-
-[node name="PulseProjectilePool" type="Node3D" parent="."]
-script = ExtResource("5_pool")
 
 [node name="FiringLane" type="Node3D" parent="."]
 
