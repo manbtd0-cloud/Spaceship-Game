@@ -89,7 +89,7 @@ func _test_live_flight_room_firing() -> void:
         "PlayerInterceptor/PrimaryFireController"
     ) as PrimaryFireController
     var pool := room.get_node_or_null(
-        "PulseProjectilePool"
+        "PlayerInterceptor/PulseProjectilePool"
     ) as PulseProjectilePool
     var room_controller := room.get_node_or_null(
         "FlightRoomController"
@@ -101,7 +101,7 @@ func _test_live_flight_room_firing() -> void:
     )
     assert_true(
         pool != null,
-        "production flight room must own PulseProjectilePool"
+        "production flight-room player must own PulseProjectilePool"
     )
     assert_true(
         room_controller != null,
