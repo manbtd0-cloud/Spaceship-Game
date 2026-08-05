@@ -13,6 +13,7 @@ const PROJECTILE_SPEED := 900.0
 @export var body_path: NodePath
 @export var input_source_path: NodePath
 @export var model_path: NodePath
+@export var projectile_pool_path: NodePath
 
 var _body: RigidBody3D
 var _input_source: PlayerInputSource
@@ -77,7 +78,18 @@ func initialize() -> void:
         )
         return
 
+    var configured_pool := get_node_or_null(
+        projectile_pool_path
+    ) as PulseProjectilePool
+    if configured_pool == null:
+        _disable_primary(
+            "PrimaryFireController could not resolve projectile pool at %s"
+            % projectile_pool_path
+        )
+        return
+
     _muzzles_valid = true
+    set_projectile_pool(configured_pool)
 
 func set_projectile_pool(pool: PulseProjectilePool) -> void:
     if _pool != null:
