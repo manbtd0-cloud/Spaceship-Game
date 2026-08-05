@@ -105,12 +105,36 @@ func _test_pause_menu_runtime_contract() -> void:
     ) as OptionButton
 
     assert_equal(mode_option.item_count, 3, "exactly three modes")
-    assert_equal(mode_option.get_item_text(0), "Assisted")
-    assert_equal(mode_option.get_item_id(0), FlightMode.Value.ASSISTED)
-    assert_equal(mode_option.get_item_text(1), "AI Assisted")
-    assert_equal(mode_option.get_item_id(1), FlightMode.Value.AI_ASSISTED)
-    assert_equal(mode_option.get_item_text(2), "Inertial")
-    assert_equal(mode_option.get_item_id(2), FlightMode.Value.MANUAL)
+    assert_equal(
+        mode_option.get_item_text(0),
+        "Assisted",
+        "Assisted option must be first"
+    )
+    assert_equal(
+        mode_option.get_item_id(0),
+        FlightMode.Value.ASSISTED,
+        "Assisted option must carry the Assisted value"
+    )
+    assert_equal(
+        mode_option.get_item_text(1),
+        "AI Assisted",
+        "AI Assisted option must be second"
+    )
+    assert_equal(
+        mode_option.get_item_id(1),
+        FlightMode.Value.AI_ASSISTED,
+        "AI Assisted option must carry the AI Assisted value"
+    )
+    assert_equal(
+        mode_option.get_item_text(2),
+        "Inertial",
+        "Inertial option must be third"
+    )
+    assert_equal(
+        mode_option.get_item_id(2),
+        FlightMode.Value.MANUAL,
+        "Inertial option must carry the Manual internal value"
+    )
 
     assert_equal(
         resume_button.pressed.get_connections().size(),
