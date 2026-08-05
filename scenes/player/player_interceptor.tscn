@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/input/player_input_source.gd" id="1_input"]
 [ext_resource type="Script" path="res://src/player/ship_flight_controller.gd" id="2_controller"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://assets/runtime/ships/player/small_sci_fi_fighter.glb" id="4_fighter"]
 [ext_resource type="Script" path="res://src/player/schema_five_thruster_visual_controller.gd" id="5_thruster_visuals"]
 [ext_resource type="Script" path="res://src/combat/primary_fire_controller.gd" id="6_fire"]
+[ext_resource type="Script" path="res://src/combat/pulse_projectile_pool.gd" id="7_pool"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_player"]
 size = Vector3(14, 3.8, 12.2)
@@ -44,8 +45,13 @@ script = ExtResource("5_thruster_visuals")
 controller_path = NodePath("../ShipFlightController")
 model_path = NodePath("../VisualRoot/SmallSciFiFighter")
 
+[node name="PulseProjectilePool" type="Node3D" parent="."]
+top_level = true
+script = ExtResource("7_pool")
+
 [node name="PrimaryFireController" type="Node" parent="."]
 script = ExtResource("6_fire")
 body_path = NodePath("..")
 input_source_path = NodePath("../PlayerInputSource")
 model_path = NodePath("../VisualRoot/SmallSciFiFighter")
+projectile_pool_path = NodePath("../PulseProjectilePool")
