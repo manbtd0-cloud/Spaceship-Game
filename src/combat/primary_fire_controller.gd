@@ -78,6 +78,11 @@ func initialize() -> void:
         )
         return
 
+    _muzzles_valid = true
+
+    if projectile_pool_path.is_empty():
+        return
+
     var configured_pool := get_node_or_null(
         projectile_pool_path
     ) as PulseProjectilePool
@@ -88,7 +93,6 @@ func initialize() -> void:
         )
         return
 
-    _muzzles_valid = true
     set_projectile_pool(configured_pool)
 
 func set_projectile_pool(pool: PulseProjectilePool) -> void:
