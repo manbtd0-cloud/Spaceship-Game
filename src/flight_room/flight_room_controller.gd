@@ -4,12 +4,16 @@ extends Node
 @export var player_body_path: NodePath
 @export var player_controller_path: NodePath
 @export var input_source_path: NodePath
+@export var primary_fire_controller_path: NodePath
+@export var projectile_pool_path: NodePath
 @export var reset_volume_path: NodePath
 @export var boundary_radius: float = 2500.0
 
 var _body: RigidBody3D
 var _controller: ShipFlightController
 var _input_source: PlayerInputSource
+var _primary_fire_controller: PrimaryFireController
+var _projectile_pool: PulseProjectilePool
 var _reset_volume: Area3D
 var _spawn_transform := Transform3D.IDENTITY
 
@@ -17,6 +21,12 @@ func _ready() -> void:
     _body = get_node_or_null(player_body_path) as RigidBody3D
     _controller = get_node_or_null(player_controller_path) as ShipFlightController
     _input_source = get_node_or_null(input_source_path) as PlayerInputSource
+    _primary_fire_controller = get_node_or_null(
+        primary_fire_controller_path
+    ) as PrimaryFireController
+    _projectile_pool = get_node_or_null(
+        projectile_pool_path
+    ) as PulseProjectilePool
     _reset_volume = get_node_or_null(reset_volume_path) as Area3D
 
     if _body == null:
@@ -28,9 +38,20 @@ func _ready() -> void:
     if _input_source == null:
         _disable_with_error("FlightRoomController could not resolve input source")
         return
+    if _primary_fire_controller == null:
+        _disable_with_error(
+            "FlightRoomController could not resolve primary fire controller"
+        )
+        return
+    if _projectile_pool == null:
+        _disable_with_error("FlightRoomController could not resolve projectile pool")
+        return
     if _reset_volume == null:
         _disable_with_error("FlightRoomController could not resolve reset volume")
         return
+
+    _primary_fire_controller.set_projectile_pool(_projectile_pool)
+    _primary_fire_controller.set_firing_enabled(true)
 
     _spawn_transform = _body.global_transform
     if not _controller.reset_requested.is_connected(reset_player):
@@ -94,6 +115,8 @@ func reset_player() -> void:
     _body.linear_velocity = Vector3.ZERO
     _body.angular_velocity = Vector3.ZERO
     _controller.reset_runtime_state()
+    _primary_fire_controller.reset_runtime_state()
+    _projectile_pool.clear_all()
     _body.freeze = false
     _body.sleeping = false
 
