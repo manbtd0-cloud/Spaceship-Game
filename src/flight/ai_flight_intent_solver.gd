@@ -71,6 +71,9 @@ static func compute(
             -local_linear_velocity.y,
             0.0
         ) * tuning.ai_trajectory_alignment_gain * demand
+        acceleration = acceleration.limit_length(
+            tuning.ai_max_steering_acceleration
+        )
         acceleration.x *= 1.0 - clampf(
             absf(command.translation.x) * tuning.ai_translation_command_protection,
             0.0,
@@ -80,9 +83,6 @@ static func compute(
             absf(command.translation.y) * tuning.ai_translation_command_protection,
             0.0,
             1.0
-        )
-        acceleration = acceleration.limit_length(
-            tuning.ai_max_steering_acceleration
         )
         output.force_local += acceleration * body_mass
 
