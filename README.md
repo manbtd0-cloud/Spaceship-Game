@@ -7,6 +7,9 @@ A single-player, third-person space-flight vertical slice built with Godot 4.7.1
 The playable flight room provides:
 
 - six-axis local-space thrust;
+- agile-fighter authority with 150 kN forward/strafe thrust, 110 kN reverse thrust, and 190/230/210 kNm pitch/yaw/roll torque;
+- smooth physical angular-rate envelopes at 100 deg/s pitch, 100 deg/s yaw, and 150 deg/s roll;
+- full opposing counter-torque above every angular limit;
 - the established Assisted nose-led maneuvering and coordinated banking;
 - full-authority AI Assisted flight that continuously redirects real velocity toward the ship's nose through legal physical thrust;
 - fully inertial flight with exact world-velocity preservation under pure rotation;
@@ -71,6 +74,8 @@ The three modes keep distinct behavior:
 - **Assisted** retains the established nose-led steering, damping, and coordinated bank.
 - **AI Assisted** continuously drives the true velocity vector toward ship-forward. Large velocity-marker separation requests full legal player-equivalent authority; correction tapers near the nose reticle. Explicit strafe, vertical, reverse, and rotation inputs remain authoritative.
 - **Inertial** keeps true momentum and receives no automatic force or torque.
+
+All three modes use the same final per-axis angular-rate envelope. Torque that would increase an already-high pitch, yaw, or roll rate fades smoothly toward zero at the configured limit. Opposing torque is never weakened, so direct counter-input, AI stabilization, Assisted damping, and Smart Stabilize retain full braking authority above the limits.
 
 Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands and immediately applies legal opposing thrust and torque on every active local velocity axis. Translation and rotation are cancelled simultaneously. Large motion uses the same maximum output available through full player input; output tapers only near rest to avoid oscillation. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
 
@@ -238,7 +243,7 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 38 suites
+PASS: 39 suites
 ```
 
 Do not claim the milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
