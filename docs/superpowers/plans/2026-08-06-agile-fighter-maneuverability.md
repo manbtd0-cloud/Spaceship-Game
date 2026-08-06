@@ -32,6 +32,7 @@
 - No changes to camera code, combat/projectile code, input bindings, pause/settings ownership, HUD copy, scene hierarchy, raw assets, schema-five sockets, or the checked-in thruster action matrix.
 - No GitHub Actions.
 - Use one broad RED per task, one implementation pass per task, and one final complete Windows verifier.
+- Limited-push workflow: Tasks 1–3 remain unpushed and are consolidated into one implementation commit; Task 4 creates one documentation closure commit after automated and manual verification.
 
 ---
 
@@ -309,12 +310,9 @@ godot --headless --path . --script res://tests/test_runner.gd
 
 Expected: `PASS: 39 suites`.
 
-- [ ] **Step 5: Commit the helper contract**
+- [ ] **Step 5: Preserve Task 1 changes without committing or pushing**
 
-```powershell
-git add src/flight/flight_angular_envelope.gd tests/unit/test_flight_angular_envelope.gd tests/test_runner.gd
-git commit -m "feat: add per-axis angular rate envelope"
-```
+Keep the working tree changes in place for the consolidated implementation commit in Task 3. Do not push.
 
 ---
 
@@ -469,7 +467,7 @@ stabilize_linear_capture_speed = 4.0
 stabilize_angular_capture_rate_degrees = 8.0
 ```
 
-- [ ] **Step 5: Run and commit**
+- [ ] **Step 5: Run the focused gate and preserve changes**
 
 ```powershell
 godot --headless --path . --script res://tests/test_runner.gd
@@ -477,10 +475,7 @@ godot --headless --path . --script res://tests/test_runner.gd
 
 Expected: `PASS: 39 suites`.
 
-```powershell
-git add src/flight/flight_tuning.gd config/flight/player_flight_tuning.tres tests/integration/test_player_scene.gd
-git commit -m "feat: tune agile fighter authority"
-```
+Keep Task 1 and Task 2 changes in the working tree. Do not commit or push yet.
 
 ---
 
@@ -682,12 +677,14 @@ PASS: 39 suites
 PASS: inertial rigid-body velocity preservation (speed drift 0.000000000 m/s, direction drift 0.000000000 degrees)
 ```
 
-- [ ] **Step 5: Commit controller integration**
+- [ ] **Step 5: Create one consolidated implementation commit**
 
 ```powershell
-git add src/player/ship_flight_controller.gd tests/integration/test_ai_assisted_flight_controller.gd tests/unit/test_ship_flight_controller_state.gd
-git commit -m "feat: cap agile fighter angular rates"
+git add src/flight/flight_angular_envelope.gd src/flight/flight_tuning.gd config/flight/player_flight_tuning.tres src/player/ship_flight_controller.gd tests/test_runner.gd tests/unit/test_flight_angular_envelope.gd tests/integration/test_player_scene.gd tests/integration/test_ai_assisted_flight_controller.gd tests/unit/test_ship_flight_controller_state.gd
+git commit -m "feat: add agile fighter maneuverability"
 ```
+
+Push only after the complete implementation snapshot has been reviewed. Do not create intermediate remote commits for Tasks 1 or 2.
 
 ---
 
@@ -794,14 +791,14 @@ Replace the active-correction status line with:
 - Status: VERIFIED — PASS: 39 suites, zero inertial speed/direction drift, clean main-scene boot, and Windows manual acceptance passed.
 ```
 
-- [ ] **Step 7: Commit documentation closure and review scope**
+- [ ] **Step 7: Create one documentation closure commit and review scope**
 
 ```powershell
 git add README.md docs/superpowers/plans/deferred-milestones.md
 git commit -m "docs: verify agile fighter maneuverability"
 git status --short
-git log --oneline -6
-git diff --stat HEAD~4..HEAD
+git log --oneline -5
+git diff --stat HEAD~2..HEAD
 ```
 
 Expected changed scope: one pure angular-envelope helper, flight tuning/resource, existing ship controller, focused tests, and documentation only. No scene hierarchy, assets, input map, camera, combat, projectile, workflow, or raw Blender files.
