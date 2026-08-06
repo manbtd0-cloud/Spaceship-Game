@@ -172,6 +172,78 @@ func run() -> void:
     Input.action_release(&"boost")
     Input.action_release(&"smart_stabilize")
 
+    controller.set_flight_mode(FlightMode.Value.MANUAL)
+
+    player.angular_velocity = Vector3(0.0, deg_to_rad(87.5), 0.0)
+    Input.action_press(&"yaw_left")
+    controller._physics_process(1.0 / 60.0)
+    Input.action_release(&"yaw_left")
+    assert_true(
+        controller.get_last_torque_local().y > 0.0
+        and controller.get_last_torque_local().y
+        < controller.tuning.yaw_torque,
+        "same-direction yaw torque must soften inside the angular envelope"
+    )
+
+    player.angular_velocity = Vector3(0.0, deg_to_rad(100.0), 0.0)
+    Input.action_press(&"yaw_left")
+    controller._physics_process(1.0 / 60.0)
+    Input.action_release(&"yaw_left")
+    assert_true(
+        is_zero_approx(controller.get_last_torque_local().y),
+        "same-direction yaw torque must stop at the yaw limit"
+    )
+
+    player.angular_velocity = Vector3(0.0, deg_to_rad(120.0), 0.0)
+    Input.action_press(&"yaw_right")
+    controller._physics_process(1.0 / 60.0)
+    Input.action_release(&"yaw_right")
+    assert_true(
+        is_equal_approx(
+            controller.get_last_torque_local().y,
+            -controller.tuning.yaw_torque
+        ),
+        "direct counter-yaw must retain full torque above the limit"
+    )
+
+    player.angular_velocity = Vector3(0.0, deg_to_rad(120.0), 0.0)
+    Input.action_press(&"smart_stabilize")
+    controller._physics_process(1.0 / 60.0)
+    Input.action_release(&"smart_stabilize")
+    assert_true(
+        is_equal_approx(
+            controller.get_last_torque_local().y,
+            -controller.tuning.yaw_torque
+        ),
+        "Smart Stabilize must retain full counter-yaw above the limit"
+    )
+    assert_true(
+        controller.get_last_torque_local().is_equal_approx(
+            controller.get_last_pilot_torque_local()
+            + controller.get_last_assist_torque_local()
+        ),
+        "applied torque telemetry must preserve pilot plus assist split"
+    )
+
+    player.angular_velocity = Vector3(0.0, deg_to_rad(120.0), 0.0)
+    controller._physics_process(1.0 / 60.0)
+    assert_equal(
+        controller.get_last_torque_local(),
+        Vector3.ZERO,
+        "Inertial no-input state must not create artificial torque"
+    )
+
+    controller.set_flight_mode(FlightMode.Value.AI_ASSISTED)
+    player.angular_velocity = Vector3.ZERO
+    Input.action_press(&"yaw_left")
+    controller._physics_process(1.0 / 60.0)
+    Input.action_release(&"yaw_left")
+    assert_true(
+        absf(controller.get_last_torque_local().y)
+        <= controller.tuning.yaw_torque + 0.01,
+        "pilot plus AI yaw must remain inside one legal torque command"
+    )
+
     controller.reset_runtime_state()
     assert_true(
         not controller.is_smart_stabilizing(),
@@ -183,6 +255,7 @@ func run() -> void:
         "reset clears assistance source"
     )
 
+    Input.action_release(&"yaw_left")
     Input.action_release(&"yaw_right")
     Input.action_release(&"thrust_forward")
     Input.action_release(&"strafe_right")
