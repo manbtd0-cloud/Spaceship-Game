@@ -19,6 +19,9 @@ var _local_velocity := Vector3.ZERO
 var _auto_bank_offset := 0.0
 var _auto_bank_rate := 0.0
 var _smart_stabilizing := false
+var _assistance_source: FlightAssistanceSource.Value = (
+    FlightAssistanceSource.Value.NONE
+)
 var _last_command := FlightCommand.new()
 var _last_pilot_force_local := Vector3.ZERO
 var _last_pilot_torque_local := Vector3.ZERO
@@ -50,19 +53,44 @@ func _physics_process(delta: float) -> void:
     if _input_source.consume_reset_request():
         reset_requested.emit()
 
-    var command := _input_source.sample_command(_flight_mode)
+    var pilot_command := _input_source.sample_command(_flight_mode)
     _smart_stabilizing = _input_source.is_smart_stabilize_held()
-    if _smart_stabilizing:
-        command.translation = Vector3.ZERO
-        command.rotation = Vector3.ZERO
-        command.boost = 0.0
+    _assistance_source = FlightAssistanceSource.Value.NONE
 
-    _forward_thrust_amount = clampf(-command.translation.z, 0.0, 1.0)
+    var basis := _body.global_transform.basis.orthonormalized()
+    var local_linear := basis.inverse() * _body.linear_velocity
+    var local_angular := basis.inverse() * _body.angular_velocity
+    _local_velocity = local_linear
+
+    var automatic_command := FlightAssistCommand.new()
+    if _smart_stabilizing:
+        automatic_command = SmartStabilizeSolver.compute(
+            local_linear,
+            local_angular,
+            tuning
+        )
+    elif pilot_command.mode == FlightMode.Value.AI_ASSISTED:
+        automatic_command = AiFlightIntentSolver.compute(
+            pilot_command,
+            local_linear,
+            local_angular,
+            tuning
+        )
+
+    var boost_activity_command := pilot_command.translation
+    if _smart_stabilizing:
+        boost_activity_command = automatic_command.translation
+    elif pilot_command.mode == FlightMode.Value.AI_ASSISTED:
+        boost_activity_command = FlightAuthority.combine_translation(
+            pilot_command.translation,
+            automatic_command.translation
+        )
+
     var thermal_state := BoostThermalState.advance(
         _boost_heat,
         _boost_locked_out,
-        command.boost,
-        command.translation.length(),
+        pilot_command.boost,
+        boost_activity_command.length(),
         delta,
         tuning.boost_heat_per_second,
         tuning.boost_cooling_per_second,
@@ -71,15 +99,25 @@ func _physics_process(delta: float) -> void:
     _boost_heat = thermal_state.heat
     _boost_locked_out = thermal_state.locked_out
     _boost_amount = thermal_state.effective_boost
-    command.boost = _boost_amount
+
+    var physics_command := pilot_command.duplicate_command()
+    if _smart_stabilizing:
+        physics_command.translation = Vector3.ZERO
+        physics_command.rotation = Vector3.ZERO
+    physics_command.boost = _boost_amount
+    _forward_thrust_amount = clampf(
+        -physics_command.translation.z,
+        0.0,
+        1.0
+    )
 
     var assist_rotation_command := Vector3.ZERO
-    var pilot_roll := command.rotation.z
-    if command.mode == FlightMode.Value.ASSISTED:
+    var pilot_roll := physics_command.rotation.z
+    if physics_command.mode == FlightMode.Value.ASSISTED:
         var bank_state := CoordinatedTurnState.advance(
             _auto_bank_offset,
             _auto_bank_rate,
-            command.rotation.y,
+            physics_command.rotation.y,
             pilot_roll,
             delta,
             tuning.auto_bank_max_degrees,
@@ -92,15 +130,10 @@ func _physics_process(delta: float) -> void:
         _auto_bank_offset = 0.0
         _auto_bank_rate = 0.0
 
-    _last_command = command.duplicate_command()
-
-    var basis := _body.global_transform.basis.orthonormalized()
-    var local_linear := basis.inverse() * _body.linear_velocity
-    var local_angular := basis.inverse() * _body.angular_velocity
-    _local_velocity = local_linear
+    _last_command = physics_command.duplicate_command()
 
     var output := FlightModel.compute(
-        command,
+        physics_command,
         tuning,
         local_linear,
         local_angular,
@@ -108,27 +141,73 @@ func _physics_process(delta: float) -> void:
         assist_rotation_command
     )
 
+    var soft_start := (
+        tuning.boost_speed_soft_start
+        if _boost_amount > 0.0
+        else tuning.normal_speed_soft_start
+    )
+    var soft_limit := (
+        tuning.boost_speed_limit
+        if _boost_amount > 0.0
+        else tuning.normal_speed_limit
+    )
+
     if _smart_stabilizing:
-        var stabilize := SmartStabilizeSolver.compute(
-            local_linear,
-            local_angular,
-            _body.mass,
+        var raw_stabilize_force := FlightAuthority.translation_force(
+            automatic_command.translation,
+            _boost_amount,
             tuning
         )
         output.pilot_force_local = Vector3.ZERO
         output.pilot_torque_local = Vector3.ZERO
-        output.assist_force_local = stabilize.force_local
-        output.assist_torque_local = stabilize.torque_local
-    elif command.mode == FlightMode.Value.AI_ASSISTED:
-        var ai := AiFlightIntentSolver.compute(
-            command,
+        output.assist_force_local = FlightSpeedEnvelope.apply_to_force(
+            raw_stabilize_force,
             local_linear,
-            local_angular,
-            _body.mass,
+            soft_start,
+            soft_limit
+        )
+        output.assist_torque_local = FlightAuthority.rotation_torque(
+            automatic_command.rotation,
             tuning
         )
-        output.assist_force_local = ai.force_local
-        output.assist_torque_local = ai.torque_local
+        _assistance_source = (
+            FlightAssistanceSource.Value.SMART_STABILIZE
+        )
+    elif physics_command.mode == FlightMode.Value.AI_ASSISTED:
+        var combined_translation := FlightAuthority.combine_translation(
+            physics_command.translation,
+            automatic_command.translation
+        )
+        var combined_rotation := FlightAuthority.combine_rotation(
+            physics_command.rotation,
+            automatic_command.rotation
+        )
+        var raw_total_force := FlightAuthority.translation_force(
+            combined_translation,
+            _boost_amount,
+            tuning
+        )
+        var total_force := FlightSpeedEnvelope.apply_to_force(
+            raw_total_force,
+            local_linear,
+            soft_start,
+            soft_limit
+        )
+        var total_torque := FlightAuthority.rotation_torque(
+            combined_rotation,
+            tuning
+        )
+        output.assist_force_local = (
+            total_force - output.pilot_force_local
+        )
+        output.assist_torque_local = (
+            total_torque - output.pilot_torque_local
+        )
+        _assistance_source = FlightAssistanceSource.Value.AI_ASSISTED
+    elif physics_command.mode == FlightMode.Value.ASSISTED:
+        _assistance_source = (
+            FlightAssistanceSource.Value.LEGACY_ASSISTED
+        )
 
     output.finalize_totals()
     _last_pilot_force_local = output.pilot_force_local
@@ -150,6 +229,7 @@ func set_flight_mode(value: FlightMode.Value) -> bool:
     _auto_bank_offset = 0.0
     _auto_bank_rate = 0.0
     _smart_stabilizing = false
+    _assistance_source = FlightAssistanceSource.Value.NONE
     flight_mode_changed.emit(_flight_mode)
     return true
 
@@ -191,6 +271,9 @@ func get_auto_bank_offset_degrees() -> float:
 
 func is_smart_stabilizing() -> bool:
     return _smart_stabilizing
+
+func get_assistance_source() -> FlightAssistanceSource.Value:
+    return _assistance_source
 
 func get_local_velocity() -> Vector3:
     return _local_velocity
@@ -243,6 +326,7 @@ func reset_runtime_state() -> void:
     _auto_bank_offset = 0.0
     _auto_bank_rate = 0.0
     _smart_stabilizing = false
+    _assistance_source = FlightAssistanceSource.Value.NONE
     _last_command = FlightCommand.new()
     _last_pilot_force_local = Vector3.ZERO
     _last_pilot_torque_local = Vector3.ZERO
