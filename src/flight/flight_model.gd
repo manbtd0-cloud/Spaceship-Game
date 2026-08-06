@@ -10,23 +10,11 @@ static func compute(
     assist_rotation_command: Vector3 = Vector3.ZERO
 ) -> FlightOutput:
     var output := FlightOutput.new()
-    var longitudinal_force: float = (
-        tuning.forward_force
-        if command.translation.z < 0.0
-        else tuning.reverse_force
+    var pilot_force := FlightAuthority.translation_force(
+        command.translation,
+        command.boost,
+        tuning
     )
-
-    var pilot_force := Vector3(
-        command.translation.x * tuning.strafe_force,
-        command.translation.y * tuning.strafe_force,
-        command.translation.z * longitudinal_force
-    )
-    var boost_factor := lerpf(
-        1.0,
-        tuning.boost_multiplier,
-        clampf(command.boost, 0.0, 1.0)
-    )
-    pilot_force *= boost_factor
 
     var soft_start := (
         tuning.boost_speed_soft_start
@@ -45,10 +33,9 @@ static func compute(
         soft_limit
     )
 
-    output.pilot_torque_local = Vector3(
-        command.rotation.x * tuning.pitch_torque,
-        command.rotation.y * tuning.yaw_torque,
-        command.rotation.z * tuning.roll_torque
+    output.pilot_torque_local = FlightAuthority.rotation_torque(
+        command.rotation,
+        tuning
     )
 
     if command.mode == FlightMode.Value.ASSISTED:
