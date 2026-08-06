@@ -1,0 +1,160 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat_hud.gd" id="1_hud"]
+
+[node name="CombatHud" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+player_damage_state_path = NodePath("../../PlayerInterceptor/DamageState")
+target_damage_state_path = NodePath("../../PracticeDrone/DamageState")
+target_controller_path = NodePath("../../PracticeDrone/PracticeDroneController")
+projectile_pool_path = NodePath("../../PlayerInterceptor/PulseProjectilePool")
+
+[node name="PlayerPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = -188.0
+offset_right = 278.0
+offset_bottom = -24.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+modulate = Color(0.7, 0.86, 1, 0.92)
+
+[node name="VBox" type="VBoxContainer" parent="PlayerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="TitleLabel" type="Label" parent="PlayerPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "PLAYER"
+
+[node name="ShieldLabel" type="Label" parent="PlayerPanel/VBox"]
+layout_mode = 2
+text = "SHIELD  100%"
+
+[node name="ShieldBar" type="ProgressBar" parent="PlayerPanel/VBox"]
+custom_minimum_size = Vector2(220, 14)
+layout_mode = 2
+value = 100.0
+show_percentage = false
+
+[node name="HullLabel" type="Label" parent="PlayerPanel/VBox"]
+layout_mode = 2
+text = "HULL    100%"
+
+[node name="HullBar" type="ProgressBar" parent="PlayerPanel/VBox"]
+custom_minimum_size = Vector2(220, 14)
+layout_mode = 2
+value = 100.0
+show_percentage = false
+
+[node name="TargetPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+anchors_preset = 10
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -165.0
+offset_top = 24.0
+offset_right = 165.0
+offset_bottom = 194.0
+grow_horizontal = 2
+mouse_filter = 2
+modulate = Color(0.74, 0.9, 1, 0.94)
+
+[node name="VBox" type="VBoxContainer" parent="TargetPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="TargetPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 17
+text = "PRACTICE DRONE"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="TargetPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.93, 1, 1)
+text = "ACTIVE"
+horizontal_alignment = 1
+
+[node name="ShieldLabel" type="Label" parent="TargetPanel/VBox"]
+layout_mode = 2
+text = "SHIELD  100%"
+
+[node name="ShieldBar" type="ProgressBar" parent="TargetPanel/VBox"]
+custom_minimum_size = Vector2(290, 14)
+layout_mode = 2
+value = 100.0
+show_percentage = false
+
+[node name="HullLabel" type="Label" parent="TargetPanel/VBox"]
+layout_mode = 2
+text = "HULL    100%"
+
+[node name="HullBar" type="ProgressBar" parent="TargetPanel/VBox"]
+custom_minimum_size = Vector2(290, 14)
+layout_mode = 2
+value = 100.0
+show_percentage = false
+
+[node name="HitMarker" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -24.0
+offset_top = -24.0
+offset_right = 24.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopLeft" type="ColorRect" parent="HitMarker"]
+offset_left = 4.0
+offset_top = 8.0
+offset_right = 18.0
+offset_bottom = 11.0
+rotation = 0.785398
+color = Color(0.25, 0.95, 1, 1)
+mouse_filter = 2
+
+[node name="TopRight" type="ColorRect" parent="HitMarker"]
+offset_left = 30.0
+offset_top = 8.0
+offset_right = 44.0
+offset_bottom = 11.0
+rotation = -0.785398
+color = Color(0.25, 0.95, 1, 1)
+mouse_filter = 2
+
+[node name="BottomLeft" type="ColorRect" parent="HitMarker"]
+offset_left = 4.0
+offset_top = 37.0
+offset_right = 18.0
+offset_bottom = 40.0
+rotation = -0.785398
+color = Color(0.25, 0.95, 1, 1)
+mouse_filter = 2
+
+[node name="BottomRight" type="ColorRect" parent="HitMarker"]
+offset_left = 30.0
+offset_top = 37.0
+offset_right = 44.0
+offset_bottom = 40.0
+rotation = 0.785398
+color = Color(0.25, 0.95, 1, 1)
+mouse_filter = 2
