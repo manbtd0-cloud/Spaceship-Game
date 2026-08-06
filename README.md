@@ -8,9 +8,10 @@ The playable flight room provides:
 
 - six-axis local-space thrust;
 - the established Assisted nose-led maneuvering and coordinated banking;
-- a bounded AI Assisted mode that interprets turn intent and redirects real velocity through physical force;
+- full-authority AI Assisted flight that continuously redirects real velocity toward the ship's nose through legal physical thrust;
 - fully inertial flight with exact world-velocity preservation under pure rotation;
-- hold-to-use Smart Stabilize that arrests rotation before progressively braking drift;
+- hold-to-use Smart Stabilize that simultaneously counters all local linear and angular velocity axes;
+- automatic control capped to the same force, torque, combined-input, and effective-boost authority available to direct player control;
 - total-speed soft envelopes at 160 m/s normally and 240 m/s under boost;
 - sustained translational boost with thermal lockout;
 - Dynamic, Tactical, and Locked chase-camera behaviors;
@@ -21,7 +22,7 @@ The playable flight room provides:
 - the canonical Small Sci-Fi Fighter at identity transform;
 - twelve source-exact nozzle-local thruster effects;
 - deterministic mappings for twelve pilot actions;
-- separate direct-pilot and dim assisted-correction visuals;
+- separate direct-pilot, legacy-assisted, and full-authority automatic thruster feedback;
 - nozzle-anchored rise and fall envelopes;
 - four imported asteroid families and a deterministic collidable field;
 - a high-speed navigation course, telemetry HUD, collisions, primary fire, and pause-safe reset handling.
@@ -68,10 +69,12 @@ godot --path .
 The three modes keep distinct behavior:
 
 - **Assisted** retains the established nose-led steering, damping, and coordinated bank.
-- **AI Assisted** keeps the same rigid-body pipeline while applying bounded real force and torque to settle unwanted rotation and bend the true velocity vector during commanded turns.
+- **AI Assisted** continuously drives the true velocity vector toward ship-forward. Large velocity-marker separation requests full legal player-equivalent authority; correction tapers near the nose reticle. Explicit strafe, vertical, reverse, and rotation inputs remain authoritative.
 - **Inertial** keeps true momentum and receives no automatic force or torque.
 
-Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands, applies bounded counter-torque immediately, and progressively increases world-relative braking as angular motion settles. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
+Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands and immediately applies legal opposing thrust and torque on every active local velocity axis. Translation and rotation are cancelled simultaneously. Large motion uses the same maximum output available through full player input; output tapers only near rest to avoid oscillation. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
+
+Automatic flight control never exceeds the ship's direct-control limits. Forward, reverse, strafe, vertical, pitch, yaw, and roll use their existing `FlightTuning` authority. Combined translation remains normalized exactly like player input. AI pilot output and automatic correction are combined before force generation, so they cannot stack beyond one legal command. Boosted automatic authority exists only while `Shift` is held and boost is thermally available.
 
 The pause menu writes only through the typed `PlayerSettingsService`. It persists:
 
@@ -134,7 +137,7 @@ input released → direct thrusters decay to invisible
 ship still coasting → no direct exhaust
 ```
 
-Assisted damping, AI correction, Smart Stabilize, and automatic banking use the same checked-in action matrix, but their visual target is capped exactly once at 35 percent. Direct output always dominates when both channels request the same thruster.
+All automatic output uses the same checked-in action matrix. Legacy Assisted damping and coordinated banking retain the restrained 35 percent visual cap. AI Assisted and Smart Stabilize display their actual direction-correct applied authority and may reach full output. Direct output always retains precedence when direct and automatic requests overlap. No automatic visual target may exceed one.
 
 The action matrix explicitly requires both main thrusters for forward acceleration and both retro thrusters for reverse acceleration. It is generated and validated offline, then checked into the repository; gameplay never solves or reshuffles mappings dynamically.
 
@@ -235,7 +238,7 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 37 suites
+PASS: 38 suites
 ```
 
 Do not claim the milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
