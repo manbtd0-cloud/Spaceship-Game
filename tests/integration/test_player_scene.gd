@@ -109,6 +109,64 @@ func run() -> void:
     assert_true(player.get_node_or_null("Visuals") == null, "procedural visual root must stay removed")
 
     var controller := player.get_node("ShipFlightController") as ShipFlightController
+    var tuning := controller.tuning
+    assert_true(tuning != null, "production controller tuning must exist")
+    if tuning != null:
+        assert_true(
+            is_equal_approx(tuning.forward_force, 150000.0),
+            "agile fighter forward authority must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.reverse_force, 110000.0),
+            "agile fighter reverse authority must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.strafe_force, 150000.0),
+            "agile fighter strafe and vertical authority must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.pitch_torque, 190000.0),
+            "agile fighter pitch torque must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.yaw_torque, 230000.0),
+            "agile fighter yaw torque must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.roll_torque, 210000.0),
+            "agile fighter roll torque must be exact"
+        )
+        assert_true(
+            is_equal_approx(tuning.boost_multiplier, 1.8),
+            "boost multiplier must remain unchanged"
+        )
+        assert_true(
+            is_equal_approx(tuning.normal_speed_limit, 160.0),
+            "normal speed limit must remain unchanged"
+        )
+        assert_true(
+            is_equal_approx(tuning.boost_speed_limit, 240.0),
+            "boost speed limit must remain unchanged"
+        )
+        assert_equal(
+            Vector3(
+                tuning.pitch_angular_soft_start_degrees,
+                tuning.yaw_angular_soft_start_degrees,
+                tuning.roll_angular_soft_start_degrees
+            ),
+            Vector3(75.0, 75.0, 112.5),
+            "production angular soft starts must match the approved profile"
+        )
+        assert_equal(
+            Vector3(
+                tuning.pitch_angular_limit_degrees,
+                tuning.yaw_angular_limit_degrees,
+                tuning.roll_angular_limit_degrees
+            ),
+            Vector3(100.0, 100.0, 150.0),
+            "production angular limits must match the approved profile"
+        )
+
     assert_equal(controller.get_flight_mode(), FlightMode.Value.ASSISTED, "default mode")
     assert_true(is_equal_approx(controller.get_boost_amount(), 0.0), "default boost")
     assert_true(is_equal_approx(controller.get_boost_heat(), 0.0), "default boost heat")
