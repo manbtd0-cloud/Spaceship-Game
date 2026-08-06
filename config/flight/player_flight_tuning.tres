@@ -4,13 +4,19 @@
 
 [resource]
 script = ExtResource("1_tuning")
-forward_force = 120000.0
-reverse_force = 50000.0
-strafe_force = 65000.0
-pitch_torque = 52000.0
-yaw_torque = 48000.0
-roll_torque = 60000.0
+forward_force = 150000.0
+reverse_force = 110000.0
+strafe_force = 150000.0
+pitch_torque = 190000.0
+yaw_torque = 230000.0
+roll_torque = 210000.0
 boost_multiplier = 1.8
+pitch_angular_soft_start_degrees = 75.0
+pitch_angular_limit_degrees = 100.0
+yaw_angular_soft_start_degrees = 75.0
+yaw_angular_limit_degrees = 100.0
+roll_angular_soft_start_degrees = 112.5
+roll_angular_limit_degrees = 150.0
 normal_speed_soft_start = 120.0
 normal_speed_limit = 160.0
 boost_speed_soft_start = 180.0
