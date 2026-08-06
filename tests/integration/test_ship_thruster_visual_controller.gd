@@ -43,24 +43,24 @@ func run() -> void:
     assert_equal(
         visual_controller.get_socket_count(),
         12,
-        "visual controller must resolve twelve canonical sockets"
+        "visual controller resolves twelve canonical sockets"
     )
     assert_equal(
         visual_controller.get_effect_count(),
         12,
-        "visual controller must resolve twelve nozzle-local effects"
+        "visual controller resolves twelve nozzle-local effects"
     )
     assert_true(
         visual_controller.are_all_effects_hidden(),
-        "all effects must be hidden at idle"
+        "all effects are hidden at idle"
     )
     assert_true(
         visual_controller.are_effect_origins_anchored(),
-        "every nozzle-local effect origin must begin anchored"
+        "every nozzle-local effect origin begins anchored"
     )
     assert_true(
         visual_controller.is_contract_valid(),
-        "schema-four thruster visual contract must be valid"
+        "schema-five thruster visual contract is valid"
     )
 
     var coast := FlightCommand.new()
@@ -69,7 +69,7 @@ func run() -> void:
     visual_controller.step_visuals(0.25)
     assert_true(
         visual_controller.are_all_effects_hidden(),
-        "coasting without pilot or assist acceleration must remain dark"
+        "coasting without pilot or assist acceleration remains dark"
     )
 
     var forward := FlightCommand.new()
@@ -82,14 +82,14 @@ func run() -> void:
             float(direct_preview.get(&"Main/MainLeft", 0.0)),
             1.0
         ),
-        "forward command must map to the left main thruster"
+        "forward command maps to the left main thruster"
     )
     assert_true(
         is_equal_approx(
             float(direct_preview.get(&"Main/MainRight", 0.0)),
             1.0
         ),
-        "forward command must map to the right main thruster"
+        "forward command maps to the right main thruster"
     )
 
     visual_controller.set_test_command(forward)
@@ -97,71 +97,102 @@ func run() -> void:
     assert_equal(
         visual_controller.get_active_effect_paths(),
         main_effects,
-        "forward must activate only the symmetric main pair"
+        "forward activates only the symmetric main pair"
     )
     assert_true(
         is_equal_approx(
             visual_controller.get_direct_target(MAIN_LEFT_EFFECT),
             1.0
         ),
-        "left main direct target must reach one"
+        "left main direct target reaches one"
     )
     assert_true(
         is_equal_approx(
             visual_controller.get_direct_target(MAIN_RIGHT_EFFECT),
             1.0
         ),
-        "right main direct target must reach one"
+        "right main direct target reaches one"
     )
     assert_true(
         is_equal_approx(
             visual_controller.get_envelope(MAIN_LEFT_EFFECT),
             1.0
         ),
-        "left main envelope must reach full output"
+        "left main envelope reaches full output"
     )
     assert_true(
         is_equal_approx(
             visual_controller.get_envelope(MAIN_RIGHT_EFFECT),
             1.0
         ),
-        "right main envelope must reach full output"
+        "right main envelope reaches full output"
     )
     assert_true(
         visual_controller.are_effect_origins_anchored(),
-        "plume growth must not move any nozzle origin"
+        "plume growth does not move any nozzle origin"
     )
 
     visual_controller.set_test_command(coast)
     visual_controller.set_test_assist_wrench(
-        Vector3.FORWARD * flight_controller.get_force_reference(),
-        Vector3.ZERO
+        Vector3.FORWARD * flight_controller.tuning.forward_force,
+        Vector3.ZERO,
+        FlightAssistanceSource.Value.LEGACY_ASSISTED
     )
     visual_controller.step_visuals(0.25)
     for path: String in main_effects:
         var effect_path := StringName(path)
         assert_true(
             visual_controller.get_assist_target(effect_path) > 0.99,
-            "full assisted forward correction must reach raw target one"
+            "full legacy forward correction reaches raw target one"
         )
         assert_true(
             visual_controller.get_merged_target(effect_path) <= 0.35,
-            "assisted output must be capped exactly once at 35 percent"
+            "legacy Assisted remains capped at 35 percent"
         )
         assert_true(
             visual_controller.get_envelope(effect_path) <= 0.35,
-            "assisted plume envelope must remain dimmer than direct output"
+            "legacy Assisted plume remains dim"
+        )
+
+    visual_controller.set_test_assist_wrench(
+        Vector3.FORWARD * flight_controller.tuning.forward_force,
+        Vector3.ZERO,
+        FlightAssistanceSource.Value.SMART_STABILIZE
+    )
+    visual_controller.step_visuals(0.25)
+    for path: String in main_effects:
+        var stabilize_effect := StringName(path)
+        assert_true(
+            visual_controller.get_merged_target(stabilize_effect) > 0.99,
+            "Smart Stabilize displays full legal authority"
+        )
+        assert_true(
+            visual_controller.get_envelope(stabilize_effect) > 0.99,
+            "Smart Stabilize plume reaches full output"
+        )
+
+    visual_controller.set_test_assist_wrench(
+        Vector3.FORWARD * flight_controller.tuning.forward_force,
+        Vector3.ZERO,
+        FlightAssistanceSource.Value.AI_ASSISTED
+    )
+    visual_controller.step_visuals(0.25)
+    for path: String in main_effects:
+        var ai_effect := StringName(path)
+        assert_true(
+            visual_controller.get_merged_target(ai_effect) > 0.99,
+            "AI Assisted displays full legal authority"
         )
 
     visual_controller.set_test_assist_wrench(Vector3.ZERO, Vector3.ZERO)
     visual_controller.step_visuals(0.25)
     assert_true(
         visual_controller.are_all_effects_hidden(),
-        "released direct and assisted thrust must decay to invisible"
+        "released direct and assisted thrust decays to invisible"
     )
     assert_true(
         visual_controller.are_effect_origins_anchored(),
-        "plume decay must preserve every nozzle origin"
+        "plume decay preserves every nozzle origin"
     )
 
     visual_controller.clear_test_inputs()
@@ -181,7 +212,7 @@ func _test_unique_logical_root_lookup() -> void:
             &"ThrusterEffects"
         ),
         logical_root,
-        "logical hierarchy lookup must ignore imported wrapper depth"
+        "logical hierarchy lookup ignores imported wrapper depth"
     )
 
     var duplicate := Node3D.new()
@@ -193,7 +224,7 @@ func _test_unique_logical_root_lookup() -> void:
             &"ThrusterEffects"
         ),
         null,
-        "duplicate logical roots must be rejected"
+        "duplicate logical roots are rejected"
     )
 
     imported_wrapper.free()
