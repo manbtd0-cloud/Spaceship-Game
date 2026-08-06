@@ -41,17 +41,45 @@ func run() -> void:
 
     player.linear_velocity = Vector3(20.0, -6.0, -80.0)
     player.angular_velocity = Vector3(0.4, -0.5, 0.2)
-    Input.action_press(&"yaw_right")
     controller._physics_process(1.0 / 60.0)
-    Input.action_release(&"yaw_right")
+    assert_equal(
+        controller.get_assistance_source(),
+        FlightAssistanceSource.Value.AI_ASSISTED,
+        "AI Assisted exposes its typed assistance source"
+    )
     assert_true(
         controller.get_last_assist_force_local().length() > 0.0,
-        "AI turn adds bounded trajectory force"
+        "AI correction remains active without current rotation input"
     )
     assert_true(
         controller.get_last_assist_torque_local().length() > 0.0,
-        "AI turn adds stabilization torque"
+        "AI continuously stabilizes uncommanded angular velocity"
     )
+
+    Input.action_press(&"thrust_forward")
+    Input.action_press(&"strafe_right")
+    controller._physics_process(1.0 / 60.0)
+    var legal_combined := FlightAuthority.combine_translation(
+        controller.get_last_command().translation,
+        AiFlightIntentSolver.compute(
+            controller.get_last_command(),
+            controller.get_local_velocity(),
+            Vector3.ZERO,
+            controller.tuning
+        ).translation
+    )
+    var legal_force := FlightAuthority.translation_force(
+        legal_combined,
+        controller.get_boost_amount(),
+        controller.tuning
+    )
+    assert_true(
+        controller.get_last_force_local().length()
+        <= legal_force.length() + 0.01,
+        "pilot plus AI output remains inside one legal command envelope"
+    )
+    Input.action_release(&"thrust_forward")
+    Input.action_release(&"strafe_right")
 
     for mode: int in [
         FlightMode.Value.ASSISTED,
@@ -60,6 +88,8 @@ func run() -> void:
     ]:
         controller.set_flight_mode(mode)
         var selected := controller.get_flight_mode()
+        player.linear_velocity = Vector3(30.0, -20.0, -80.0)
+        player.angular_velocity = Vector3(0.4, -0.5, 0.3)
         Input.action_press(&"thrust_forward")
         Input.action_press(&"yaw_right")
         Input.action_press(&"smart_stabilize")
@@ -67,6 +97,11 @@ func run() -> void:
         assert_true(
             controller.is_smart_stabilizing(),
             "X activates stabilization in mode %s" % mode
+        )
+        assert_equal(
+            controller.get_assistance_source(),
+            FlightAssistanceSource.Value.SMART_STABILIZE,
+            "Smart Stabilize exposes its typed assistance source"
         )
         assert_equal(
             controller.get_flight_mode(),
@@ -82,6 +117,14 @@ func run() -> void:
             controller.get_last_pilot_torque_local(),
             Vector3.ZERO,
             "pilot torque suppressed during stabilization"
+        )
+        assert_true(
+            controller.get_last_assist_force_local().length() > 0.0,
+            "Smart Stabilize brakes translation immediately"
+        )
+        assert_true(
+            controller.get_last_assist_torque_local().length() > 0.0,
+            "Smart Stabilize counters rotation immediately"
         )
         assert_equal(
             controller.get_last_command().translation,
@@ -107,14 +150,43 @@ func run() -> void:
             "release keeps selected mode"
         )
 
+    controller.set_flight_mode(FlightMode.Value.MANUAL)
+    player.linear_velocity = Vector3(0.0, 0.0, -80.0)
+    player.angular_velocity = Vector3.ZERO
+    Input.action_press(&"boost")
+    Input.action_press(&"smart_stabilize")
+    controller._physics_process(1.0 / 60.0)
+    assert_true(
+        controller.get_boost_amount() > 0.0,
+        "held boost remains available to stabilization"
+    )
+    assert_true(
+        absf(controller.get_last_force_local().z)
+        <= (
+            controller.tuning.reverse_force
+            * controller.tuning.boost_multiplier
+            + 0.01
+        ),
+        "boosted stabilization remains within boosted reverse authority"
+    )
+    Input.action_release(&"boost")
+    Input.action_release(&"smart_stabilize")
+
     controller.reset_runtime_state()
     assert_true(
         not controller.is_smart_stabilizing(),
         "reset clears stabilization state"
     )
+    assert_equal(
+        controller.get_assistance_source(),
+        FlightAssistanceSource.Value.NONE,
+        "reset clears assistance source"
+    )
 
     Input.action_release(&"yaw_right")
     Input.action_release(&"thrust_forward")
+    Input.action_release(&"strafe_right")
+    Input.action_release(&"boost")
     Input.action_release(&"smart_stabilize")
     tree.root.remove_child(player)
     player.free()
