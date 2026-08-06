@@ -7,6 +7,7 @@ signal destroyed(result: DamageResult)
 signal state_changed(shield: float, hull: float)
 
 @export var tuning: DamageTuning
+@export var auto_advance: bool = true
 
 var _shield: float = 0.0
 var _hull: float = 0.0
@@ -19,6 +20,10 @@ var _initialized: bool = false
 
 func _ready() -> void:
     _ensure_initialized()
+
+func _physics_process(delta: float) -> void:
+    if auto_advance:
+        advance(delta)
 
 func apply_damage(packet: DamagePacket) -> DamageResult:
     _ensure_initialized()

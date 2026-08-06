@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/flight_hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/combat_hud.tscn" id="2_combat_hud"]
 
 [node name="FlightHud" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -79,7 +80,7 @@ text = "MOUSE  RELEASED"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.68, 0.78, 1)
 theme_override_font_sizes/font_size = 12
-text = "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   C CAMERA   B REAR   PGUP RIGHT   PGDN LEFT   R RESET"
+text = "W/S THRUST   Q/E STRAFE   SPACE/CTRL VERTICAL   MOUSE PITCH/YAW   A/D YAW   UP/DOWN PITCH   LEFT/RIGHT ROLL   SHIFT BOOST   F MODE   X STABILIZE   C CAMERA   B REAR   PGUP RIGHT   PGDN LEFT   R RESET"
 autowrap_mode = 2
 
 [node name="NoseReticle" type="Control" parent="."]
@@ -191,3 +192,5 @@ mouse_filter = 2
 rotation = -0.785398
 pivot_offset = Vector2(8, 1)
 color = Color(1, 0.88, 0.55, 0.9)
+
+[node name="CombatHud" parent="." instance=ExtResource("2_combat_hud")]

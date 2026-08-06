@@ -12,6 +12,7 @@ func run() -> void:
     _test_destroyed_state_does_not_recover()
     _test_disabled_and_zero_damage_are_inert()
     _test_reset_restores_full_enabled_state()
+    _test_runtime_auto_advance()
     _free_owned_states()
 
 func _test_shield_absorption_and_hull_overflow() -> void:
@@ -144,6 +145,16 @@ func _test_reset_restores_full_enabled_state() -> void:
     assert_true(not state.is_recharging(), "reset clears recharge state")
     assert_true(not state.is_repairing_hull(), "reset clears repair state")
     assert_true(state.is_damage_enabled(), "reset re-enables damage")
+
+func _test_runtime_auto_advance() -> void:
+    var state := _make_state(true)
+    state.apply_damage(_packet(30.0))
+    for _index: int in range(540):
+        state._physics_process(1.0 / 60.0)
+    assert_true(
+        state.get_shield() > 120.0,
+        "runtime DamageState advances regeneration"
+    )
 
 func _make_state(repair_enabled: bool) -> DamageState:
     var tuning := DamageTuning.new()
