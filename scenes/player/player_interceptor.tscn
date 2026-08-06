@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/input/player_input_source.gd" id="1_input"]
 [ext_resource type="Script" path="res://src/player/ship_flight_controller.gd" id="2_controller"]
@@ -7,6 +7,10 @@
 [ext_resource type="Script" path="res://src/player/schema_five_thruster_visual_controller.gd" id="5_thruster_visuals"]
 [ext_resource type="Script" path="res://src/combat/primary_fire_controller.gd" id="6_fire"]
 [ext_resource type="Script" path="res://src/combat/pulse_projectile_pool.gd" id="7_pool"]
+[ext_resource type="Script" path="res://src/combat/damage_state.gd" id="8_damage_state"]
+[ext_resource type="Resource" path="res://config/combat/player_damage_tuning.tres" id="9_damage_tuning"]
+[ext_resource type="Script" path="res://src/combat/collision_damage_receiver.gd" id="10_collision_damage"]
+[ext_resource type="PackedScene" path="res://scenes/combat/shield_impact_visualizer.tscn" id="11_shield"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_player"]
 size = Vector3(14, 3.8, 12.2)
@@ -19,6 +23,8 @@ linear_damp = 0.0
 angular_damp_mode = 1
 angular_damp = 0.0
 continuous_cd = true
+contact_monitor = true
+max_contacts_reported = 8
 can_sleep = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
@@ -55,3 +61,14 @@ body_path = NodePath("..")
 input_source_path = NodePath("../PlayerInputSource")
 model_path = NodePath("../VisualRoot/SmallSciFiFighter")
 projectile_pool_path = NodePath("../PulseProjectilePool")
+
+[node name="DamageState" type="Node" parent="."]
+script = ExtResource("8_damage_state")
+tuning = ExtResource("9_damage_tuning")
+
+[node name="CollisionDamageReceiver" type="Node" parent="."]
+script = ExtResource("10_collision_damage")
+
+[node name="ShieldImpactVisualizer" parent="." instance=ExtResource("11_shield")]
+ellipsoid_radii = Vector3(8.2, 3, 7.2)
+shield_color = Color(0.1, 0.66, 1, 1)
