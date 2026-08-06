@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="DamageTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/combat/damage_tuning.gd" id="1_damage"]
+
+[resource]
+script = ExtResource("1_damage")
+maximum_shield = 120.0
+maximum_hull = 150.0
+shield_regeneration_delay = 7.0
+shield_regeneration_rate = 3.0
+shield_reboot_delay = 15.0
+hull_repair_enabled = false
+hull_repair_delay_after_full_shield = 10.0
+hull_repair_rate = 1.0
