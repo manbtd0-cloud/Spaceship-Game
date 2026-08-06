@@ -4,39 +4,36 @@
 
 **Goal:** Build the first complete combat loop: fly, aim, hit a moving practice drone, reveal localized hexagonal shields, break the shield, damage hull, destroy the target, and watch it respawn while player and target combat state remain readable in the HUD.
 
-**Architecture:** Reuse the existing `PulseProjectile`, `PulseProjectilePool`, `DamagePacket`, `DamageResult`, `DamageTuning`, and `DamageState` contracts. Add a reusable collision-damage receiver, pooled ellipsoid shield-impact visual, deterministic rigid-body practice drone, lifecycle/respawn controller, and a separate combat HUD panel. The existing player flight, muzzle, projectile, camera, pause, settings, thruster, and asteroid systems remain authoritative.
+**Architecture:** Reuse the existing `PulseProjectile`, `PulseProjectilePool`, `DamagePacket`, `DamageResult`, `DamageTuning`, and `DamageState` contracts. Add reusable collision damage, a pooled ellipsoid shield-impact visual, a deterministic force-driven practice drone, lifecycle/respawn control, and a separate combat HUD panel. Existing flight, muzzle, projectile, camera, pause, settings, thruster, and asteroid behavior remains authoritative.
 
-**Tech Stack:** Godot 4.7.1 Standard, typed GDScript, `RigidBody3D`, `ShaderMaterial`, dependency-free test runner, Windows PowerShell verifier.
+**Tech Stack:** Godot 4.7.1 Standard, typed GDScript, `RigidBody3D`, `ShaderMaterial`, the existing dependency-free test runner, and the Windows PowerShell verifier.
 
-## Global Constraints
+## Global constraints
 
 - Repository: `manbtd0-cloud/Spaceship-Game`.
 - Branch: `agent/playable-flight-room`.
-- Verified baseline: schema-five fighter contract passed, deterministic thruster matrix passed, `PASS: 39 suites`, exact zero inertial speed/direction drift, clean main-scene boot, manual agile-fighter acceptance passed.
-- Final runner target: `PASS: 44 suites`.
-- Existing projectile speed remains exactly `900 m/s`.
-- Existing projectile damage remains exactly `15`.
-- Existing primary-fire cadence, muzzle transforms, 32-projectile pool, swept collision, source exclusion, and first-hit cleanup remain unchanged.
-- Existing player mass, collider, flight forces, torques, speed envelopes, angular envelopes, AI Assisted, Smart Stabilize, cameras, pause, settings, reset input, and thruster matrix remain unchanged.
-- Shield damage is resolved by the existing `DamageState`: shield first, overflow into hull, destruction at zero hull.
+- Verified baseline: schema-five fighter contract passed, deterministic thruster matrix passed, `PASS: 39 suites`, exact zero inertial speed/direction drift, clean main-scene boot, and manual agile-fighter acceptance passed.
+- Final target: `PASS: 44 suites`.
+- Projectile speed remains exactly `900 m/s`.
+- Projectile damage remains exactly `15`.
+- Existing fire cadence, exact muzzle transforms, 32-projectile pool, swept collision, source exclusion, and first-hit cleanup remain unchanged.
+- Existing player mass, collider, flight tuning, speed/angular envelopes, AI Assisted, Smart Stabilize, cameras, pause, settings, reset input, and thruster matrix remain unchanged.
+- `DamageState` remains the only shield/hull authority: shield first, overflow into hull, destruction at zero hull.
 - Collision damage uses `DamagePacket.Kind.COLLISION`; projectile damage uses `DamagePacket.Kind.PROJECTILE`.
-- Shield visuals are ship-aligned ellipsoids and use procedural hexagonal impact patterns; no texture download or runtime image generation.
-- Shield visuals are normally invisible; a hit reveals a localized hex impact and shield break reveals a short full-shell flash.
-- Automatic shield regeneration remains slow and damage restarts its delay/reboot timers.
+- Shields are ship-aligned ellipsoids with procedural hexagonal impacts.
+- Shield visuals are invisible at rest, localized on ordinary hits, and briefly full-shell on shield break.
 - Practice-drone hull never repairs.
-- The practice drone uses real `RigidBody3D` force and torque; no direct velocity assignment during active gameplay.
-- Respawn/reset may assign transforms and clear velocity while the body is frozen.
+- Drone active motion uses `RigidBody3D.apply_central_force()` and `apply_torque()` only.
+- Transform/velocity assignment is allowed only while frozen during reset or respawn.
 - No per-frame node, mesh, material, shader, or impact-slot allocation.
 - No GitHub Actions.
-- No approval pauses between implementation tasks unless a fresh verifier failure exposes a design contradiction.
-- Execute in four substantial batches. Use at most two implementation commits and one verification/documentation closure commit.
-- Do not ask the user to run intermediate commands. Request one complete Windows verifier only after Tasks 1–3 are implemented and statically reviewed.
-
----
+- No approval pauses between implementation tasks unless a fresh failure exposes a real design contradiction.
+- Four substantial batches, at most two implementation commits, one verification/documentation closure commit.
+- The user runs one complete Windows verifier only after Tasks 1–3 are implemented and reviewed.
 
 ## Locked gameplay values
 
-### Player damage tuning
+### Player damage
 
 ```text
 maximum_shield = 150
@@ -49,7 +46,7 @@ hull_repair_delay_after_full_shield = 10 s
 hull_repair_rate = 1/s
 ```
 
-### Practice-drone damage tuning
+### Practice-drone damage
 
 ```text
 maximum_shield = 120
@@ -84,7 +81,6 @@ vertical_speed = 8 m/s
 velocity_response = 1.8
 maximum_turn_torque = 12000 Nm
 angular_damping = 3000
-respawn_delay = 3 s
 spawn = (0, 20, -180)
 ```
 
@@ -94,56 +90,54 @@ spawn = (0, 20, -180)
 
 ### Create
 
-- `src/combat/collision_damage_math.gd`
-- `src/combat/collision_damage_receiver.gd`
-- `src/combat/shield_impact_math.gd`
-- `src/combat/shield_impact_visualizer.gd`
-- `shaders/shield_hex_impact.gdshader`
-- `scenes/combat/shield_impact_visualizer.tscn`
-- `src/combat/practice_drone_intent.gd`
-- `src/combat/practice_drone_tuning.gd`
-- `src/combat/practice_drone_steering.gd`
-- `src/combat/practice_drone_controller.gd`
-- `config/combat/player_damage_tuning.tres`
-- `config/combat/practice_drone_damage_tuning.tres`
-- `config/combat/practice_drone_tuning.tres`
-- `scenes/combat/practice_drone.tscn`
-- `src/ui/combat_hud.gd`
-- `scenes/ui/combat_hud.tscn`
-- `tests/unit/test_collision_damage_math.gd`
-- `tests/unit/test_shield_impact_math.gd`
-- `tests/unit/test_practice_drone_steering.gd`
-- `tests/integration/test_practice_drone_scene.gd`
-- `tests/integration/test_combat_sandbox.gd`
+```text
+src/combat/collision_damage_math.gd
+src/combat/collision_damage_receiver.gd
+src/combat/shield_impact_math.gd
+src/combat/shield_impact_visualizer.gd
+shaders/shield_hex_impact.gdshader
+scenes/combat/shield_impact_visualizer.tscn
+src/combat/practice_drone_intent.gd
+src/combat/practice_drone_tuning.gd
+src/combat/practice_drone_steering.gd
+src/combat/practice_drone_controller.gd
+config/combat/player_damage_tuning.tres
+config/combat/practice_drone_damage_tuning.tres
+config/combat/practice_drone_tuning.tres
+scenes/combat/practice_drone.tscn
+src/ui/combat_hud.gd
+scenes/ui/combat_hud.tscn
+tests/unit/test_collision_damage_math.gd
+tests/unit/test_shield_impact_math.gd
+tests/unit/test_practice_drone_steering.gd
+tests/integration/test_practice_drone_scene.gd
+tests/integration/test_combat_sandbox.gd
+```
 
 ### Modify
 
-- `src/combat/damage_state.gd`
-- `scenes/player/player_interceptor.tscn`
-- `src/flight_room/flight_room_controller.gd`
-- `scenes/flight_room/flight_room.tscn`
-- `scenes/ui/flight_hud.tscn`
-- `tests/test_runner.gd`
-- `tests/unit/test_damage_state.gd`
-- `tests/integration/test_player_scene.gd`
-- `tests/integration/test_flight_room_scene.gd`
-- `tests/integration/test_pulse_projectile.gd`
-- `README.md`
-- `docs/superpowers/plans/deferred-milestones.md`
+```text
+src/combat/damage_state.gd
+scenes/player/player_interceptor.tscn
+src/flight_room/flight_room_controller.gd
+scenes/flight_room/flight_room.tscn
+scenes/ui/flight_hud.tscn
+tests/test_runner.gd
+tests/unit/test_damage_state.gd
+tests/integration/test_player_scene.gd
+tests/integration/test_flight_room_scene.gd
+tests/integration/test_pulse_projectile.gd
+README.md
+docs/superpowers/plans/deferred-milestones.md
+```
 
 ---
 
-# Task 1: Reusable runtime damage, collision damage, and shield impacts
+# Task 1: Runtime damage, collision damage, and shield impacts
 
-**Files:**
-- Create all collision/shield files and player/drone damage tuning resources listed above.
-- Modify `src/combat/damage_state.gd`.
-- Modify `tests/test_runner.gd`.
-- Create `tests/unit/test_collision_damage_math.gd`.
-- Create `tests/unit/test_shield_impact_math.gd`.
-- Modify `tests/unit/test_damage_state.gd`.
+**Files:** Create collision/shield files and both damage tuning resources. Modify `DamageState`, its tests, and the test runner.
 
-**Interfaces:**
+**Produces:**
 
 ```gdscript
 CollisionDamageMath.compute_damage(
@@ -176,6 +170,8 @@ func resolve_collision_for_test(
     impact_normal: Vector3,
     physics_tick: int
 ) -> DamageResult
+
+func reset_runtime_state() -> void
 ```
 
 ```gdscript
@@ -186,21 +182,14 @@ func get_break_energy() -> float
 func reset_visuals() -> void
 ```
 
-- [ ] **Step 1: Register the five new suites immediately**
+- [ ] **Step 1: Add Task 1 suites and write RED tests**
 
-Add these paths to `TEST_SCRIPTS` in `tests/test_runner.gd`:
+Add only these two paths to `tests/test_runner.gd`:
 
 ```gdscript
 "res://tests/unit/test_collision_damage_math.gd",
 "res://tests/unit/test_shield_impact_math.gd",
-"res://tests/unit/test_practice_drone_steering.gd",
-"res://tests/integration/test_practice_drone_scene.gd",
-"res://tests/integration/test_combat_sandbox.gd",
 ```
-
-The runner target becomes `44` suites from this point onward.
-
-- [ ] **Step 2: Write the collision-damage RED**
 
 Create `tests/unit/test_collision_damage_math.gd`:
 
@@ -208,29 +197,21 @@ Create `tests/unit/test_collision_damage_math.gd`:
 extends "res://tests/support/test_case.gd"
 
 func run() -> void:
-    assert_true(
-        is_zero_approx(CollisionDamageMath.compute_damage(11.99, 12.0, 2.0, 80.0)),
-        "sub-threshold collision applies no damage"
-    )
-    assert_true(
-        is_equal_approx(CollisionDamageMath.compute_damage(20.0, 12.0, 2.0, 80.0), 16.0),
-        "collision damage uses excess speed only"
-    )
-    assert_true(
-        is_equal_approx(CollisionDamageMath.compute_damage(100.0, 12.0, 2.0, 80.0), 80.0),
-        "collision damage obeys maximum cap"
-    )
-    assert_true(
-        is_zero_approx(CollisionDamageMath.compute_damage(NAN, 12.0, 2.0, 80.0)),
-        "non-finite speed fails closed"
-    )
-    assert_true(
-        is_zero_approx(CollisionDamageMath.compute_damage(30.0, NAN, 2.0, 80.0)),
-        "non-finite tuning fails closed"
-    )
+    assert_true(is_zero_approx(
+        CollisionDamageMath.compute_damage(11.99, 12.0, 2.0, 80.0)
+    ), "sub-threshold collision applies no damage")
+    assert_true(is_equal_approx(
+        CollisionDamageMath.compute_damage(20.0, 12.0, 2.0, 80.0),
+        16.0
+    ), "collision damage uses excess speed")
+    assert_true(is_equal_approx(
+        CollisionDamageMath.compute_damage(100.0, 12.0, 2.0, 80.0),
+        80.0
+    ), "collision damage obeys cap")
+    assert_true(is_zero_approx(
+        CollisionDamageMath.compute_damage(NAN, 12.0, 2.0, 80.0)
+    ), "non-finite speed fails closed")
 ```
-
-- [ ] **Step 3: Write the shield-impact RED**
 
 Create `tests/unit/test_shield_impact_math.gd`:
 
@@ -242,59 +223,50 @@ func run() -> void:
     assert_true(
         ShieldImpactMath.local_direction(Vector3(8.0, 0.0, 0.0), radii)
         .is_equal_approx(Vector3.RIGHT),
-        "ellipsoid right-side impact maps to local right"
+        "right-side impact maps to local right"
     )
     assert_true(
         ShieldImpactMath.local_direction(Vector3(0.0, 3.0, 0.0), radii)
         .is_equal_approx(Vector3.UP),
-        "ellipsoid top impact maps to local up"
+        "top impact maps to local up"
     )
-    assert_true(
-        ShieldImpactMath.local_direction(Vector3.ZERO, radii)
-        .is_equal_approx(Vector3.FORWARD),
-        "center fallback remains deterministic"
+    assert_equal(
+        ShieldImpactMath.local_direction(Vector3.ZERO, radii),
+        Vector3.FORWARD,
+        "center fallback is deterministic"
     )
-    assert_true(
-        is_equal_approx(ShieldImpactMath.hit_energy(15.0, 150.0), 0.55),
-        "ordinary projectile hit produces readable energy"
-    )
-    assert_true(
-        is_equal_approx(ShieldImpactMath.hit_energy(150.0, 150.0), 1.0),
-        "full-shield hit clamps at full energy"
-    )
+    assert_true(is_equal_approx(
+        ShieldImpactMath.hit_energy(15.0, 150.0),
+        0.55
+    ), "ordinary projectile hit remains readable")
 ```
 
-- [ ] **Step 4: Add a runtime-advance RED to `test_damage_state.gd`**
-
-Add a test that puts `DamageState` in the test tree, applies 30 damage, advances physics frames through the normal eight-second delay, and confirms automatic regeneration begins without another controller calling `advance()`.
+Extend `tests/unit/test_damage_state.gd` with:
 
 ```gdscript
-func _test_tree_runtime_auto_advance() -> void:
+func _test_runtime_auto_advance() -> void:
     var state := _make_state(true)
-    var tree := Engine.get_main_loop() as SceneTree
-    tree.root.add_child(state)
     state.apply_damage(_packet(30.0))
     for _index: int in range(540):
         state._physics_process(1.0 / 60.0)
     assert_true(
         state.get_shield() > 120.0,
-        "tree-owned DamageState automatically advances regeneration"
+        "runtime DamageState advances regeneration"
     )
-    tree.root.remove_child(state)
 ```
 
-Do not add a second runtime damage controller elsewhere.
+Call `_test_runtime_auto_advance()` from `run()`.
 
-- [ ] **Step 5: Run one RED batch**
+- [ ] **Step 2: Run Task 1 RED**
 
 ```powershell
 godot --headless --path . --editor --quit
 godot --headless --path . --script res://tests/test_runner.gd
 ```
 
-Expected: the runner loads 44 paths and fails because the new classes/scenes do not exist.
+Expected: failure because collision/shield classes do not exist.
 
-- [ ] **Step 6: Implement pure collision math**
+- [ ] **Step 3: Implement collision math**
 
 Create `src/combat/collision_damage_math.gd`:
 
@@ -323,9 +295,9 @@ static func compute_damage(
     )
 ```
 
-- [ ] **Step 7: Make `DamageState` self-advancing in runtime**
+- [ ] **Step 4: Make `DamageState` self-advancing**
 
-Add to `src/combat/damage_state.gd`:
+Add:
 
 ```gdscript
 @export var auto_advance: bool = true
@@ -335,78 +307,38 @@ func _physics_process(delta: float) -> void:
         advance(delta)
 ```
 
-Keep all existing regeneration, reboot, hull-repair, destruction, and signal semantics unchanged.
+No controller may call `advance()` for a tree-owned `DamageState` after this change.
 
-- [ ] **Step 8: Implement collision receiver**
+- [ ] **Step 5: Implement collision receiver**
 
-Create `src/combat/collision_damage_receiver.gd` with these exact defaults and behavior:
+Create `src/combat/collision_damage_receiver.gd` with these defaults:
 
 ```gdscript
-class_name CollisionDamageReceiver
-extends Node
-
-signal collision_damage_resolved(result: DamageResult)
-
 @export var body_path: NodePath = NodePath("..")
 @export var damage_state_path: NodePath = NodePath("../DamageState")
 @export var minimum_impact_speed: float = 12.0
 @export var damage_per_excess_mps: float = 2.0
 @export var maximum_damage: float = 80.0
 @export var repeat_guard_frames: int = 12
-
-var _body: RigidBody3D
-var _damage_state: DamageState
-var _last_contact_tick: Dictionary = {}
-
-func _ready() -> void:
-    _body = get_node_or_null(body_path) as RigidBody3D
-    _damage_state = get_node_or_null(damage_state_path) as DamageState
-    if _body == null or _damage_state == null:
-        push_error("CollisionDamageReceiver requires body and DamageState")
-        return
-    _body.contact_monitor = true
-    _body.max_contacts_reported = maxi(_body.max_contacts_reported, 8)
-    if not _body.body_entered.is_connected(_on_body_entered):
-        _body.body_entered.connect(_on_body_entered)
-
-func _on_body_entered(other: Node) -> void:
-    var other_body := other as PhysicsBody3D
-    if other_body == null:
-        return
-    var delta := _body.global_position - other_body.global_position
-    var normal := delta.normalized() if not delta.is_zero_approx() else Vector3.UP
-    var point := (_body.global_position + other_body.global_position) * 0.5
-    _resolve(other_body, point, normal, Engine.get_physics_frames())
-
-func resolve_collision_for_test(
-    other_body: PhysicsBody3D,
-    impact_point: Vector3,
-    impact_normal: Vector3,
-    physics_tick: int
-) -> DamageResult:
-    return _resolve(other_body, impact_point, impact_normal, physics_tick)
 ```
 
-The private `_resolve()` must:
+At `_ready()` resolve one `RigidBody3D` and one `DamageState`, enable contact monitoring, set at least eight reported contacts, and connect `body_entered`.
+
+Use this exact relative-speed calculation in `_resolve()`:
 
 ```gdscript
+var other_rigid := other_body as RigidBody3D
 var other_velocity := (
-    other_body.linear_velocity
-    if other_body is RigidBody3D
+    other_rigid.linear_velocity
+    if other_rigid != null
     else Vector3.ZERO
 )
 var relative_speed := (_body.linear_velocity - other_velocity).length()
-var amount := CollisionDamageMath.compute_damage(
-    relative_speed,
-    minimum_impact_speed,
-    damage_per_excess_mps,
-    maximum_damage
-)
 ```
 
-Build a deterministic unordered contact key from the two instance IDs, ignore repeats within `repeat_guard_frames`, apply one `DamagePacket.Kind.COLLISION`, emit the result when damage was applied, and expose `reset_runtime_state()` to clear the contact dictionary.
+Build an unordered contact key from both instance IDs. Ignore the same key inside `repeat_guard_frames`. Apply one `DamagePacket.Kind.COLLISION` with midpoint/normal data and emit `collision_damage_resolved` only when `applied_amount > 0`.
 
-- [ ] **Step 9: Implement shield-impact math**
+- [ ] **Step 6: Implement shield-impact math**
 
 Create `src/combat/shield_impact_math.gd`:
 
@@ -425,12 +357,12 @@ static func local_direction(
         maxf(absf(ellipsoid_radii.y), 0.001),
         maxf(absf(ellipsoid_radii.z), 0.001)
     )
-    var normalized := Vector3(
+    var value := Vector3(
         local_point.x / safe.x,
         local_point.y / safe.y,
         local_point.z / safe.z
     )
-    return normalized.normalized() if not normalized.is_zero_approx() else Vector3.FORWARD
+    return value.normalized() if not value.is_zero_approx() else Vector3.FORWARD
 
 static func hit_energy(
     applied_shield_damage: float,
@@ -447,7 +379,7 @@ static func hit_energy(
     )
 ```
 
-- [ ] **Step 10: Add the procedural shield shader**
+- [ ] **Step 7: Create procedural shield shader**
 
 Create `shaders/shield_hex_impact.gdshader`:
 
@@ -461,7 +393,6 @@ uniform float energy : hint_range(0.0, 1.0) = 0.0;
 uniform float shield_ratio : hint_range(0.0, 1.0) = 1.0;
 uniform float full_shell : hint_range(0.0, 1.0) = 0.0;
 uniform float hex_scale = 12.0;
-
 varying vec3 local_vertex;
 
 void vertex() {
@@ -472,38 +403,29 @@ float hex_edges(vec2 point) {
     vec2 p = point * hex_scale;
     vec2 q = vec2(p.x * 1.1547005, p.y + p.x * 0.5773503);
     vec2 cell = abs(fract(q) - 0.5);
-    float edge = max(cell.x, cell.y);
-    return smoothstep(0.38, 0.49, edge);
+    return smoothstep(0.38, 0.49, max(cell.x, cell.y));
 }
 
 void fragment() {
     vec3 n = normalize(local_vertex);
     vec3 weights = pow(abs(n), vec3(4.0));
     weights /= max(weights.x + weights.y + weights.z, 0.0001);
-    float hex = (
-        hex_edges(n.yz) * weights.x
+    float hex = hex_edges(n.yz) * weights.x
         + hex_edges(n.xz) * weights.y
-        + hex_edges(n.xy) * weights.z
-    );
+        + hex_edges(n.xy) * weights.z;
     float focus = pow(max(dot(n, normalize(impact_direction)), 0.0), 30.0);
     float rim = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.0);
     float reveal = mix(focus, 1.0, full_shell);
-    float alpha = (
-        energy
-        * reveal
-        * (0.24 + 0.76 * hex)
-        * (0.35 + 0.65 * rim)
-        * (0.55 + 0.45 * shield_ratio)
-    );
     ALBEDO = shield_color.rgb;
     EMISSION = shield_color.rgb * (1.5 + 4.0 * energy);
-    ALPHA = alpha;
+    ALPHA = energy * reveal * (0.24 + 0.76 * hex)
+        * (0.35 + 0.65 * rim) * (0.55 + 0.45 * shield_ratio);
 }
 ```
 
-- [ ] **Step 11: Build the reusable shield scene and visualizer**
+- [ ] **Step 8: Build pooled shield visual**
 
-Create `scenes/combat/shield_impact_visualizer.tscn` with this exact node contract:
+Create `scenes/combat/shield_impact_visualizer.tscn`:
 
 ```text
 ShieldImpactVisualizer (Node3D, script)
@@ -514,40 +436,46 @@ ShieldImpactVisualizer (Node3D, script)
 └── BreakShell (MeshInstance3D, SphereMesh)
 ```
 
-All five meshes share one `SphereMesh`; each receives a unique duplicated `ShaderMaterial` at `_ready()`. The script must:
+`ShieldImpactVisualizer` must:
 
-- export `damage_state_path`, `ellipsoid_radii`, `shield_color`, `hit_duration = 0.55`, and `break_duration = 0.85`;
-- pre-resolve all five mesh/material slots at `_ready()`;
-- connect `DamageState.damage_resolved`, `shield_broken`, and `state_changed`;
-- assign each shield hit to the next slot in a four-slot ring;
-- convert world impact point through `to_local()` and `ShieldImpactMath.local_direction()`;
-- decay energy in `_process()` without allocating nodes/materials;
-- reveal the full `BreakShell` only for shield break;
-- remain completely invisible when all energies are zero;
-- expose the four test getters listed in the interface block.
+- export `damage_state_path`, `ellipsoid_radii`, `shield_color`, `hit_duration = 0.55`, `break_duration = 0.85`;
+- resolve and duplicate five materials once at `_ready()`;
+- connect `damage_resolved`, `shield_broken`, and `state_changed`;
+- assign hits to a four-slot ring;
+- map `to_local(result.impact_point)` through `ShieldImpactMath.local_direction()`;
+- decay slot energy without creating objects;
+- reveal `BreakShell` only for shield break;
+- remain invisible when all energy is zero;
+- expose the four getters listed above.
 
-- [ ] **Step 12: Create exact tuning resources**
+- [ ] **Step 9: Create exact damage resources**
 
-Create `config/combat/player_damage_tuning.tres` and `config/combat/practice_drone_damage_tuning.tres` with the locked values at the top of this plan.
+Create:
 
-- [ ] **Step 13: Run the Task 1 green gate**
+```text
+config/combat/player_damage_tuning.tres
+config/combat/practice_drone_damage_tuning.tres
+```
+
+Use the locked player/drone values exactly.
+
+- [ ] **Step 10: Run Task 1 GREEN**
 
 ```powershell
 godot --headless --path . --script res://tests/test_runner.gd
 ```
 
-Expected at this checkpoint: the Task 1 suites pass; drone/room suites may still fail because their scenes are intentionally not created until Task 2.
+Expected: `PASS: 41 suites`.
 
-Keep changes unpushed for the first consolidated implementation commit after Task 2.
+Keep Task 1 changes for the first consolidated commit after Task 2.
 
 ---
 
-# Task 2: Deterministic rigid-body practice drone and lifecycle
+# Task 2: Force-driven practice drone and respawn lifecycle
 
-**Files:**
-- Create all practice-drone source, tuning, scene, and test files listed in the file map.
+**Files:** Create drone intent/tuning/steering/controller/resource/scene and two new tests.
 
-**Interfaces:**
+**Produces:**
 
 ```gdscript
 class_name PracticeDroneIntent
@@ -581,99 +509,62 @@ func get_respawn_remaining() -> float
 func get_last_intent() -> PracticeDroneIntent
 ```
 
-- [ ] **Step 1: Write the steering RED**
+- [ ] **Step 1: Add Task 2 suites and write RED tests**
 
-Create `tests/unit/test_practice_drone_steering.gd` with these required cases:
-
-```gdscript
-extends "res://tests/support/test_case.gd"
-
-func run() -> void:
-    var tuning := PracticeDroneTuning.new()
-    var intent := PracticeDroneIntent.new()
-
-    PracticeDroneSteering.compute_into(
-        intent,
-        Vector3(0.0, 0.0, 260.0),
-        Vector3.ZERO,
-        Vector3.FORWARD,
-        Vector3.ZERO,
-        0.0,
-        tuning
-    )
-    assert_true(intent.acceleration_world.z > 0.0, "far drone approaches player")
-    assert_true(
-        intent.acceleration_world.length() <= tuning.maximum_acceleration + 0.001,
-        "drone acceleration remains bounded"
-    )
-
-    PracticeDroneSteering.compute_into(
-        intent,
-        Vector3(0.0, 0.0, 50.0),
-        Vector3.ZERO,
-        Vector3.FORWARD,
-        Vector3.ZERO,
-        1.0,
-        tuning
-    )
-    assert_true(intent.acceleration_world.z < 0.0, "close drone retreats from player")
-
-    PracticeDroneSteering.compute_into(
-        intent,
-        Vector3(140.0, 0.0, 0.0),
-        Vector3.ZERO,
-        Vector3.FORWARD,
-        Vector3.ZERO,
-        2.0,
-        tuning
-    )
-    assert_true(absf(intent.acceleration_world.z) > 0.0, "drone orbits inside distance band")
-    assert_true(
-        intent.torque_world.length() <= tuning.maximum_turn_torque + 0.001,
-        "turn torque remains bounded"
-    )
-
-    PracticeDroneSteering.compute_into(
-        intent,
-        Vector3(NAN, 0.0, 0.0),
-        Vector3.ZERO,
-        Vector3.FORWARD,
-        Vector3.ZERO,
-        0.0,
-        tuning
-    )
-    assert_equal(intent.acceleration_world, Vector3.ZERO, "non-finite input fails closed")
-    assert_equal(intent.torque_world, Vector3.ZERO, "non-finite input clears torque")
-```
-
-- [ ] **Step 2: Write the drone-scene RED**
-
-Create `tests/integration/test_practice_drone_scene.gd` to assert:
+Add:
 
 ```gdscript
-const DRONE_SCENE := "res://scenes/combat/practice_drone.tscn"
+"res://tests/unit/test_practice_drone_steering.gd",
+"res://tests/integration/test_practice_drone_scene.gd",
 ```
 
-The instantiated root must be `RigidBody3D` with:
+Create `test_practice_drone_steering.gd` with cases for:
 
-- mass exactly `1600`;
-- zero gravity;
-- continuous collision detection;
-- contact monitoring with at least eight contacts;
-- one collider;
-- `VisualRoot`;
-- `DamageState` using 120 shield, 150 hull, no hull repair;
-- `CollisionDamageReceiver`;
-- `ShieldImpactVisualizer` with radii `Vector3(3.2, 2.4, 3.2)`;
-- `PracticeDroneController`;
-- `DestructionPulse` visual;
-- a deterministic `reset_to_spawn()` that restores shield/hull, visibility, collision, zero velocities, and saved spawn transform.
+```text
+far target -> approach acceleration
+close target -> retreat acceleration
+inside distance band -> nonzero orbit acceleration
+acceleration <= maximum_acceleration
+torque <= maximum_turn_torque
+non-finite input -> zero intent
+```
 
-- [ ] **Step 3: Implement drone intent and tuning types**
+Use this core assertion shape:
 
-Create `src/combat/practice_drone_intent.gd` exactly as defined in the interface block.
+```gdscript
+var tuning := PracticeDroneTuning.new()
+var intent := PracticeDroneIntent.new()
+PracticeDroneSteering.compute_into(
+    intent,
+    Vector3(0.0, 0.0, 260.0),
+    Vector3.ZERO,
+    Vector3.FORWARD,
+    Vector3.ZERO,
+    0.0,
+    tuning
+)
+assert_true(intent.acceleration_world.z > 0.0, "far drone approaches")
+assert_true(
+    intent.acceleration_world.length() <= tuning.maximum_acceleration + 0.001,
+    "acceleration remains bounded"
+)
+```
 
-Create `src/combat/practice_drone_tuning.gd`:
+Create `test_practice_drone_scene.gd` and assert the exact scene contract in Step 6.
+
+- [ ] **Step 2: Run Task 2 RED**
+
+```powershell
+godot --headless --path . --script res://tests/test_runner.gd
+```
+
+Expected: failure because drone classes/scene do not exist.
+
+- [ ] **Step 3: Implement intent and tuning**
+
+Create `PracticeDroneIntent` as defined above.
+
+Create `PracticeDroneTuning`:
 
 ```gdscript
 class_name PracticeDroneTuning
@@ -692,35 +583,34 @@ extends Resource
 @export var respawn_delay: float = 3.0
 ```
 
-Create `config/combat/practice_drone_tuning.tres` with these exact values.
+Create `config/combat/practice_drone_tuning.tres` with exact values.
 
-- [ ] **Step 4: Implement pure drone steering**
+- [ ] **Step 4: Implement pure steering**
 
-`PracticeDroneSteering.compute_into()` must:
+`compute_into()` must:
 
-1. clear `result` before validation;
-2. fail closed for any non-finite input or missing tuning;
-3. define `to_player = relative_position.normalized()`;
-4. build an orbit tangent from `to_player.cross(Vector3.UP)` and fall back to `to_player.cross(Vector3.RIGHT)` when needed;
-5. use a deterministic orbit sign from `sin(elapsed_seconds * 0.65)`;
-6. approach outside `preferred_distance + distance_band`;
-7. retreat inside `preferred_distance - distance_band`;
-8. orbit inside the distance band;
-9. add vertical motion `Vector3.UP * sin(elapsed_seconds * 0.85) * vertical_speed`;
-10. clamp desired velocity to `maximum_speed`;
-11. compute acceleration `(desired_velocity - relative_velocity) * velocity_response`, clamped to `maximum_acceleration`;
-12. face the player using `current_forward.cross(to_player)`;
-13. compute torque `facing_error * maximum_turn_torque - angular_velocity * angular_damping`, clamped to `maximum_turn_torque`.
+1. clear the reusable result;
+2. fail closed on non-finite input;
+3. use `to_player = relative_position.normalized()`;
+4. derive a stable orbit tangent from world up, with right-axis fallback;
+5. approach beyond 165 m;
+6. retreat inside 115 m;
+7. orbit inside the band;
+8. add vertical sine motion at `0.85 rad/s`;
+9. clamp desired velocity to `45 m/s`;
+10. compute `(desired_velocity - relative_velocity) * 1.8` and clamp to `18 m/s²`;
+11. face the player with `current_forward.cross(to_player)`;
+12. subtract angular damping and clamp torque to `12000 Nm`.
 
-No random generator and no direct body access are allowed in this helper.
+The `relative_velocity` argument is explicitly **drone velocity minus target velocity**.
 
-- [ ] **Step 5: Implement `PracticeDroneController`**
+- [ ] **Step 5: Implement controller**
 
-The controller owns one reusable `PracticeDroneIntent`. During active life it:
+During active life:
 
 ```gdscript
 var relative_position := _target.global_position - _body.global_position
-var relative_velocity := _target.linear_velocity - _body.linear_velocity
+var relative_velocity := _body.linear_velocity - _target.linear_velocity
 PracticeDroneSteering.compute_into(
     _intent,
     relative_position,
@@ -734,28 +624,32 @@ _body.apply_central_force(_intent.acceleration_world * _body.mass)
 _body.apply_torque(_intent.torque_world)
 ```
 
-On `DamageState.destroyed` it must:
-
-- begin a `3.0 s` respawn countdown;
-- freeze the body;
-- set collision layer/mask to zero;
-- stop AI force/torque;
-- reveal and animate `DestructionPulse` for `0.45 s`;
-- hide `VisualRoot` after the first `0.12 s`;
-- emit `respawn_started` and `respawn_progress`;
-- call `reset_to_spawn()` when countdown reaches zero;
-- emit `respawned`.
-
-`reset_to_spawn()` is the only runtime path allowed to assign drone transform and zero velocity. It must restore saved layer/mask, visibility, collision, damage state, timers, and intent.
-
-- [ ] **Step 6: Build the practice-drone scene**
-
-Create `scenes/combat/practice_drone.tscn` with this exact contract:
+On destruction:
 
 ```text
-PracticeDrone (RigidBody3D, mass 1600, gravity 0, CCD, contact monitor)
-├── CollisionShape3D (SphereShape3D radius 2.4)
-├── VisualRoot (Node3D)
+start 3.0 s respawn
+freeze body
+disable collision layer/mask
+stop force/torque
+show DestructionPulse for 0.45 s
+hide VisualRoot after 0.12 s
+emit respawn signals
+reset at countdown zero
+```
+
+`reset_to_spawn()` is the only active runtime path allowed to assign transform or velocity. It restores saved layers/masks, visibility, collision, shield/hull, timers, and intent.
+
+- [ ] **Step 6: Build exact drone scene**
+
+```text
+PracticeDrone (RigidBody3D)
+  mass = 1600
+  gravity_scale = 0
+  continuous_cd = true
+  contact_monitor = true
+  max_contacts_reported = 8
+├── CollisionShape3D (SphereShape radius 2.4)
+├── VisualRoot
 │   ├── Core (SphereMesh, metallic dark body)
 │   ├── GuardRing (TorusMesh, emissive cyan)
 │   ├── FinTop (BoxMesh)
@@ -764,39 +658,38 @@ PracticeDrone (RigidBody3D, mass 1600, gravity 0, CCD, contact monitor)
 │   └── FinRight (BoxMesh)
 ├── DamageState (drone damage tuning)
 ├── CollisionDamageReceiver
-├── ShieldImpactVisualizer (instance, radii 3.2/2.4/3.2)
+├── ShieldImpactVisualizer (radii 3.2/2.4/3.2)
 ├── DestructionPulse (SphereMesh, hidden)
 └── PracticeDroneController (drone tuning)
 ```
 
-The geometric design is intentional for a training drone, not a placeholder spacecraft. It remains replaceable through `VisualRoot` without changing combat or AI contracts.
+The geometric design is intentional for a training drone. `VisualRoot` remains replaceable without changing combat contracts.
 
-- [ ] **Step 7: Run the Task 2 green gate**
+- [ ] **Step 7: Run Task 2 GREEN**
 
 ```powershell
 godot --headless --path . --script res://tests/test_runner.gd
 ```
 
-Expected: the three new unit suites and practice-drone scene suite pass. Only the full room integration suite may remain failing until Task 3.
+Expected: `PASS: 43 suites`.
 
-- [ ] **Step 8: Create the first consolidated implementation commit**
+- [ ] **Step 8: First consolidated implementation commit**
+
+Stage only Task 1–2 files and commit:
 
 ```powershell
-git add src/combat shaders/shield_hex_impact.gdshader scenes/combat config/combat tests/unit/test_collision_damage_math.gd tests/unit/test_shield_impact_math.gd tests/unit/test_practice_drone_steering.gd tests/integration/test_practice_drone_scene.gd tests/test_runner.gd tests/unit/test_damage_state.gd
 git commit -m "feat: add reusable combat target systems"
 ```
 
-Do not push or ask for verification yet.
+Do not push or ask the user to verify.
 
 ---
 
-# Task 3: Player, room, combat HUD, and end-to-end loop
+# Task 3: Player/room integration, combat HUD, and end-to-end loop
 
-**Files:**
-- Create `src/ui/combat_hud.gd` and `scenes/ui/combat_hud.tscn`.
-- Modify player, room, HUD, controller, and integration tests listed in the file map.
+**Files:** Create combat HUD and full sandbox test. Modify player/room/HUD/controller and existing integration tests.
 
-**Interfaces:**
+**Produces:**
 
 ```gdscript
 class_name CombatHud
@@ -810,135 +703,121 @@ func get_target_hull_percent() -> float
 func get_target_status_text() -> String
 ```
 
-- [ ] **Step 1: Write the full combat-sandbox RED**
-
-Create `tests/integration/test_combat_sandbox.gd`. It must load `res://scenes/flight_room/flight_room.tscn` and assert:
-
-1. player has `DamageState`, `CollisionDamageReceiver`, and `ShieldImpactVisualizer`;
-2. room has one `PracticeDrone` at `Vector3(0, 20, -180)`;
-3. `FlightHud/CombatHud` resolves player state, target state, target controller, and player projectile pool;
-4. firing one actual pooled projectile into the drone reduces shield by exactly 15, activates one shield-impact slot, and activates hit confirmation;
-5. a wall hit does not activate hit confirmation;
-6. enough actual damage destroys the drone, disables its collision, and enters respawn;
-7. stepping the drone controller for 3.0 seconds restores full 120 shield and 150 hull at spawn;
-8. high-speed collision damage reduces shield before hull;
-9. `FlightRoomController.reset_player()` restores player damage state and resets drone;
-10. player destruction disables flight/fire briefly and then restores the player without an explosion requirement.
-
-- [ ] **Step 2: Extend existing scene/projectile RED coverage**
-
-Update:
-
-- `tests/integration/test_player_scene.gd` to lock player damage/shield nodes and tuning;
-- `tests/integration/test_flight_room_scene.gd` to lock the drone and combat HUD paths;
-- `tests/integration/test_pulse_projectile.gd` to assert shield visual receives the exact `DamageResult.impact_point` through the damage signal path without modifying projectile code.
-
-- [ ] **Step 3: Add player combat nodes**
-
-Modify `scenes/player/player_interceptor.tscn` by adding:
-
-```text
-DamageState (player damage tuning)
-CollisionDamageReceiver (body .., state ../DamageState)
-ShieldImpactVisualizer (instance, state ../DamageState, radii 8.2/3.0/7.2)
-```
-
-Set player `contact_monitor = true` and `max_contacts_reported = 8`. Do not change mass, collider, collision layer/mask, or any flight/combat child already present.
-
-- [ ] **Step 4: Build the combat HUD scene**
-
-Create `scenes/ui/combat_hud.tscn`:
-
-```text
-CombatHud (Control, full rect, script)
-├── PlayerPanel (PanelContainer, bottom-left)
-│   └── VBox
-│       ├── TitleLabel: PLAYER
-│       ├── ShieldLabel
-│       ├── ShieldBar (ProgressBar, 0..100)
-│       ├── HullLabel
-│       └── HullBar (ProgressBar, 0..100)
-├── TargetPanel (PanelContainer, top-center)
-│   └── VBox
-│       ├── TitleLabel: PRACTICE DRONE
-│       ├── StatusLabel
-│       ├── ShieldLabel
-│       ├── ShieldBar (ProgressBar, 0..100)
-│       ├── HullLabel
-│       └── HullBar (ProgressBar, 0..100)
-└── HitMarker (Control, center, hidden)
-    ├── TopLeft
-    ├── TopRight
-    ├── BottomLeft
-    └── BottomRight
-```
-
-The panel style remains restrained: dark translucent backgrounds, cyan shield, warm hull, no large arcade banners.
-
-- [ ] **Step 5: Implement `CombatHud`**
-
-Use these exact scene-relative paths when the combat HUD is instanced under `FlightHud`:
-
-```text
-player_damage_state_path = ../../PlayerInterceptor/DamageState
-target_damage_state_path = ../../PracticeDrone/DamageState
-target_controller_path = ../../PracticeDrone/PracticeDroneController
-projectile_pool_path = ../../PlayerInterceptor/PulseProjectilePool
-```
-
-At `_ready()`:
-
-- resolve all four dependencies;
-- connect both `state_changed` signals;
-- connect target `respawn_started`, `respawn_progress`, and `respawned`;
-- connect player pool `projectile_resolved`;
-- initialize all labels and bars.
-
-On projectile resolution:
-
-```gdscript
-if (
-    hit_damageable
-    and result != null
-    and result.applied_amount > 0.0
-):
-    _hit_flash_remaining = 0.12
-```
-
-Wall hits and ignored packets do not flash. `_process()` decays the marker alpha and updates respawn countdown text. Use percentage values, not raw maximum assumptions.
-
-- [ ] **Step 6: Integrate combat HUD into existing HUD**
-
-Instance `CombatHud` as `FlightHud/CombatHud` in `scenes/ui/flight_hud.tscn`. Do not move or rewrite the current telemetry panel, nose reticle, or velocity marker.
-
-- [ ] **Step 7: Integrate the drone and player lifecycle into the room**
-
-Instance `PracticeDrone` in `scenes/flight_room/flight_room.tscn` at:
-
-```text
-position = Vector3(0, 20, -180)
-```
-
-Modify `FlightRoomController` to export/resolve:
-
-```gdscript
-@export var player_damage_state_path: NodePath
-@export var practice_drone_controller_path: NodePath
-```
-
-At `_ready()`:
-
-- resolve player `DamageState`;
-- resolve `PracticeDroneController`;
-- call `practice_drone.set_target(_body)`;
-- connect player `destroyed` to `_on_player_destroyed`.
+- [ ] **Step 1: Add full sandbox suite and write RED**
 
 Add:
 
 ```gdscript
-var _player_respawn_remaining := 0.0
-const PLAYER_RESPAWN_DELAY := 1.25
+"res://tests/integration/test_combat_sandbox.gd",
 ```
+
+The test loads `res://scenes/flight_room/flight_room.tscn` and verifies:
+
+```text
+player DamageState/CollisionDamageReceiver/ShieldImpactVisualizer
+one PracticeDrone at (0,20,-180)
+FlightHud/CombatHud dependencies resolve
+real pooled projectile removes exactly 15 drone shield
+shield impact slot activates
+hit marker activates only for damageable hit
+lethal damage enters respawn and disables collision
+3.0 s step restores 120 shield/150 hull at spawn
+high-speed collision damages shield before hull
+R/reset restores player and drone
+player destruction temporarily disables flight/fire then resets
+```
+
+Extend:
+
+```text
+test_player_scene.gd -> player combat nodes/tuning
+test_flight_room_scene.gd -> drone and CombatHud paths
+test_pulse_projectile.gd -> DamageResult impact reaches shield visual signal path
+```
+
+- [ ] **Step 2: Run Task 3 RED**
+
+```powershell
+godot --headless --path . --script res://tests/test_runner.gd
+```
+
+Expected: failure because player/room/HUD integration is absent.
+
+- [ ] **Step 3: Add player combat nodes**
+
+Modify `player_interceptor.tscn`:
+
+```text
+DamageState (player damage tuning)
+CollisionDamageReceiver (body .., state ../DamageState)
+ShieldImpactVisualizer (state ../DamageState, radii 8.2/3.0/7.2)
+```
+
+Also set:
+
+```text
+contact_monitor = true
+max_contacts_reported = 8
+```
+
+Do not change player mass, collider, layers/masks, flight controller, thrusters, projectile pool, or fire controller.
+
+- [ ] **Step 4: Create combat HUD scene**
+
+```text
+CombatHud (Control, full rect)
+├── PlayerPanel (bottom-left)
+│   └── PLAYER title, shield label/bar, hull label/bar
+├── TargetPanel (top-center)
+│   └── PRACTICE DRONE title, status, shield label/bar, hull label/bar
+└── HitMarker (center, four short corner segments)
+```
+
+Use restrained dark translucent panels, cyan shield, warm hull, no oversized arcade banners.
+
+- [ ] **Step 5: Implement combat HUD**
+
+Use exact scene-relative paths from `FlightHud/CombatHud`:
+
+```text
+../../PlayerInterceptor/DamageState
+../../PracticeDrone/DamageState
+../../PracticeDrone/PracticeDroneController
+../../PlayerInterceptor/PulseProjectilePool
+```
+
+At `_ready()` connect both damage states, drone respawn signals, and player pool `projectile_resolved`.
+
+Hit confirmation rule:
+
+```gdscript
+if hit_damageable and result != null and result.applied_amount > 0.0:
+    _hit_flash_remaining = 0.12
+```
+
+Wall hits and ignored damage never flash. Bars always use ratios from `DamageState`.
+
+Instance `CombatHud` under the existing `FlightHud` without moving telemetry, nose reticle, or velocity marker.
+
+- [ ] **Step 6: Integrate drone/player lifecycle in flight room**
+
+Instance `PracticeDrone` at:
+
+```text
+Vector3(0, 20, -180)
+```
+
+Add to `FlightRoomController`:
+
+```gdscript
+@export var player_damage_state_path: NodePath
+@export var practice_drone_controller_path: NodePath
+
+const PLAYER_RESPAWN_DELAY := 1.25
+var _player_respawn_remaining := 0.0
+```
+
+At `_ready()` resolve player damage and drone controller, call `set_target(_body)`, and connect player destruction.
 
 On player destruction:
 
@@ -950,18 +829,11 @@ _primary_fire_controller.set_firing_enabled(false)
 _projectile_pool.clear_all()
 ```
 
-During `_physics_process(delta)`, count down only while the tree is unpaused. At zero, call `reset_player()`.
+At countdown zero call `reset_player()`.
 
-Extend `reset_player()` to:
+Extend `reset_player()` to reset player damage/collision/shield visuals, reset drone to spawn, and re-enable flight/fire while preserving all existing reset behavior.
 
-- call player `DamageState.reset_full()`;
-- call player collision receiver `reset_runtime_state()`;
-- reset player shield visuals;
-- call `practice_drone.reset_to_spawn()`;
-- re-enable controller physics and firing;
-- preserve all existing transform, velocity, thermal, pool, pause, and mouse behavior.
-
-- [ ] **Step 8: Run the complete 44-suite gate**
+- [ ] **Step 7: Run Task 3 GREEN and inertial gate**
 
 ```powershell
 godot --headless --path . --script res://tests/test_runner.gd
@@ -975,43 +847,34 @@ PASS: 44 suites
 PASS: inertial rigid-body velocity preservation (speed drift 0.000000000 m/s, direction drift 0.000000000 degrees)
 ```
 
-- [ ] **Step 9: Create the second consolidated implementation commit**
+- [ ] **Step 8: Second consolidated implementation commit**
+
+Stage only Task 3 files and commit:
 
 ```powershell
-git add scenes/player/player_interceptor.tscn scenes/flight_room/flight_room.tscn scenes/ui/flight_hud.tscn scenes/ui/combat_hud.tscn src/flight_room/flight_room_controller.gd src/ui/combat_hud.gd tests/integration/test_player_scene.gd tests/integration/test_flight_room_scene.gd tests/integration/test_pulse_projectile.gd tests/integration/test_combat_sandbox.gd
 git commit -m "feat: integrate combat sandbox loop"
 ```
 
-Perform one static scope review. No scene or code outside the declared file map may change.
+Perform one static scope review. No file outside the declared map may change.
 
 ---
 
 # Task 4: Authoritative verification, manual acceptance, and closure
 
-**Files:**
-- Modify `README.md`.
-- Modify `docs/superpowers/plans/deferred-milestones.md`.
-- Modify implementation only when fresh verifier evidence identifies a concrete defect.
+- [ ] **Step 1: Mark documentation verification-pending**
 
-- [ ] **Step 1: Update documentation to verification-pending**
-
-Add to `README.md`:
+Update `README.md` with:
 
 ```text
-- one deterministic force-driven practice drone;
-- reusable projectile/collision shield-and-hull damage;
-- pooled ship-aligned ellipsoid shield impacts with procedural hex patterns;
-- drone destruction and three-second respawn;
-- player and target shield/hull HUD with damage-confirmed hit marker.
-```
-
-Change runner target to:
-
-```text
+one deterministic force-driven practice drone
+reusable projectile/collision shield-and-hull damage
+pooled ship-aligned ellipsoid shield impacts with procedural hex patterns
+drone destruction and three-second respawn
+player/target shield-hull HUD and damage-confirmed hit marker
 PASS: 44 suites
 ```
 
-Record the combat sandbox as implementation-complete/verification-pending in `deferred-milestones.md`. Preserve historical AI/Smart Stabilize text instead of deleting it.
+Record Combat Sandbox v1 as implementation-complete/verification-pending in `deferred-milestones.md`. Preserve historical AI/Smart Stabilize text.
 
 - [ ] **Step 2: Request one complete Windows verifier**
 
@@ -1021,7 +884,7 @@ git rebase origin/agent/playable-flight-room
 powershell -ExecutionPolicy Bypass -File .\tools\verify\verify.ps1
 ```
 
-Required output:
+Required:
 
 ```text
 Schema-5 fighter contract validation passed.
@@ -1031,13 +894,13 @@ PASS: inertial rigid-body velocity preservation (speed drift 0.000000000 m/s, di
 ==> Boot main scene briefly
 ```
 
-No parser, path, orphan-node, retained-resource, shader compile, runtime, or boot errors are acceptable.
+No parser, path, shader compile, orphan-node, retained-resource, runtime, or boot error is acceptable.
 
-- [ ] **Step 3: Debug only from the first fresh failure**
+- [ ] **Step 3: Debug only from fresh first-failure evidence**
 
-Use `superpowers:systematic-debugging`. Fix the originating contract only. Do not remove shield visuals, lower test strictness, bypass real projectile collisions, assign active drone velocity directly, or weaken existing flight verification merely to pass.
+Use `superpowers:systematic-debugging`. Fix the originating contract only. Do not bypass real projectile hits, remove shield visuals, assign active drone velocity directly, weaken strict tests, or alter existing flight verification.
 
-- [ ] **Step 4: Run one manual combat acceptance session**
+- [ ] **Step 4: Manual combat acceptance**
 
 ```powershell
 godot --path .
@@ -1045,52 +908,47 @@ godot --path .
 
 Verify:
 
-1. Practice drone spawns approximately 180 m ahead and visibly moves.
-2. Drone approaches when far, retreats when too close, and performs readable orbit/evasion inside its distance band.
-3. Drone movement remains smooth and force-driven rather than teleporting.
-4. Pulse projectile hits trigger localized hexagonal shield impacts at the hit side.
-5. Shield effect is invisible at rest and readable without becoming a permanent bright bubble.
-6. Shield bar loses exactly 15 per ordinary projectile while shield remains.
-7. Shield regeneration waits through its delay and then refills slowly.
-8. Shield break triggers a short full-shell flash; later hits damage hull.
-9. Destroyed drone gives clear disappearance/pulse feedback and respawns after three seconds at full shield/hull.
-10. Wall misses do not show hit confirmation.
-11. High-speed collision damages shield before hull on player and drone.
-12. Player destruction disables control/fire briefly and resets without an explosion requirement.
-13. `R` restores player and drone state.
-14. Assisted, AI Assisted, Inertial, Smart Stabilize, boost, firing, exact muzzles, thrusters, cameras, pause, settings, asteroid collision, and zero-drift behavior remain functional.
+1. Drone spawns roughly 180 m ahead and moves visibly.
+2. It approaches when far, retreats when close, and orbits/evasively strafes inside its band.
+3. Movement is smooth and force-driven.
+4. Projectile hits reveal localized hex shield impacts on the hit side.
+5. Shield is invisible at rest rather than a permanent bright bubble.
+6. Ordinary hit removes exactly 15 shield.
+7. Regeneration waits and then refills slowly.
+8. Shield break flashes the full shell; subsequent hits damage hull.
+9. Drone destruction gives a short pulse/disappearance and respawns after three seconds at full state.
+10. Wall hits do not show hit confirmation.
+11. High-speed collisions damage shield before hull on player and drone.
+12. Player destruction briefly disables flight/fire and resets without an explosion requirement.
+13. `R` restores player and drone.
+14. Assisted, AI Assisted, Inertial, Smart Stabilize, boost, firing, muzzles, thrusters, cameras, pause, settings, asteroid collision, and zero-drift behavior remain functional.
 
-- [ ] **Step 5: Close the milestone after both gates pass**
+- [ ] **Step 5: Close and commit documentation**
 
-Update status to:
+After automated and manual acceptance, set status to:
 
 ```text
 VERIFIED — schema-five and matrix contracts passed, PASS: 44 suites, exact zero inertial drift, clean main-scene boot, and Windows manual combat acceptance passed.
 ```
 
-- [ ] **Step 6: Create one closure commit**
+Commit only documentation:
 
 ```powershell
-git add README.md docs/superpowers/plans/deferred-milestones.md
 git commit -m "docs: verify combat sandbox v1"
-git status --short
-git diff --stat HEAD~3..HEAD
 ```
-
-Expected total scope: reusable collision damage, shield impact visual, practice drone, player/room integration, combat HUD, focused tests, and documentation only. No raw Blender asset, camera implementation, flight tuning, projectile cadence/speed/damage, muzzle, thruster matrix, workflow, or GitHub Actions changes.
 
 ---
 
 ## Completion rule
 
-Do not call Combat Sandbox v1 complete until all of the following are true:
+Do not call Combat Sandbox v1 complete until all are true:
 
 ```text
 PASS: 44 suites
 exact zero inertial speed drift
 exact zero inertial direction drift
 clean main-scene boot
-manual projectile hit/shield break/hull destruction/respawn loop passed
+manual projectile hit/shield break/hull destruction/respawn passed
 manual collision damage passed
-manual player reset/destruction recovery passed
+manual player destruction/reset recovery passed
 ```
