@@ -210,6 +210,39 @@ func _physics_process(delta: float) -> void:
         )
 
     output.finalize_totals()
+
+    var requested_torque := output.torque_local
+    var applied_torque := FlightAngularEnvelope.apply_to_torque(
+        requested_torque,
+        local_angular,
+        Vector3(
+            tuning.pitch_angular_soft_start_degrees,
+            tuning.yaw_angular_soft_start_degrees,
+            tuning.roll_angular_soft_start_degrees
+        ),
+        Vector3(
+            tuning.pitch_angular_limit_degrees,
+            tuning.yaw_angular_limit_degrees,
+            tuning.roll_angular_limit_degrees
+        )
+    )
+    var torque_ratio := Vector3(
+        _applied_axis_ratio(requested_torque.x, applied_torque.x),
+        _applied_axis_ratio(requested_torque.y, applied_torque.y),
+        _applied_axis_ratio(requested_torque.z, applied_torque.z)
+    )
+    output.pilot_torque_local = Vector3(
+        output.pilot_torque_local.x * torque_ratio.x,
+        output.pilot_torque_local.y * torque_ratio.y,
+        output.pilot_torque_local.z * torque_ratio.z
+    )
+    output.assist_torque_local = Vector3(
+        output.assist_torque_local.x * torque_ratio.x,
+        output.assist_torque_local.y * torque_ratio.y,
+        output.assist_torque_local.z * torque_ratio.z
+    )
+    output.finalize_totals()
+
     _last_pilot_force_local = output.pilot_force_local
     _last_pilot_torque_local = output.pilot_torque_local
     _last_assist_force_local = output.assist_force_local
@@ -317,6 +350,14 @@ func get_torque_reference() -> float:
     if tuning == null:
         return 1.0
     return maxf(tuning.pitch_torque, maxf(tuning.yaw_torque, tuning.roll_torque))
+
+static func _applied_axis_ratio(
+    requested: float,
+    applied: float
+) -> float:
+    if absf(requested) <= 0.000001:
+        return 1.0
+    return clampf(applied / requested, 0.0, 1.0)
 
 func reset_runtime_state() -> void:
     _boost_heat = 0.0
