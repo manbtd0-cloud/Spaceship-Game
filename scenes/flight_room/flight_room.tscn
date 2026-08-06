@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="2_camera"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/flight_room/flight_room_controller.gd" id="4_controller"]
 [ext_resource type="Script" path="res://src/flight_room/flight_room_settings_coordinator.gd" id="5_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
+[ext_resource type="PackedScene" path="res://scenes/combat/practice_drone.tscn" id="7_drone"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -87,6 +88,9 @@ light_color = Color(0.18, 0.32, 0.7, 1)
 light_energy = 0.5
 
 [node name="PlayerInterceptor" parent="." instance=ExtResource("1_player")]
+
+[node name="PracticeDrone" parent="." instance=ExtResource("7_drone")]
+position = Vector3(0, 20, -180)
 
 [node name="ChaseCameraRig" parent="." instance=ExtResource("2_camera")]
 
@@ -320,6 +324,10 @@ player_body_path = NodePath("../PlayerInterceptor")
 player_controller_path = NodePath("../PlayerInterceptor/ShipFlightController")
 input_source_path = NodePath("../PlayerInterceptor/PlayerInputSource")
 reset_volume_path = NodePath("../ResetVolume")
+player_damage_state_path = NodePath("../PlayerInterceptor/DamageState")
+player_collision_receiver_path = NodePath("../PlayerInterceptor/CollisionDamageReceiver")
+player_shield_visualizer_path = NodePath("../PlayerInterceptor/ShieldImpactVisualizer")
+practice_drone_controller_path = NodePath("../PracticeDrone/PracticeDroneController")
 boundary_radius = 6000.0
 
 [node name="FlightRoomSettingsCoordinator" type="Node" parent="."]
