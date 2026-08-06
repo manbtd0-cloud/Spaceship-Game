@@ -1,117 +1,80 @@
 class_name AiFlightIntentSolver
 extends RefCounted
 
-const INTENT_THRESHOLD := 0.08
-const REVERSE_BRAKE_ANGLE_DEGREES := 100.0
+const EXPLICIT_INPUT_THRESHOLD := 0.08
 
 static func compute(
     command: FlightCommand,
     local_linear_velocity: Vector3,
     local_angular_velocity: Vector3,
-    body_mass: float,
     tuning: FlightTuning
-) -> FlightAssistOutput:
-    var output := FlightAssistOutput.new()
+) -> FlightAssistCommand:
+    var output := FlightAssistCommand.new()
     if (
         command == null
         or tuning == null
         or not local_linear_velocity.is_finite()
         or not local_angular_velocity.is_finite()
-        or not is_finite(body_mass)
-        or body_mass <= 0.0
     ):
         return output
 
-    var raw_torque := -local_angular_velocity * tuning.ai_angular_damping
-    var protection := Vector3(
-        1.0 - clampf(
-            absf(command.rotation.x) * tuning.ai_rotation_command_protection,
-            0.0,
-            1.0
-        ),
-        1.0 - clampf(
-            absf(command.rotation.y) * tuning.ai_rotation_command_protection,
-            0.0,
-            1.0
-        ),
-        1.0 - clampf(
-            absf(command.rotation.z) * tuning.ai_rotation_command_protection,
-            0.0,
-            1.0
-        )
+    var rest_rate := deg_to_rad(
+        tuning.ai_angular_rest_threshold_degrees
     )
-    output.torque_local = Vector3(
-        clampf(
-            raw_torque.x * protection.x,
-            -tuning.pitch_torque,
-            tuning.pitch_torque
-        ),
-        clampf(
-            raw_torque.y * protection.y,
-            -tuning.yaw_torque,
-            tuning.yaw_torque
-        ),
-        clampf(
-            raw_torque.z * protection.z,
-            -tuning.roll_torque,
-            tuning.roll_torque
-        )
+    var capture_rate := deg_to_rad(
+        tuning.ai_angular_capture_rate_degrees
     )
+    output.rotation = FlightAuthority.sanitize_rotation(Vector3(
+        0.0 if absf(command.rotation.x) > EXPLICIT_INPUT_THRESHOLD else _opposing_axis(local_angular_velocity.x, rest_rate, capture_rate),
+        0.0 if absf(command.rotation.y) > EXPLICIT_INPUT_THRESHOLD else _opposing_axis(local_angular_velocity.y, rest_rate, capture_rate),
+        0.0 if absf(command.rotation.z) > EXPLICIT_INPUT_THRESHOLD else _opposing_axis(local_angular_velocity.z, rest_rate, capture_rate)
+    ))
 
     var speed := local_linear_velocity.length()
-    var turn_intent := maxf(
-        absf(command.rotation.x),
-        absf(command.rotation.y)
-    )
-    var forward_intent := clampf(-command.translation.z, 0.0, 1.0)
-    var demand := maxf(turn_intent, forward_intent)
-    if speed >= tuning.ai_min_alignment_speed and demand > INTENT_THRESHOLD:
-        var acceleration := Vector3(
-            -local_linear_velocity.x,
-            -local_linear_velocity.y,
-            0.0
-        ) * tuning.ai_trajectory_alignment_gain * demand
-        acceleration = acceleration.limit_length(
-            tuning.ai_max_steering_acceleration
-        )
-        acceleration.x *= 1.0 - clampf(
-            absf(command.translation.x) * tuning.ai_translation_command_protection,
-            0.0,
-            1.0
-        )
-        acceleration.y *= 1.0 - clampf(
-            absf(command.translation.y) * tuning.ai_translation_command_protection,
-            0.0,
-            1.0
-        )
-        output.force_local += acceleration * body_mass
+    var reverse_intent := command.translation.z > EXPLICIT_INPUT_THRESHOLD
+    if speed < tuning.ai_min_alignment_speed or reverse_intent:
+        return output
 
-    var active_limit := (
-        tuning.boost_speed_limit
-        if command.boost > 0.0
-        else tuning.normal_speed_limit
-    )
-    var direction := (
-        local_linear_velocity.normalized()
-        if speed > 0.000001
-        else Vector3.ZERO
-    )
-    var opposite_forward := (
-        speed > 0.000001
-        and direction.dot(Vector3.FORWARD)
-        < cos(deg_to_rad(REVERSE_BRAKE_ANGLE_DEGREES))
-    )
-    if (
-        speed > active_limit
-        or (forward_intent > INTENT_THRESHOLD and opposite_forward)
-    ):
-        output.force_local.z += (
-            -signf(local_linear_velocity.z)
-            * minf(
-                absf(local_linear_velocity.z),
-                tuning.ai_max_braking_acceleration
-            )
-            * body_mass
-        )
+    var desired_velocity := Vector3.FORWARD * speed
+    var velocity_error := desired_velocity - local_linear_velocity
+    if absf(command.translation.x) > EXPLICIT_INPUT_THRESHOLD:
+        velocity_error.x = 0.0
+    if absf(command.translation.y) > EXPLICIT_INPUT_THRESHOLD:
+        velocity_error.y = 0.0
 
-    return output if output.is_finite() else FlightAssistOutput.new()
+    var error_speed := velocity_error.length()
+    if error_speed <= tuning.ai_capture_error_speed:
+        return output
+
+    var response_range := maxf(
+        tuning.ai_full_authority_error_speed
+        - tuning.ai_capture_error_speed,
+        0.000001
+    )
+    var weight := clampf(
+        (error_speed - tuning.ai_capture_error_speed) / response_range,
+        0.0,
+        1.0
+    )
+    output.translation = FlightAuthority.sanitize_translation(
+        velocity_error.normalized() * weight
+    )
+    return output if output.is_finite() else FlightAssistCommand.new()
+
+static func _opposing_axis(
+    value: float,
+    rest_threshold: float,
+    full_authority_threshold: float
+) -> float:
+    var magnitude := absf(value)
+    if not is_finite(magnitude) or magnitude <= rest_threshold:
+        return 0.0
+    var range_size := maxf(
+        full_authority_threshold - rest_threshold,
+        0.000001
+    )
+    return -signf(value) * clampf(
+        (magnitude - rest_threshold) / range_size,
+        0.0,
+        1.0
+    )
