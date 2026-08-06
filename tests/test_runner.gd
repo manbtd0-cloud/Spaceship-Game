@@ -3,6 +3,7 @@ extends SceneTree
 const TEST_SCRIPTS: Array[String] = [
     "res://tests/unit/test_test_harness.gd",
     "res://tests/unit/test_flight_model.gd",
+    "res://tests/unit/test_flight_authority.gd",
     "res://tests/unit/test_ai_flight_intent_solver.gd",
     "res://tests/unit/test_smart_stabilize_solver.gd",
     "res://tests/unit/test_flight_speed_envelope.gd",
