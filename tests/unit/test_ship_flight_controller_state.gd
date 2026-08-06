@@ -31,6 +31,11 @@ func run() -> void:
         not controller.is_smart_stabilizing(),
         "Smart Stabilize starts inactive"
     )
+    assert_equal(
+        controller.get_assistance_source(),
+        FlightAssistanceSource.Value.NONE,
+        "assistance source starts clear"
+    )
 
     var first_snapshot := controller.get_last_command()
     assert_true(first_snapshot != null, "controller must expose a command snapshot")
@@ -139,6 +144,11 @@ func run() -> void:
     assert_true(
         not controller.is_smart_stabilizing(),
         "reset clears Smart Stabilize state"
+    )
+    assert_equal(
+        controller.get_assistance_source(),
+        FlightAssistanceSource.Value.NONE,
+        "reset clears assistance source"
     )
     assert_equal(
         controller.get_last_command().translation,
