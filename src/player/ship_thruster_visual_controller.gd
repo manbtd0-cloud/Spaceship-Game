@@ -51,6 +51,9 @@ var _test_command := FlightCommand.new()
 var _test_assist_force := Vector3.ZERO
 var _test_assist_torque := Vector3.ZERO
 var _test_boost := 0.0
+var _test_assistance_source: FlightAssistanceSource.Value = (
+    FlightAssistanceSource.Value.LEGACY_ASSISTED
+)
 var _initialized := false
 var _contract_valid := false
 
@@ -284,12 +287,24 @@ func step_visuals(delta: float) -> void:
         if _test_override_enabled
         else _controller.get_last_assist_torque_local()
     )
-    var direct := _action_matrix.intensities_for(command)
-    var assisted := _assisted_intensities(assist_force, assist_torque)
     var boost := (
         _test_boost
         if _test_override_enabled
         else _controller.get_boost_amount()
+    )
+    var assistance_source := (
+        _test_assistance_source
+        if _test_override_enabled
+        else _controller.get_assistance_source()
+    )
+    var assistance_cap := FlightAssistanceSource.visual_cap_for(
+        assistance_source
+    )
+    var direct := _action_matrix.intensities_for(command)
+    var assisted := _assisted_intensities(
+        assist_force,
+        assist_torque,
+        boost
     )
 
     _direct_targets.clear()
@@ -310,7 +325,8 @@ func step_visuals(delta: float) -> void:
         )
         var merged := ThrusterVisualMath.merge_target(
             direct_amount,
-            assist_amount
+            assist_amount,
+            assistance_cap
         )
 
         _direct_targets[socket_path] = direct_amount
@@ -341,8 +357,14 @@ func step_visuals(delta: float) -> void:
         var class_boost := (
             boost
             if (
-                direct_amount > VISIBILITY_THRESHOLD
-                and (thruster_class == &"main" or thruster_class == &"retro")
+                (
+                    direct_amount > VISIBILITY_THRESHOLD
+                    or assist_amount > VISIBILITY_THRESHOLD
+                )
+                and (
+                    thruster_class == &"main"
+                    or thruster_class == &"retro"
+                )
             )
             else 0.0
         )
@@ -357,10 +379,17 @@ func set_test_command(command: FlightCommand) -> void:
     _test_override_enabled = true
     _test_command = command.duplicate_command()
 
-func set_test_assist_wrench(force: Vector3, torque: Vector3) -> void:
+func set_test_assist_wrench(
+    force: Vector3,
+    torque: Vector3,
+    source: FlightAssistanceSource.Value = (
+        FlightAssistanceSource.Value.LEGACY_ASSISTED
+    )
+) -> void:
     _test_override_enabled = true
     _test_assist_force = force
     _test_assist_torque = torque
+    _test_assistance_source = source
 
 func set_test_boost(value: float) -> void:
     _test_override_enabled = true
@@ -372,6 +401,9 @@ func clear_test_overrides() -> void:
     _test_assist_force = Vector3.ZERO
     _test_assist_torque = Vector3.ZERO
     _test_boost = 0.0
+    _test_assistance_source = (
+        FlightAssistanceSource.Value.LEGACY_ASSISTED
+    )
 
 func clear_test_inputs() -> void:
     clear_test_overrides()
@@ -504,20 +536,18 @@ func _socket_path_for_query(path: StringName) -> StringName:
 
 func _assisted_intensities(
     assist_force: Vector3,
-    assist_torque: Vector3
+    assist_torque: Vector3,
+    effective_boost: float
 ) -> Dictionary:
     var command := FlightCommand.new()
-    var force_reference := maxf(_controller.get_force_reference(), 0.001)
-    var torque_reference := maxf(_controller.get_torque_reference(), 0.001)
-    command.translation = Vector3(
-        clampf(assist_force.x / force_reference, -1.0, 1.0),
-        clampf(assist_force.y / force_reference, -1.0, 1.0),
-        clampf(assist_force.z / force_reference, -1.0, 1.0)
+    command.translation = FlightAuthority.translation_command_for_force(
+        assist_force,
+        effective_boost,
+        _controller.tuning
     )
-    command.rotation = Vector3(
-        clampf(assist_torque.x / torque_reference, -1.0, 1.0),
-        clampf(assist_torque.y / torque_reference, -1.0, 1.0),
-        clampf(assist_torque.z / torque_reference, -1.0, 1.0)
+    command.rotation = FlightAuthority.rotation_command_for_torque(
+        assist_torque,
+        _controller.tuning
     )
     return _action_matrix.intensities_for(command)
 
