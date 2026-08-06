@@ -1,13 +1,20 @@
 class_name FlightTuning
 extends Resource
 
-@export var forward_force: float = 120000.0
-@export var reverse_force: float = 50000.0
-@export var strafe_force: float = 65000.0
-@export var pitch_torque: float = 52000.0
-@export var yaw_torque: float = 48000.0
-@export var roll_torque: float = 60000.0
+@export var forward_force: float = 150000.0
+@export var reverse_force: float = 110000.0
+@export var strafe_force: float = 150000.0
+@export var pitch_torque: float = 190000.0
+@export var yaw_torque: float = 230000.0
+@export var roll_torque: float = 210000.0
 @export var boost_multiplier: float = 1.8
+
+@export var pitch_angular_soft_start_degrees: float = 75.0
+@export var pitch_angular_limit_degrees: float = 100.0
+@export var yaw_angular_soft_start_degrees: float = 75.0
+@export var yaw_angular_limit_degrees: float = 100.0
+@export var roll_angular_soft_start_degrees: float = 112.5
+@export var roll_angular_limit_degrees: float = 150.0
 
 @export var normal_speed_soft_start: float = 120.0
 @export var normal_speed_limit: float = 160.0
