@@ -27,6 +27,12 @@ func run() -> void:
         controller.get_last_assist_torque_local().is_equal_approx(Vector3.ZERO),
         "assist torque starts at zero"
     )
+    assert_equal(
+        controller.get_last_torque_local(),
+        controller.get_last_pilot_torque_local()
+        + controller.get_last_assist_torque_local(),
+        "initial torque telemetry split must sum to final torque"
+    )
     assert_true(
         not controller.is_smart_stabilizing(),
         "Smart Stabilize starts inactive"
@@ -140,6 +146,12 @@ func run() -> void:
     assert_true(
         controller.get_last_assist_torque_local().is_equal_approx(Vector3.ZERO),
         "assist torque resets to zero"
+    )
+    assert_equal(
+        controller.get_last_torque_local(),
+        controller.get_last_pilot_torque_local()
+        + controller.get_last_assist_torque_local(),
+        "reset torque telemetry split must sum to final torque"
     )
     assert_true(
         not controller.is_smart_stabilizing(),
