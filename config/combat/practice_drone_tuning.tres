@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PracticeDroneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/combat/practice_drone_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+preferred_distance = 140.0
+distance_band = 25.0
+maximum_speed = 45.0
+maximum_acceleration = 18.0
+orbit_speed = 24.0
+radial_speed = 30.0
+vertical_speed = 8.0
+velocity_response = 1.8
+maximum_turn_torque = 12000.0
+angular_damping = 3000.0
+respawn_delay = 3.0
