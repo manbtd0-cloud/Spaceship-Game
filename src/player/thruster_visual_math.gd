@@ -6,10 +6,15 @@ const MINIMUM_LENGTH_SCALE := 0.04
 const MINIMUM_RADIUS_SCALE := 0.22
 const EPSILON := 0.000001
 
-static func merge_target(direct: float, assist_raw: float) -> float:
+static func merge_target(
+    direct: float,
+    assist_raw: float,
+    assist_cap: float = ASSIST_VISUAL_CAP
+) -> float:
     return maxf(
         clampf(direct, 0.0, 1.0),
-        clampf(assist_raw, 0.0, 1.0) * ASSIST_VISUAL_CAP
+        clampf(assist_raw, 0.0, 1.0)
+        * clampf(assist_cap, 0.0, 1.0)
     )
 
 static func advance(
