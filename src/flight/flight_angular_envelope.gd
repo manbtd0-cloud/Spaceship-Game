@@ -57,7 +57,7 @@ static func _apply_axis(
     var rate_degrees := rad_to_deg(absf(angular_rate_radians))
     if rate_degrees <= start:
         return requested_torque
-    if rate_degrees >= limit:
+    if rate_degrees >= limit or is_equal_approx(rate_degrees, limit):
         return 0.0
 
     var t := clampf(
