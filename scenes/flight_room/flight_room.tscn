@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://src/flight_room/flight_room_controller.gd" id="4_controller"]
 [ext_resource type="Script" path="res://src/flight_room/flight_room_settings_coordinator.gd" id="5_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
-[ext_resource type="PackedScene" path="res://scenes/combat/practice_drone.tscn" id="7_drone"]
+[ext_resource type="PackedScene" path="res://scenes/combat/enemy_fighter.tscn" id="7_enemy"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -89,8 +89,8 @@ light_energy = 0.5
 
 [node name="PlayerInterceptor" parent="." instance=ExtResource("1_player")]
 
-[node name="PracticeDrone" parent="." instance=ExtResource("7_drone")]
-position = Vector3(0, 20, -180)
+[node name="EnemyFighter" parent="." instance=ExtResource("7_enemy")]
+position = Vector3(0, 35, -320)
 
 [node name="ChaseCameraRig" parent="." instance=ExtResource("2_camera")]
 
@@ -327,7 +327,7 @@ reset_volume_path = NodePath("../ResetVolume")
 player_damage_state_path = NodePath("../PlayerInterceptor/DamageState")
 player_collision_receiver_path = NodePath("../PlayerInterceptor/CollisionDamageReceiver")
 player_shield_visualizer_path = NodePath("../PlayerInterceptor/ShieldImpactVisualizer")
-practice_drone_controller_path = NodePath("../PracticeDrone/PracticeDroneController")
+enemy_fighter_controller_path = NodePath("../EnemyFighter/EnemyFighterController")
 boundary_radius = 6000.0
 
 [node name="FlightRoomSettingsCoordinator" type="Node" parent="."]
