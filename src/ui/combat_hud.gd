@@ -8,7 +8,7 @@ extends Control
 
 var _player_damage: DamageState
 var _target_damage: DamageState
-var _target_controller: PracticeDroneController
+var _target_controller: EnemyFighterController
 var _projectile_pool: PulseProjectilePool
 
 var _player_shield_bar: ProgressBar
@@ -30,7 +30,7 @@ func _ready() -> void:
     _target_damage = get_node_or_null(target_damage_state_path) as DamageState
     _target_controller = get_node_or_null(
         target_controller_path
-    ) as PracticeDroneController
+    ) as EnemyFighterController
     _projectile_pool = get_node_or_null(
         projectile_pool_path
     ) as PulseProjectilePool
