@@ -38,16 +38,16 @@ func run() -> void:
     var pool := room.get_node_or_null(
         "PlayerInterceptor/PulseProjectilePool"
     ) as PulseProjectilePool
-    var drone := room.get_node_or_null("PracticeDrone") as RigidBody3D
-    var drone_damage := room.get_node_or_null(
-        "PracticeDrone/DamageState"
+    var enemy := room.get_node_or_null("EnemyFighter") as RigidBody3D
+    var enemy_damage := room.get_node_or_null(
+        "EnemyFighter/DamageState"
     ) as DamageState
-    var drone_shield := room.get_node_or_null(
-        "PracticeDrone/ShieldImpactVisualizer"
+    var enemy_shield := room.get_node_or_null(
+        "EnemyFighter/ShieldImpactVisualizer"
     ) as ShieldImpactVisualizer
-    var drone_controller := room.get_node_or_null(
-        "PracticeDrone/PracticeDroneController"
-    ) as PracticeDroneController
+    var enemy_controller := room.get_node_or_null(
+        "EnemyFighter/EnemyFighterController"
+    ) as EnemyFighterController
     var hud := room.get_node_or_null(
         "FlightHud/CombatHud"
     ) as CombatHud
@@ -60,10 +60,10 @@ func run() -> void:
     assert_true(player_collision != null, "player collision damage required")
     assert_true(player_shield != null, "player shield visual required")
     assert_true(pool != null, "production projectile pool required")
-    assert_true(drone != null, "practice drone required")
-    assert_true(drone_damage != null, "drone damage required")
-    assert_true(drone_shield != null, "drone shield visual required")
-    assert_true(drone_controller != null, "drone controller required")
+    assert_true(enemy != null, "enemy fighter required")
+    assert_true(enemy_damage != null, "enemy damage required")
+    assert_true(enemy_shield != null, "enemy shield visual required")
+    assert_true(enemy_controller != null, "enemy controller required")
     assert_true(hud != null, "combat HUD required")
     assert_true(room_controller != null, "room controller required")
 
@@ -72,10 +72,10 @@ func run() -> void:
         or player_damage == null
         or player_collision == null
         or pool == null
-        or drone == null
-        or drone_damage == null
-        or drone_shield == null
-        or drone_controller == null
+        or enemy == null
+        or enemy_damage == null
+        or enemy_shield == null
+        or enemy_controller == null
         or hud == null
         or room_controller == null
     ):
@@ -86,7 +86,7 @@ func run() -> void:
     var projectile := pool.fire(
         Transform3D(
             Basis.IDENTITY,
-            Vector3(0.0, 20.0, -170.0)
+            Vector3(0.0, 35.0, -310.0)
         ),
         Vector3.FORWARD * PROJECTILE_SPEED,
         player
@@ -96,11 +96,11 @@ func run() -> void:
         projectile.step_for_test(PHYSICS_STEP)
 
     assert_true(
-        is_equal_approx(drone_damage.get_shield(), 105.0),
-        "real projectile removes exactly fifteen drone shield"
+        is_equal_approx(enemy_damage.get_shield(), 135.0),
+        "real projectile removes exactly fifteen enemy shield"
     )
     assert_true(
-        drone_shield.get_active_impact_count() == 1,
+        enemy_shield.get_active_impact_count() == 1,
         "real shield hit activates one pooled impact"
     )
     assert_true(
@@ -108,27 +108,27 @@ func run() -> void:
         "damage-confirmed projectile activates hit marker"
     )
 
-    drone_damage.apply_damage(
+    enemy_damage.apply_damage(
         DamagePacket.create(
-            300.0,
+            400.0,
             DamagePacket.Kind.PROJECTILE,
-            drone.global_position,
+            enemy.global_position,
             Vector3.BACK,
             player.get_instance_id(),
             20
         )
     )
-    assert_true(drone_controller.is_respawning(), "lethal hit starts respawn")
-    assert_equal(drone.collision_layer, 0, "destroyed drone disables collision")
-    drone_controller.step_for_test(3.1)
-    assert_true(not drone_controller.is_respawning(), "drone respawns after three seconds")
+    assert_true(enemy_controller.is_respawning(), "lethal hit starts respawn")
+    assert_equal(enemy.collision_layer, 0, "destroyed enemy disables collision")
+    enemy_controller.step_for_test(3.1)
+    assert_true(not enemy_controller.is_respawning(), "enemy respawns after three seconds")
     assert_true(
-        is_equal_approx(drone_damage.get_shield(), 120.0),
-        "respawn restores full drone shield"
+        is_equal_approx(enemy_damage.get_shield(), 150.0),
+        "respawn restores full enemy shield"
     )
     assert_true(
-        is_equal_approx(drone_damage.get_hull(), 150.0),
-        "respawn restores full drone hull"
+        is_equal_approx(enemy_damage.get_hull(), 180.0),
+        "respawn restores full enemy hull"
     )
 
     var wall := StaticBody3D.new()
@@ -157,8 +157,8 @@ func run() -> void:
         "room reset restores player shield"
     )
     assert_true(
-        is_equal_approx(drone_damage.get_shield(), 120.0),
-        "room reset restores drone shield"
+        is_equal_approx(enemy_damage.get_shield(), 150.0),
+        "room reset restores enemy shield"
     )
 
     player_damage.apply_damage(
@@ -167,7 +167,7 @@ func run() -> void:
             DamagePacket.Kind.PROJECTILE,
             player.global_position,
             Vector3.BACK,
-            drone.get_instance_id(),
+            enemy.get_instance_id(),
             200
         )
     )
