@@ -12,8 +12,8 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
 player_damage_state_path = NodePath("../../PlayerInterceptor/DamageState")
-target_damage_state_path = NodePath("../../PracticeDrone/DamageState")
-target_controller_path = NodePath("../../PracticeDrone/PracticeDroneController")
+target_damage_state_path = NodePath("../../EnemyFighter/DamageState")
+target_controller_path = NodePath("../../EnemyFighter/EnemyFighterController")
 projectile_pool_path = NodePath("../../PlayerInterceptor/PulseProjectilePool")
 
 [node name="PlayerPanel" type="PanelContainer" parent="."]
@@ -78,7 +78,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_colors/font_color = Color(0.25, 0.86, 1, 1)
 theme_override_font_sizes/font_size = 17
-text = "PRACTICE DRONE"
+text = "HOSTILE FIGHTER"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="TargetPanel/VBox"]
