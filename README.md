@@ -28,7 +28,14 @@ The playable flight room provides:
 - separate direct-pilot, legacy-assisted, and full-authority automatic thruster feedback;
 - nozzle-anchored rise and fall envelopes;
 - four imported asteroid families and a deterministic collidable field;
-- a high-speed navigation course, telemetry HUD, collisions, primary fire, and pause-safe reset handling.
+- shield-first projectile/collision damage with localized procedural hex shield impacts;
+- one physically simulated tactical hostile fighter with independent thrust/torque/speed tuning;
+- predictive pulse-cannon return fire using the same 900 m/s, 15-damage projectile architecture as the player;
+- tactical pursuit, range/closure control, overshoot handling, disengage/re-entry, and threat-aware evasive breaks;
+- repeatable hostile-fighter destruction/respawn and player recovery/reset behavior;
+- a high-speed navigation course, telemetry/combat HUD, collisions, primary fire, and pause-safe reset handling.
+
+The tactical enemy never teleports or overwrites live velocity/orientation to obtain a firing solution. Active enemy maneuvering is produced through bounded `RigidBody3D.apply_central_force()` and `apply_torque()` calls. Transform and velocity writes are reserved for frozen reset/respawn lifecycle operations.
 
 The temporary model adapter, rear-only glow anchors, procedural exhaust cones, and free-form runtime thruster allocator have been removed.
 
@@ -67,7 +74,7 @@ godot --path .
 | `PageUp` | Hold exact right view |
 | `PageDown` | Hold exact left view |
 | `Escape` | Pause / resume and open configuration |
-| `R` | Reset to spawn, clear momentum, and reset boost heat |
+| `R` | Reset player and hostile fighter to spawn, clear momentum/projectiles, and reset boost heat |
 
 The three modes keep distinct behavior:
 
@@ -200,6 +207,23 @@ Escape            exit showcase
 
 The showcase uses the production player scene, verified schema-5 left/right muzzle sockets, production seven-shots-per-second cadence, swept 900 m/s pulse projectiles, deterministic 32-projectile pool, source-body exclusion, and first-hit cleanup. The fighter remains stationary in a controlled neon firing lane so alternating muzzle fire and projectile behavior can be inspected directly.
 
+## Tactical enemy dogfight
+
+The default flight room contains exactly one `EnemyFighter`. The old `PracticeDrone` scene remains available as a training/reference asset but is no longer active in the production room.
+
+The enemy uses independently tunable physical authority and a deterministic tactical state model:
+
+```text
+ACQUIRE → ATTACK / RANGE_CONTROL → DISENGAGE → REENTRY
+                             ↘ EVADE when observable threat is credible
+```
+
+Predictive aiming solves a future intercept from both ships' world positions/velocities and the shared `PulseProjectile.DEFAULT_SPEED` of `900 m/s`. A shot is legal only when the solution is valid, the player is within the configured range and firing cone, cadence permits it, the enemy is active, and the physics ray has clear line of sight. Pulse rounds do not home or bend after firing.
+
+Threat-aware evasion uses observable player-facing geometry and nearby hostile projectile activity. It does not read player input or predict which individual projectile will hit. Hostile projectile pressure is intentionally local: projectiles outside the configured `220 m` awareness radius do not trigger evasive state.
+
+The reused enemy airframe receives a restrained hostile material overlay. Its imported authored `EngineFire*` group is suppressed for now rather than displaying every thruster simultaneously. Dynamic enemy thruster VFX driven by actual bounded controller output is recorded in `docs/superpowers/plans/deferred-milestones.md`.
+
 ## Four-source asteroid pack
 
 The required sources are:
@@ -243,10 +267,20 @@ GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verif
 The current runner target is:
 
 ```text
-PASS: 39 suites
+PASS: 50 suites
 ```
 
-Do not claim the milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
+The Tactical Enemy Dogfight verification gate also requires:
+
+```text
+Schema-5 fighter contract validation passed.
+Deterministic fighter thruster action matrix validation passed.
+PASS: inertial rigid-body velocity preservation
+speed drift: 0.000000000 m/s
+direction drift: 0.000000000 degrees
+```
+
+Do not claim a milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
 
 ## Asset policy
 
