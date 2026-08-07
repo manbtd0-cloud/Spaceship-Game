@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://src/input/player_input_source.gd" id="1_input"]
 [ext_resource type="Script" path="res://src/player/ship_flight_controller.gd" id="2_controller"]
@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://config/combat/player_damage_tuning.tres" id="9_damage_tuning"]
 [ext_resource type="Script" path="res://src/combat/collision_damage_receiver.gd" id="10_collision_damage"]
 [ext_resource type="PackedScene" path="res://scenes/combat/shield_impact_visualizer.tscn" id="11_shield"]
+[ext_resource type="Script" path="res://src/combat/hull_impact_visualizer.gd" id="12_hull_impact"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_player"]
 size = Vector3(14, 3.8, 12.2)
@@ -72,3 +73,7 @@ script = ExtResource("10_collision_damage")
 [node name="ShieldImpactVisualizer" parent="." instance=ExtResource("11_shield")]
 ellipsoid_radii = Vector3(8.2, 3, 7.2)
 shield_color = Color(0.1, 0.66, 1, 1)
+
+[node name="HullImpactVisualizer" type="Node3D" parent="."]
+script = ExtResource("12_hull_impact")
+burst_color = Color(1, 0.42, 0.08, 1)

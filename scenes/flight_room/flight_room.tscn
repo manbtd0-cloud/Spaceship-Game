@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player_interceptor.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/camera/chase_camera_rig.tscn" id="2_camera"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://src/flight_room/flight_room_settings_coordinator.gd" id="5_settings"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
 [ext_resource type="PackedScene" path="res://scenes/combat/enemy_fighter.tscn" id="7_enemy"]
+[ext_resource type="Script" path="res://src/combat/combat_audio_controller.gd" id="8_combat_audio"]
+[ext_resource type="Script" path="res://src/camera/combat_camera_feedback_controller.gd" id="9_camera_feedback"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -317,6 +319,12 @@ monitoring = true
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ResetVolume"]
 shape = SubResource("Shape_reset")
+
+[node name="CombatAudioController" type="Node3D" parent="."]
+script = ExtResource("8_combat_audio")
+
+[node name="CombatCameraFeedbackController" type="Node" parent="."]
+script = ExtResource("9_camera_feedback")
 
 [node name="FlightRoomController" type="Node" parent="."]
 script = ExtResource("4_controller")

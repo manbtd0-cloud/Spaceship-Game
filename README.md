@@ -23,21 +23,23 @@ The playable flight room provides:
 - a fixed nose reticle and a true world-velocity marker with safe-edge clamping;
 - a process-always pause menu with persistent camera and three-mode flight settings;
 - the canonical Small Sci-Fi Fighter at identity transform;
-- twelve source-exact nozzle-local thruster effects;
-- deterministic mappings for twelve pilot actions;
-- separate direct-pilot, legacy-assisted, and full-authority automatic thruster feedback;
-- nozzle-anchored rise and fall envelopes;
+- twelve source-exact nozzle-local player thruster effects and deterministic mappings for twelve pilot actions;
 - four imported asteroid families and a deterministic collidable field;
 - shield-first projectile/collision damage with localized procedural hex shield impacts;
 - one physically simulated tactical hostile fighter with independent thrust/torque/speed tuning;
 - predictive pulse-cannon return fire using the same 900 m/s, 15-damage projectile architecture as the player;
 - tactical pursuit, range/closure control, overshoot handling, disengage/re-entry, and threat-aware evasive breaks;
-- repeatable hostile-fighter destruction/respawn and player recovery/reset behavior;
+- physically faithful hostile thruster presentation driven by the enemy controller's actual bounded force/torque through the verified schema-5 matrix;
+- stronger localized shield and hull hit presentation with bounded effect pools;
+- staged hostile destruction with rupture buildup, core detonation, expanding shockwave, bounded debris, and clean respawn handoff;
+- deterministic spatialized combat audio using a fixed seven-emitter pool and in-engine generated source audio;
+- selective camera feedback for meaningful player damage, shield break, collision pressure, and nearby hostile destruction;
+- render/physics-interpolated chase-camera target sampling that removes the previously identified visible vibration caused by render frames sampling discrete physics transforms;
 - a high-speed navigation course, telemetry/combat HUD, collisions, primary fire, and pause-safe reset handling.
 
 The tactical enemy never teleports or overwrites live velocity/orientation to obtain a firing solution. Active enemy maneuvering is produced through bounded `RigidBody3D.apply_central_force()` and `apply_torque()` calls. Transform and velocity writes are reserved for frozen reset/respawn lifecycle operations.
 
-The temporary model adapter, rear-only glow anchors, procedural exhaust cones, and free-form runtime thruster allocator have been removed.
+Combat Presentation v1 is deliberately a presentation/stability layer. It does **not** claim to solve the subjective dogfight-feel problem. The current controls, aiming experience, and practical projectile connectivity are recorded as a separate deferred gameplay milestone in `docs/superpowers/plans/deferred-milestones.md`.
 
 ## Requirements
 
@@ -76,19 +78,17 @@ godot --path .
 | `Escape` | Pause / resume and open configuration |
 | `R` | Reset player and hostile fighter to spawn, clear momentum/projectiles, and reset boost heat |
 
-The three modes keep distinct behavior:
+The three flight modes remain distinct:
 
 - **Assisted** retains the established nose-led steering, damping, and coordinated bank.
 - **AI Assisted** continuously drives the true velocity vector toward ship-forward. Large velocity-marker separation requests full legal player-equivalent authority; correction tapers near the nose reticle. Explicit strafe, vertical, reverse, and rotation inputs remain authoritative.
 - **Inertial** keeps true momentum and receives no automatic force or torque.
 
-All three modes use the same final per-axis angular-rate envelope. Torque that would increase an already-high pitch, yaw, or roll rate fades smoothly toward zero at the configured limit. Opposing torque is never weakened, so direct counter-input, AI stabilization, Assisted damping, and Smart Stabilize retain full braking authority above the limits.
+Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands and applies legal opposing thrust and torque on every active local velocity axis. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
 
-Smart Stabilize is not another mode. While `X` is held, it suppresses ordinary movement commands and immediately applies legal opposing thrust and torque on every active local velocity axis. Translation and rotation are cancelled simultaneously. Large motion uses the same maximum output available through full player input; output tapers only near rest to avoid oscillation. Releasing `X` returns control to the selected mode without snapping velocity or changing the mode.
+Automatic flight control never exceeds the ship's direct-control limits. AI pilot output and automatic correction are combined before force generation, so they cannot stack beyond one legal command. Boosted automatic authority exists only while `Shift` is held and boost is thermally available.
 
-Automatic flight control never exceeds the ship's direct-control limits. Forward, reverse, strafe, vertical, pitch, yaw, and roll use their existing `FlightTuning` authority. Combined translation remains normalized exactly like player input. AI pilot output and automatic correction are combined before force generation, so they cannot stack beyond one legal command. Boosted automatic authority exists only while `Shift` is held and boost is thermally available.
-
-The pause menu writes only through the typed `PlayerSettingsService`. It persists:
+The pause menu writes only through the typed `PlayerSettingsService` and persists:
 
 ```text
 camera.behavior
@@ -96,9 +96,7 @@ camera.distance
 flight.default_mode
 ```
 
-Settings are stored in `user://settings.cfg`. The room-owned settings coordinator applies saved values to the existing camera rig and ship controller without duplicating gameplay state. Existing settings values remain compatible: Assisted is `0`, Inertial is `1`, and AI Assisted is appended as `2`.
-
-The nose reticle represents the ship's current facing direction. The velocity marker represents the actual world-space travel direction, remains hidden below `2.0 m/s`, and clamps inside a `32 px` safe margin when the vector is offscreen or behind the camera.
+Settings are stored in `user://settings.cfg`.
 
 ## Canonical fighter and thrusters
 
@@ -125,21 +123,9 @@ Procedural exhaust geometry: forbidden
 Runtime matrix generation: forbidden
 ```
 
-### Why plume growth stays attached
+The schema-5 exporter preserves the exact evaluated source vertices, extracts a verified socket position/basis for every physical nozzle, converts each plume into nozzle-local coordinates, reconstructs canonical vertices under a `0.0001 m` error gate, and records the geometry/mapping contract in the checked-in manifest.
 
-The preserved Blender source contains exhaust meshes authored against the real vents. The schema-5 exporter:
-
-1. identifies twelve physical plume groups from the eleven `EngineFire*` objects;
-2. preserves the exact evaluated source vertices, faces, and component indices;
-3. extracts a verified socket position and basis for every physical nozzle;
-4. converts each plume from canonical ship space into its nozzle-local coordinate frame;
-5. reconstructs every canonical vertex and rejects error above `0.0001 m`;
-6. exports the effect node at the verified nozzle transform;
-7. records its socket pair, local axis, transform, bounds, geometry digest, and reconstruction error.
-
-At full output, the authored source geometry is reconstructed exactly. Runtime scaling changes only the local plume length and radius while its node origin remains fixed at the nozzle.
-
-### Activation behavior
+### Player thruster activation
 
 Direct exhaust comes from the current pilot command, never retained velocity:
 
@@ -149,11 +135,15 @@ input released → direct thrusters decay to invisible
 ship still coasting → no direct exhaust
 ```
 
-All automatic output uses the same checked-in action matrix. Legacy Assisted damping and coordinated banking retain the restrained 35 percent visual cap. AI Assisted and Smart Stabilize display their actual direction-correct applied authority and may reach full output. Direct output always retains precedence when direct and automatic requests overlap. No automatic visual target may exceed one.
+All automatic player output uses the same checked-in action matrix. AI Assisted and Smart Stabilize display direction-correct applied authority and may reach full output, while direct output retains precedence when direct and automatic requests overlap.
 
-The action matrix explicitly requires both main thrusters for forward acceleration and both retro thrusters for reverse acceleration. It is generated and validated offline, then checked into the repository; gameplay never solves or reshuffles mappings dynamically.
+### Enemy thruster activation
 
-Generate and validate all three publication outputs transactionally:
+The hostile fighter reuses the canonical airframe, but its twelve imported source-exact effect meshes are no longer hidden as an all-or-nothing group. `EnemyThrusterVisualController` reads the enemy controller's **actual applied world force and torque**, converts them to local normalized authority, and feeds that command through the same checked-in `ThrusterActionMatrix`.
+
+Only physically relevant nozzles illuminate. Visual targets remain in `[0,1]` and cannot imply more authority than the enemy controller actually applied. Source nozzle pivots and raw GLB data remain untouched.
+
+Generate and validate the canonical fighter outputs with:
 
 ```powershell
 python -m unittest `
@@ -169,44 +159,6 @@ python -m unittest `
 .\tools\verify\verify.ps1
 ```
 
-The exporter writes pending GLB, manifest, and matrix files. It validates all three before replacing live files and restores backups if publication itself fails.
-
-## Thruster calibration scene
-
-Launch the development-only calibration scene with:
-
-```powershell
-godot --path . res://scenes/debug/thruster_calibration.tscn
-```
-
-Controls:
-
-```text
-Left / Right  previous / next calibration case
-Space         pause / resume output
-Escape        exit
-```
-
-The scene cycles all twelve direct actions plus assisted translation and assisted rotation. It uses the production player scene, production visual controller, and production checked-in action matrix. The report displays each active effect path, force, torque, direct target, raw assist target, merged target, and current envelope.
-
-## Primary fire showcase
-
-Launch the development-only production firing showcase with:
-
-```powershell
-godot --path . res://scenes/debug/primary_fire_showcase.tscn
-```
-
-Controls:
-
-```text
-LMB / physical V  hold primary fire
-R                 clear projectiles and reset cadence/counters
-Escape            exit showcase
-```
-
-The showcase uses the production player scene, verified schema-5 left/right muzzle sockets, production seven-shots-per-second cadence, swept 900 m/s pulse projectiles, deterministic 32-projectile pool, source-body exclusion, and first-hit cleanup. The fighter remains stationary in a controlled neon firing lane so alternating muzzle fire and projectile behavior can be inspected directly.
-
 ## Tactical enemy dogfight
 
 The default flight room contains exactly one `EnemyFighter`. The old `PracticeDrone` scene remains available as a training/reference asset but is no longer active in the production room.
@@ -220,9 +172,64 @@ ACQUIRE → ATTACK / RANGE_CONTROL → DISENGAGE → REENTRY
 
 Predictive aiming solves a future intercept from both ships' world positions/velocities and the shared `PulseProjectile.DEFAULT_SPEED` of `900 m/s`. A shot is legal only when the solution is valid, the player is within the configured range and firing cone, cadence permits it, the enemy is active, and the physics ray has clear line of sight. Pulse rounds do not home or bend after firing.
 
-Threat-aware evasion uses observable player-facing geometry and nearby hostile projectile activity. It does not read player input or predict which individual projectile will hit. Hostile projectile pressure is intentionally local: projectiles outside the configured `220 m` awareness radius do not trigger evasive state.
+Threat-aware evasion uses observable player-facing geometry and nearby hostile projectile activity. It does not read player input or predict which individual projectile will hit. Hostile projectile pressure is local: projectiles outside the configured `220 m` awareness radius do not trigger evasive state.
 
-The reused enemy airframe receives a restrained hostile material overlay. Its imported authored `EngineFire*` group is suppressed for now rather than displaying every thruster simultaneously. Dynamic enemy thruster VFX driven by actual bounded controller output is recorded in `docs/superpowers/plans/deferred-milestones.md`.
+## Combat Presentation v1
+
+### Render/physics vibration repair
+
+The reported intermittent model/camera vibration was traced to the render-frame chase camera sampling ordinary transforms from a physics-driven target while physics interpolation was disabled. The repair enables project physics interpolation, keeps the render-driven chase rig on manual interpolation, samples the target through `get_global_transform_interpolated()`, and resets interpolation at explicit teleport/pool-reuse boundaries.
+
+This is a render/presentation repair, not extra physical damping. Inertial movement, Smart Stabilize, AI Assisted flight, and the rigid-body velocity-preservation contract remain unchanged.
+
+### Shield and hull impacts
+
+Shield damage retains the localized procedural hex shell but receives a sharper impact core, wider energy halo, stronger cell contrast, and stronger break presentation. Hull damage is routed separately through `HullImpactVisualizer`: a fixed four-slot pool provides directional sparks and a brief incandescent impact flash. Shield-only hits never emit hull sparks, and ignored damage emits no false presentation.
+
+### Hostile destruction
+
+Enemy destruction uses a deterministic presentation timeline layered on the existing three-second respawn lifecycle:
+
+```text
+0.00–0.20 s  rupture buildup / internal flashes
+0.20–0.55 s  core detonation
+0.22–1.15 s  expanding shockwave
+0.20–1.40 s  five bounded debris fragments / energy tail
+>=1.40 s     temporary presentation fully cleaned
+3.00 s       existing enemy respawn authority restores the fighter
+```
+
+The debris presentation inherits cached pre-destruction ship momentum, but it is presentation-only and does not replace the enemy's physical lifecycle.
+
+### Combat audio
+
+The production room owns one `CombatAudioController` with exactly seven preallocated `AudioStreamPlayer3D` emitters. It routes player/enemy pulse fire, shield hits/breaks, hull impacts, enemy thruster output, hostile explosion, and debris tail into dedicated `Ship`, `Weapons`, `Impacts`, and `Environment` buses.
+
+The seven source streams are generated deterministically in code by `CombatAudioSynth` as PCM16/44.1 kHz audio. This intentionally avoids downloaded audio dependencies and makes a fresh disposable environment fully reconstructible from GitHub source alone.
+
+### Selective camera response
+
+`CombatCameraFeedbackController` owns only the `Camera3D` child's local presentation offset. Ordinary hits **on the enemy** do not shake the player camera. Player damage creates a small bounded impulse; collisions and shield break are stronger; hostile destruction is distance-attenuated to zero beyond the configured presentation range.
+
+The feedback layer never mutates player transform, linear velocity, angular velocity, or the chase rig's physical/render target state.
+
+## Debug scenes
+
+### Thruster calibration
+
+```powershell
+godot --path . res://scenes/debug/thruster_calibration.tscn
+```
+
+The scene cycles direct actions plus assisted translation/rotation using the production player scene, visual controller, and checked-in action matrix.
+
+### Primary fire showcase
+
+```powershell
+godot --path . res://scenes/debug/primary_fire_showcase.tscn
+```
+
+The showcase uses the production player scene, verified schema-5 muzzle sockets, seven-shots-per-second cadence, swept 900 m/s pulse projectiles, deterministic 32-projectile pool, source-body exclusion, and first-hit cleanup.
 
 ## Four-source asteroid pack
 
@@ -242,13 +249,7 @@ python -m unittest tests.tools.test_asteroid_pack -v
 .\tools\assets\export-asteroid-pack.ps1
 ```
 
-Each family is centered, uniformly scaled to a 100 m longest dimension, cleaned of cameras/lights/flat helper geometry, and exported with a reduced `CollisionProxy-convcolonly` mesh.
-
-Eros includes embedded CC BY 4.0 attribution. The other three sources remain development-only until original license evidence is recorded. See:
-
-```text
-assets/licenses/asteroids/PROVENANCE.md
-```
+Eros includes embedded CC BY 4.0 attribution. The other three sources remain development-only until original license evidence is recorded. See `assets/licenses/asteroids/PROVENANCE.md`.
 
 ## Verify locally
 
@@ -261,16 +262,16 @@ assets/licenses/asteroids/PROVENANCE.md
 ### Linux
 
 ```bash
-GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" ./tools/verify/verify.sh
+GODOT_BIN="$HOME/Packages/Godot_v4.7.1-stable_linux.x86_64" bash ./tools/verify/verify.sh
 ```
 
 The current runner target is:
 
 ```text
-PASS: 50 suites
+PASS: 61 suites
 ```
 
-The Tactical Enemy Dogfight verification gate also requires:
+The Combat Presentation v1 verification gate also requires:
 
 ```text
 Schema-5 fighter contract validation passed.
@@ -280,7 +281,21 @@ speed drift: 0.000000000 m/s
 direction drift: 0.000000000 degrees
 ```
 
-Do not claim a milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene without parser, path, runtime, orphan-node, or retained-resource errors.
+A real main-scene runtime smoke must also remain alive for several physics seconds without parser, invalid-call, node-path, shader, resource-load, or repeated runtime errors.
+
+Do not claim a milestone verified until the verifier validates the schema-5 fighter contract and deterministic matrix, imports the project, runs every suite, verifies real rigid-body inertial preservation, and boots the main scene cleanly.
+
+## Disposable-environment recovery
+
+**GitHub is persistent project state; the sandbox is a disposable workstation.** Do not rely on `/mnt/data`, caches, extracted binaries, symlinks, `.godot/`, or local worktrees surviving between sessions.
+
+A fresh environment should restore Godot, reconstruct/checkout the current GitHub branch, import the project, run the verifier, and continue only from that verified GitHub head. The detailed recovery procedure is in:
+
+```text
+docs/development/disposable-environment-recovery.md
+```
+
+An older uploaded ZIP may be used only as a bulk cache for unchanged files after authoritative GitHub changes are overlaid and the baseline verification is rerun.
 
 ## Asset policy
 

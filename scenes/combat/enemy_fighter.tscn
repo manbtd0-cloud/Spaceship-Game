@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 [ext_resource type="PackedScene" path="res://assets/runtime/ships/player/small_sci_fi_fighter.glb" id="1_model"]
 [ext_resource type="Script" path="res://src/combat/damage_state.gd" id="2_damage"]
 [ext_resource type="Resource" path="res://config/combat/enemy_fighter_damage_tuning.tres" id="3_damage_tuning"]
@@ -9,6 +9,9 @@
 [ext_resource type="Script" path="res://src/combat/enemy_fighter_controller.gd" id="8_controller"]
 [ext_resource type="Script" path="res://src/combat/enemy_fighter_visual_controller.gd" id="9_visual"]
 [ext_resource type="Resource" path="res://config/combat/enemy_fighter_tuning.tres" id="10_tuning"]
+[ext_resource type="Script" path="res://src/combat/enemy_thruster_visual_controller.gd" id="11_thruster_visual"]
+[ext_resource type="Script" path="res://src/combat/hull_impact_visualizer.gd" id="12_hull_impact"]
+[ext_resource type="Script" path="res://src/combat/enemy_destruction_presentation_controller.gd" id="13_destruction"]
 [sub_resource type="BoxShape3D" id="shape"]
 size=Vector3(14,3.8,12.2)
 [sub_resource type="SphereMesh" id="pulse"]
@@ -50,6 +53,14 @@ script=ExtResource("8_controller")
 tuning=ExtResource("10_tuning")
 [node name="EnemyFighterVisualController" type="Node" parent="."]
 script=ExtResource("9_visual")
+[node name="EnemyThrusterVisualController" type="Node" parent="."]
+script=ExtResource("11_thruster_visual")
+tuning=ExtResource("10_tuning")
+[node name="HullImpactVisualizer" type="Node3D" parent="."]
+script=ExtResource("12_hull_impact")
+burst_color=Color(1.0,0.24,0.04,1)
+[node name="EnemyDestructionPresentationController" type="Node3D" parent="."]
+script=ExtResource("13_destruction")
 [node name="DestructionPulse" type="MeshInstance3D" parent="."]
 visible=false
 mesh=SubResource("pulse")
