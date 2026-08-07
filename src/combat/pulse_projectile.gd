@@ -8,6 +8,7 @@ signal resolved(
 )
 
 const QUERY_RADIUS := 0.15
+const DEFAULT_SPEED := 900.0
 const DEFAULT_DAMAGE := 15.0
 const DEFAULT_LIFETIME := 3.0
 
