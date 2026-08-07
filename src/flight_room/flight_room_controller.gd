@@ -172,6 +172,7 @@ func reset_player() -> void:
     _player_respawn_remaining = 0.0
     _body.freeze = true
     _body.global_transform = _spawn_transform
+    _body.reset_physics_interpolation()
     _body.linear_velocity = Vector3.ZERO
     _body.angular_velocity = Vector3.ZERO
     _controller.reset_runtime_state()

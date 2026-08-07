@@ -41,6 +41,7 @@ func activate(
     lifetime: float = DEFAULT_LIFETIME
 ) -> void:
     global_transform = world_transform
+    reset_physics_interpolation()
     _velocity = velocity if velocity.is_finite() else Vector3.ZERO
     _damage = maxf(damage, 0.0)
     _remaining_lifetime = maxf(lifetime, 0.0)

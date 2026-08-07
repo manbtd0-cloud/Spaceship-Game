@@ -117,6 +117,7 @@ func reset_to_spawn() -> void:
 
     _body.freeze = true
     _body.global_transform = _spawn_transform
+    _body.reset_physics_interpolation()
     _body.linear_velocity = Vector3.ZERO
     _body.angular_velocity = Vector3.ZERO
     _body.collision_layer = _saved_collision_layer

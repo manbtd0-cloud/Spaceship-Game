@@ -73,6 +73,7 @@ var _current_height: float = 4.0
 var _current_max_speed_pullback: float = 5.0
 var _current_hard_rear_limit: float = 19.0
 var _initialized := false
+var _render_target_transform := Transform3D.IDENTITY
 
 func _ready() -> void:
     initialize()
@@ -104,6 +105,9 @@ func initialize() -> void:
     if tuning == null:
         _disable_with_error("ChaseCameraRig requires a FlightTuning resource")
         return
+
+    physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+    _render_target_transform = _target.get_global_transform_interpolated()
 
     if not CameraBehavior.is_valid(_selected_behavior):
         _selected_behavior = CameraBehavior.Value.TACTICAL
@@ -196,6 +200,11 @@ func get_temporary_view() -> int:
 func is_initialized() -> bool:
     return _initialized
 
+func get_render_target_transform_for_test() -> Transform3D:
+    if _target == null:
+        return Transform3D.IDENTITY
+    return _target.get_global_transform_interpolated()
+
 func get_current_framing() -> Dictionary:
     return {
         "rear_offset": _current_rear_offset,
@@ -210,6 +219,8 @@ func step_camera_for_test(delta: float) -> void:
 func step_camera(delta: float) -> void:
     if not _initialized:
         return
+
+    _render_target_transform = _target.get_global_transform_interpolated()
 
     var requested_temporary_view := _sample_temporary_view()
     if requested_temporary_view != TemporaryView.NONE:
@@ -235,7 +246,7 @@ func step_camera(delta: float) -> void:
     var desired_basis := ChaseCameraMath.desired_camera_basis(
         desired_position,
         desired_target,
-        _target.global_transform
+        _render_target_transform
     )
 
     match get_selected_behavior():
@@ -263,7 +274,7 @@ func _action_pressed(action: StringName) -> bool:
 func _apply_temporary_view(view: int) -> void:
     var preset := _selected_valid_preset()
     global_transform = ChaseCameraMath.temporary_view_transform(
-        _target.global_transform,
+        _render_target_transform,
         view,
         preset.rear_offset,
         preset.height
@@ -317,7 +328,7 @@ func _step_dynamic(
         )
     )
     var bounded_position := ChaseCameraMath.clamp_rear_position(
-        _target.global_transform,
+        _render_target_transform,
         candidate_position,
         _current_hard_rear_limit
     )
@@ -346,7 +357,7 @@ func _step_tactical(
         TACTICAL_MAX_POSITION_ERROR
     )
     candidate_position = ChaseCameraMath.clamp_rear_position(
-        _target.global_transform,
+        _render_target_transform,
         candidate_position,
         _current_hard_rear_limit
     )
@@ -387,7 +398,7 @@ func _interpolated_basis(
 
 func _desired_position(world_velocity: Vector3) -> Vector3:
     return ChaseCameraMath.desired_position(
-        _target.global_transform,
+        _render_target_transform,
         world_velocity,
         _current_rear_offset,
         _current_height,
@@ -399,7 +410,7 @@ func _desired_position(world_velocity: Vector3) -> Vector3:
 func _desired_target(world_velocity: Vector3) -> Vector3:
     var parameters := _behavior_parameters()
     return ChaseCameraMath.desired_look_target(
-        _target.global_transform,
+        _render_target_transform,
         world_velocity,
         float(parameters["velocity_look_ahead"]),
         tuning.camera_forward_look_ahead,
@@ -428,6 +439,8 @@ func _behavior_parameters() -> Dictionary:
             }
 
 func _snap_to_desired_state() -> void:
+    if _target != null:
+        _render_target_transform = _target.get_global_transform_interpolated()
     var preset := _selected_valid_preset()
     _current_rear_offset = preset.rear_offset
     _current_height = preset.height
@@ -441,7 +454,7 @@ func _snap_to_desired_state() -> void:
         var desired_basis := ChaseCameraMath.desired_camera_basis(
             desired_position,
             desired_target,
-            _target.global_transform
+            _render_target_transform
         )
         global_transform = Transform3D(desired_basis, desired_position)
 
