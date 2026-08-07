@@ -10,7 +10,7 @@ const PLAYER_RESPAWN_DELAY := 1.25
 @export var player_damage_state_path: NodePath
 @export var player_collision_receiver_path: NodePath
 @export var player_shield_visualizer_path: NodePath
-@export var practice_drone_controller_path: NodePath
+@export var enemy_fighter_controller_path: NodePath
 @export var boundary_radius: float = 2500.0
 
 var _body: RigidBody3D
@@ -22,7 +22,7 @@ var _reset_volume: Area3D
 var _player_damage_state: DamageState
 var _player_collision_receiver: CollisionDamageReceiver
 var _player_shield_visualizer: ShieldImpactVisualizer
-var _practice_drone_controller: PracticeDroneController
+var _enemy_fighter_controller: EnemyFighterController
 var _spawn_transform := Transform3D.IDENTITY
 var _player_respawn_remaining := 0.0
 
@@ -44,10 +44,10 @@ func _ready() -> void:
         _player_shield_visualizer = get_node_or_null(
             player_shield_visualizer_path
         ) as ShieldImpactVisualizer
-    if not practice_drone_controller_path.is_empty():
-        _practice_drone_controller = get_node_or_null(
-            practice_drone_controller_path
-        ) as PracticeDroneController
+    if not enemy_fighter_controller_path.is_empty():
+        _enemy_fighter_controller = get_node_or_null(
+            enemy_fighter_controller_path
+        ) as EnemyFighterController
 
     if _body != null:
         _primary_fire_controller = _body.get_node_or_null(
@@ -92,8 +92,9 @@ func _ready() -> void:
         and not _player_damage_state.destroyed.is_connected(_on_player_destroyed)
     ):
         _player_damage_state.destroyed.connect(_on_player_destroyed)
-    if _practice_drone_controller != null:
-        _practice_drone_controller.set_target(_body)
+    if _enemy_fighter_controller != null:
+        _enemy_fighter_controller.set_target(_body)
+        _enemy_fighter_controller.set_hostile_projectile_pool(_projectile_pool)
 
     _input_source.set_mouse_captured(true)
     if not setup_asteroid_field():
@@ -185,8 +186,8 @@ func reset_player() -> void:
         _player_collision_receiver.reset_runtime_state()
     if _player_shield_visualizer != null:
         _player_shield_visualizer.reset_visuals()
-    if _practice_drone_controller != null:
-        _practice_drone_controller.reset_to_spawn()
+    if _enemy_fighter_controller != null:
+        _enemy_fighter_controller.reset_to_spawn()
 
     _body.freeze = false
     _body.sleeping = false
