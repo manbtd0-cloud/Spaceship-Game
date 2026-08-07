@@ -1,0 +1,55 @@
+[gd_scene load_steps=12 format=3]
+[ext_resource type="PackedScene" path="res://assets/runtime/ships/player/small_sci_fi_fighter.glb" id="1_model"]
+[ext_resource type="Script" path="res://src/combat/damage_state.gd" id="2_damage"]
+[ext_resource type="Resource" path="res://config/combat/enemy_fighter_damage_tuning.tres" id="3_damage_tuning"]
+[ext_resource type="Script" path="res://src/combat/collision_damage_receiver.gd" id="4_collision"]
+[ext_resource type="PackedScene" path="res://scenes/combat/shield_impact_visualizer.tscn" id="5_shield"]
+[ext_resource type="Script" path="res://src/combat/pulse_projectile_pool.gd" id="6_pool"]
+[ext_resource type="Script" path="res://src/combat/enemy_weapon_controller.gd" id="7_weapon"]
+[ext_resource type="Script" path="res://src/combat/enemy_fighter_controller.gd" id="8_controller"]
+[ext_resource type="Script" path="res://src/combat/enemy_fighter_visual_controller.gd" id="9_visual"]
+[ext_resource type="Resource" path="res://config/combat/enemy_fighter_tuning.tres" id="10_tuning"]
+[sub_resource type="BoxShape3D" id="shape"]
+size=Vector3(14,3.8,12.2)
+[sub_resource type="SphereMesh" id="pulse"]
+radius=4.0
+height=8.0
+[node name="EnemyFighter" type="RigidBody3D"]
+mass=6500.0
+gravity_scale=0.0
+linear_damp_mode=1
+linear_damp=0.0
+angular_damp_mode=1
+angular_damp=0.0
+continuous_cd=true
+contact_monitor=true
+max_contacts_reported=8
+can_sleep=false
+collision_layer=1
+collision_mask=1
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape=SubResource("shape")
+[node name="VisualRoot" type="Node3D" parent="."]
+[node name="SmallSciFiFighter" parent="VisualRoot" instance=ExtResource("1_model")]
+[node name="DamageState" type="Node" parent="."]
+script=ExtResource("2_damage")
+tuning=ExtResource("3_damage_tuning")
+[node name="CollisionDamageReceiver" type="Node" parent="."]
+script=ExtResource("4_collision")
+[node name="ShieldImpactVisualizer" parent="." instance=ExtResource("5_shield")]
+ellipsoid_radii=Vector3(8.2,3.0,7.2)
+shield_color=Color(1.0,0.16,0.08,1)
+[node name="PulseProjectilePool" type="Node3D" parent="."]
+top_level=true
+script=ExtResource("6_pool")
+[node name="EnemyWeaponController" type="Node" parent="."]
+script=ExtResource("7_weapon")
+tuning=ExtResource("10_tuning")
+[node name="EnemyFighterController" type="Node" parent="."]
+script=ExtResource("8_controller")
+tuning=ExtResource("10_tuning")
+[node name="EnemyFighterVisualController" type="Node" parent="."]
+script=ExtResource("9_visual")
+[node name="DestructionPulse" type="MeshInstance3D" parent="."]
+visible=false
+mesh=SubResource("pulse")
