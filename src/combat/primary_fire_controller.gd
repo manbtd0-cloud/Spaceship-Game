@@ -8,7 +8,7 @@ const LEFT_MUZZLE := NodePath("Weapons/Primary/LeftMuzzle")
 const RIGHT_MUZZLE := NodePath("Weapons/Primary/RightMuzzle")
 const LEFT_MUZZLE_FROM_WEAPONS := NodePath("Primary/LeftMuzzle")
 const RIGHT_MUZZLE_FROM_WEAPONS := NodePath("Primary/RightMuzzle")
-const PROJECTILE_SPEED := 900.0
+const PROJECTILE_SPEED := PulseProjectile.DEFAULT_SPEED
 
 @export var body_path: NodePath
 @export var input_source_path: NodePath
