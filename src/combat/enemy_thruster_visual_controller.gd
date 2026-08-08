@@ -1,6 +1,7 @@
 class_name EnemyThrusterVisualController
 extends Node
 
+const EnemyThrusterPresentationMath = preload("res://src/combat/enemy_thruster_presentation_math.gd")
 const VISIBILITY_THRESHOLD := 0.001
 const RISE_SECONDS := 0.10
 const FALL_SECONDS := 0.16

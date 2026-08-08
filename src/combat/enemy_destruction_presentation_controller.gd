@@ -1,6 +1,8 @@
 class_name EnemyDestructionPresentationController
 extends Node3D
 
+const EnemyDestructionTimeline = preload("res://src/combat/enemy_destruction_timeline.gd")
+const EnemyThrusterVisualController = preload("res://src/combat/enemy_thruster_visual_controller.gd")
 const DEBRIS_COUNT := 5
 const INTERNAL_FLASH_COUNT := 3
 

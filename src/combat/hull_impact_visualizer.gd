@@ -1,6 +1,7 @@
 class_name HullImpactVisualizer
 extends Node3D
 
+const HullImpactMath = preload("res://src/combat/hull_impact_math.gd")
 const IMPACT_SLOT_COUNT := 4
 
 @export var damage_state_path: NodePath = NodePath("../DamageState")

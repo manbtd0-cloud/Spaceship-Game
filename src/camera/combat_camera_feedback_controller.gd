@@ -1,6 +1,8 @@
 class_name CombatCameraFeedbackController
 extends Node
 
+const CombatCameraImpulseState = preload("res://src/camera/combat_camera_impulse_state.gd")
+
 @export var camera_path: NodePath = NodePath("../ChaseCameraRig/Camera3D")
 @export var player_body_path: NodePath = NodePath("../PlayerInterceptor")
 @export var enemy_body_path: NodePath = NodePath("../EnemyFighter")

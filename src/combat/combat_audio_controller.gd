@@ -1,6 +1,9 @@
 class_name CombatAudioController
 extends Node3D
 
+const CombatAudioSynth = preload("res://src/combat/combat_audio_synth.gd")
+const EnemyThrusterVisualController = preload("res://src/combat/enemy_thruster_visual_controller.gd")
+
 @export var player_body_path: NodePath = NodePath("../PlayerInterceptor")
 @export var enemy_body_path: NodePath = NodePath("../EnemyFighter")
 @export var player_fire_path: NodePath = NodePath("../PlayerInterceptor/PrimaryFireController")
